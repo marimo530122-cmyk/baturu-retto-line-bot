@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { generateEpisodeImage } = require("./lib/imageGen");
 
 const PAGE_ID = process.env.FB_PAGE_ID;
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
@@ -25,15 +26,20 @@ async function postToFacebook() {
   const episode = pickEpisode();
   const message = episode.text.replaceAll("{{GAME_URL}}", GAME_URL);
 
+  // Facebookの/photosもURL添付のみ対応のため、URLを返すプロバイダーの結果が
+  // あるときだけ画像付き投稿にする。未設定・失敗時は従来通りテキスト投稿。
+  const image = await generateEpisodeImage(episode);
+  const endpoint = image && image.url ? "photos" : "feed";
+  const body = image && image.url
+    ? { url: image.url, caption: message, access_token: PAGE_ACCESS_TOKEN }
+    : { message, access_token: PAGE_ACCESS_TOKEN };
+
   const res = await fetch(
-    `https://graph.facebook.com/v21.0/${PAGE_ID}/feed`,
+    `https://graph.facebook.com/v21.0/${PAGE_ID}/${endpoint}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        access_token: PAGE_ACCESS_TOKEN,
-      }),
+      body: JSON.stringify(body),
     }
   );
 

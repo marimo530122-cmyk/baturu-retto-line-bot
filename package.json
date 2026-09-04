@@ -1,0 +1,14 @@
+{
+  "name": "baturu-retto-line-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "バツルーレット LINE/Facebook 日次配信スクリプト",
+  "main": "broadcast.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

@@ -16,3 +16,10 @@ jobs:
       - run: node broadcast.js
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          # 画像生成は任意機能。IMAGE_PROVIDER 系シークレットが未設定なら
+          # 何も送られず、broadcast.js は自動でテキストのみに切り替わる。
+          IMAGE_PROVIDER: ${{ secrets.IMAGE_PROVIDER }}
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+          FAL_MODEL: ${{ secrets.FAL_MODEL }}
+          STABILITY_API_KEY: ${{ secrets.STABILITY_API_KEY }}
+          A1111_API_URL: ${{ secrets.A1111_API_URL }}

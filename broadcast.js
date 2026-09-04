@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { generateEpisodeImage } = require("./lib/imageGen");
 
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const GAME_URL = process.env.GAME_URL || "https://marimo530122-cmyk.github.io/baturu-retto/";
@@ -24,15 +25,26 @@ async function broadcast() {
   const episode = pickEpisode();
   const text = episode.text.replaceAll("{{GAME_URL}}", GAME_URL);
 
+  const messages = [{ type: "text", text }];
+
+  // LINEの画像メッセージは公開HTTPS URLが必須のため、URLを返すプロバイダーの
+  // 結果のみ添付する。未設定・失敗時は自動でテキストのみにフォールバックする。
+  const image = await generateEpisodeImage(episode);
+  if (image && image.url) {
+    messages.push({
+      type: "image",
+      originalContentUrl: image.url,
+      previewImageUrl: image.url,
+    });
+  }
+
   const res = await fetch("https://api.line.me/v2/bot/message/broadcast", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${ACCESS_TOKEN}`,
     },
-    body: JSON.stringify({
-      messages: [{ type: "text", text }],
-    }),
+    body: JSON.stringify({ messages }),
   });
 
   if (!res.ok) {
