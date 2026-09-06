@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { pickEpisode } = require("./lib/pickEpisode");
 
 const PAGE_ID = process.env.FB_PAGE_ID;
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
@@ -14,15 +15,8 @@ const episodes = JSON.parse(
   fs.readFileSync(path.join(__dirname, "fb_episodes.json"), "utf-8")
 );
 
-function pickEpisode() {
-  const start = new Date(new Date().getFullYear(), 0, 0);
-  const now = new Date();
-  const dayOfYear = Math.floor((now - start) / 86400000);
-  return episodes[dayOfYear % episodes.length];
-}
-
 async function postToFacebook() {
-  const episode = pickEpisode();
+  const episode = pickEpisode(episodes);
   const message = episode.text.replaceAll("{{GAME_URL}}", GAME_URL);
 
   const res = await fetch(

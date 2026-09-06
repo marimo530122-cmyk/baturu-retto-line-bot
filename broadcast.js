@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { pickEpisode } = require("./lib/pickEpisode");
 
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const GAME_URL = process.env.GAME_URL || "https://marimo530122-cmyk.github.io/baturu-retto/";
@@ -13,15 +14,8 @@ const episodes = JSON.parse(
   fs.readFileSync(path.join(__dirname, "episodes.json"), "utf-8")
 );
 
-function pickEpisode() {
-  const start = new Date(new Date().getFullYear(), 0, 0);
-  const now = new Date();
-  const dayOfYear = Math.floor((now - start) / 86400000);
-  return episodes[dayOfYear % episodes.length];
-}
-
 async function broadcast() {
-  const episode = pickEpisode();
+  const episode = pickEpisode(episodes);
   const text = episode.text.replaceAll("{{GAME_URL}}", GAME_URL);
 
   const res = await fetch("https://api.line.me/v2/bot/message/broadcast", {
