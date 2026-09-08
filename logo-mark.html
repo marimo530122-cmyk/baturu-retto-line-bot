@@ -1,0 +1,332 @@
+<title>バツルーレット</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --ink:#14101a;
+    --ink-2:#201829;
+    --ink-3:#2c2235;
+    --paper:#f7ece1;
+    --red:#e8384f;
+    --red-deep:#8f1f34;
+    --gold:#eab04c;
+    --muted:#9186a0;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  }
+
+  .stage{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:56px;
+    padding:64px 24px 72px;
+    background:
+      radial-gradient(circle at 50% -10%, rgba(234,176,76,0.14), transparent 55%),
+      radial-gradient(circle at 85% 15%, rgba(232,56,79,0.10), transparent 45%),
+      var(--ink);
+  }
+
+  /* ---------- primary mark ---------- */
+
+  .mark{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+  }
+
+  .wheel-wrap{
+    position:relative;
+    width:236px;
+    height:236px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .wheel-wrap canvas{
+    filter:drop-shadow(0 18px 40px rgba(0,0,0,0.55));
+  }
+
+  .pointer{
+    position:absolute;
+    top:-6px;
+    left:50%;
+    width:0;
+    height:0;
+    transform:translateX(-50%);
+    border-left:11px solid transparent;
+    border-right:11px solid transparent;
+    border-top:18px solid var(--gold);
+    filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+
+  .wordlock{
+    font-family:"Dela Gothic One",sans-serif;
+    font-size:clamp(2.4rem, 6vw, 3.4rem);
+    line-height:1;
+    letter-spacing:0.02em;
+    text-wrap:balance;
+    display:flex;
+    align-items:baseline;
+    gap:0.08em;
+  }
+  .w-batsu{color:var(--red);}
+  .w-roulette{color:var(--paper);}
+
+  .tagline{
+    margin:0;
+    font-size:0.95rem;
+    color:var(--muted);
+    letter-spacing:0.06em;
+  }
+
+  /* ---------- usage row ---------- */
+
+  .usage{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(160px,220px));
+    gap:20px;
+    width:100%;
+    max-width:760px;
+  }
+
+  .usage-card{
+    background:var(--ink-2);
+    border:1px solid var(--ink-3);
+    border-radius:20px;
+    padding:28px 20px 20px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    min-height:180px;
+  }
+
+  .app-icon{
+    width:88px;
+    height:88px;
+    border-radius:22px;
+    background:linear-gradient(160deg, var(--ink-3), var(--ink));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(247,236,225,0.06);
+  }
+
+  .lockup-horizontal{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .wordlock-h{
+    font-family:"Dela Gothic One",sans-serif;
+    font-size:1.15rem;
+    display:flex;
+    gap:0.06em;
+  }
+
+  .mono-mark{
+    font-size:3.4rem;
+    font-family:"Dela Gothic One",sans-serif;
+    color:var(--paper);
+    line-height:1;
+  }
+
+  .usage-label{
+    font-size:0.78rem;
+    color:var(--muted);
+    letter-spacing:0.08em;
+  }
+
+  /* ---------- spec strip ---------- */
+
+  .specs{
+    width:100%;
+    max-width:760px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:40px;
+    padding-top:8px;
+    border-top:1px solid var(--ink-3);
+  }
+
+  .swatches{
+    display:flex;
+    gap:14px;
+  }
+  .swatch{
+    width:76px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .swatch::before{
+    content:"";
+    display:block;
+    width:100%;
+    aspect-ratio:1;
+    border-radius:10px;
+    background:var(--c);
+    box-shadow:inset 0 0 0 1px rgba(247,236,225,0.08);
+  }
+  .swatch span{
+    font-size:0.68rem;
+    letter-spacing:0.1em;
+    color:var(--muted);
+  }
+  .swatch code{
+    font-size:0.72rem;
+    font-variant-numeric:tabular-nums;
+    color:var(--paper);
+  }
+
+  .fonts{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    justify-content:center;
+    font-size:0.85rem;
+    color:var(--paper);
+  }
+  .f-label{
+    display:inline-block;
+    width:64px;
+    color:var(--muted);
+    font-size:0.7rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+  }
+</style>
+
+<div class="stage">
+
+  <div class="mark">
+    <div class="wheel-wrap">
+      <div class="pointer"></div>
+      <canvas id="wheel-main" width="220" height="220"></canvas>
+    </div>
+    <div class="wordlock">
+      <span class="w-batsu">バツ</span><span class="w-roulette">ルーレット</span>
+    </div>
+    <p class="tagline">誰が引くかは、運まかせ。</p>
+  </div>
+
+  <div class="usage">
+    <div class="usage-card">
+      <div class="app-icon"><canvas class="wheel-mini" width="64" height="64"></canvas></div>
+      <span class="usage-label">アプリアイコン</span>
+    </div>
+    <div class="usage-card">
+      <div class="lockup-horizontal">
+        <canvas class="wheel-mini" width="40" height="40"></canvas>
+        <span class="wordlock-h"><span class="w-batsu">バツ</span><span class="w-roulette">ルーレット</span></span>
+      </div>
+      <span class="usage-label">横組みロゴ</span>
+    </div>
+    <div class="usage-card">
+      <span class="mono-mark">✕</span>
+      <span class="usage-label">単色マーク</span>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="swatches">
+      <div class="swatch" style="--c:#14101a"><span>INK</span><code>#14101A</code></div>
+      <div class="swatch" style="--c:#e8384f"><span>RED</span><code>#E8384F</code></div>
+      <div class="swatch" style="--c:#eab04c"><span>GOLD</span><code>#EAB04C</code></div>
+      <div class="swatch" style="--c:#f7ece1"><span>PAPER</span><code>#F7ECE1</code></div>
+    </div>
+    <div class="fonts">
+      <p><span class="f-label">Display</span>Dela Gothic One</p>
+      <p><span class="f-label">Text</span>Zen Kaku Gothic New</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var INK2 = '#201829';
+  var RED = '#e8384f';
+  var RED_DEEP = '#8f1f34';
+  var GOLD = '#eab04c';
+  var PAPER = '#f7ece1';
+  var SEGMENTS = 12;
+
+  function drawWheel(canvas){
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height;
+    var cx = w/2, cy = h/2;
+    var r = Math.min(w,h)/2 - Math.max(2, w*0.06);
+    ctx.clearRect(0,0,w,h);
+
+    // segments
+    var step = (Math.PI*2)/SEGMENTS;
+    for(var i=0;i<SEGMENTS;i++){
+      var a0 = -Math.PI/2 + i*step;
+      var a1 = a0 + step;
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,r,a0,a1);
+      ctx.closePath();
+      ctx.fillStyle = (i%2===0) ? RED : INK2;
+      ctx.fill();
+    }
+
+    // rim
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.lineWidth = Math.max(2, w*0.02);
+    ctx.strokeStyle = RED_DEEP;
+    ctx.stroke();
+
+    // bulbs around rim
+    var bulbCount = SEGMENTS;
+    var bulbR = Math.max(1.5, w*0.018);
+    for(var j=0;j<bulbCount;j++){
+      var ang = -Math.PI/2 + j*step + step/2;
+      var bx = cx + Math.cos(ang)*(r+bulbR*1.6);
+      var by = cy + Math.sin(ang)*(r+bulbR*1.6);
+      ctx.beginPath();
+      ctx.arc(bx,by,bulbR,0,Math.PI*2);
+      ctx.fillStyle = GOLD;
+      ctx.fill();
+    }
+
+    // hub
+    var hubR = r*0.42;
+    ctx.beginPath();
+    ctx.arc(cx,cy,hubR,0,Math.PI*2);
+    ctx.fillStyle = '#14101a';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.5, w*0.012);
+    ctx.strokeStyle = GOLD;
+    ctx.stroke();
+
+    // X mark in hub
+    var m = hubR*0.5;
+    ctx.lineWidth = Math.max(3, w*0.045);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = PAPER;
+    ctx.beginPath();
+    ctx.moveTo(cx-m, cy-m);
+    ctx.lineTo(cx+m, cy+m);
+    ctx.moveTo(cx+m, cy-m);
+    ctx.lineTo(cx-m, cy+m);
+    ctx.stroke();
+  }
+
+  drawWheel(document.getElementById('wheel-main'));
+  var minis = document.querySelectorAll('.wheel-mini');
+  for(var k=0;k<minis.length;k++){ drawWheel(minis[k]); }
+})();
+</script>
