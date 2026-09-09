@@ -1,0 +1,29 @@
+name: Daily GitHub Discovery Draft
+
+on:
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node github_discover.js
+        env:
+          NOTIFY_LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.NOTIFY_LINE_CHANNEL_ACCESS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add discovered_repos.json
+          git diff --staged --quiet || git commit -m "Update discovered repos state"
+          git push
