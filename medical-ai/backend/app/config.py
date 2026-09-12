@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     realtime_model: str = "gpt-4o-realtime-preview"
     chat_model: str = "gpt-4o-mini"
-    allowed_origins: str = "http://localhost:3000"
+    allowed_origins: str = "*"
 
     @property
     def mock_mode(self) -> bool:

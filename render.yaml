@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: medical-ai-backend
+    runtime: python
+    rootDir: medical-ai/backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: OPENAI_API_KEY
+        sync: false
+
+  - type: web
+    name: medical-ai-frontend
+    runtime: node
+    rootDir: medical-ai/frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start -- -p $PORT
+    envVars:
+      # medical-ai-backend の名前が他のRenderユーザーと重複していなければ
+      # このURLで一致するはずです。デプロイ後にバックエンドの実際のURLが
+      # 異なっていた場合は、このダッシュボードの環境変数を実際のURLに
+      # 書き換えて再デプロイしてください（詳細は medical-ai/README.md 参照）。
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://medical-ai-backend.onrender.com

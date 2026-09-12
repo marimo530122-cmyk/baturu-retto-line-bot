@@ -15,7 +15,9 @@ app = FastAPI(title="医療AI 診察支援API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
-    allow_credentials=True,
+    # 本アプリは認証Cookieを使わないため allow_credentials=False とし、
+    # ALLOWED_ORIGINS="*"（デフォルト）でのデプロイを可能にしている。
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
