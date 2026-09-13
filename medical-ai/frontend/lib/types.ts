@@ -63,6 +63,20 @@ export interface PrescriptionOrder {
   is_mock: boolean;
 }
 
+export interface LiveDraft {
+  chief_complaint: string;
+  clinical_reasoning: string;
+  prescription_draft: string;
+  referral_letter: string;
+  updated_at: string | null;
+  is_mock: boolean;
+}
+
+export interface PhysicianProfile {
+  style_notes: string;
+  updated_at: string | null;
+}
+
 export interface ConsultationSession {
   id: string;
   patient_id: string;
@@ -74,6 +88,7 @@ export interface ConsultationSession {
   soap: SoapNote;
   referral: ReferralLetter;
   prescription: PrescriptionOrder;
+  live_draft: LiveDraft;
 }
 
 export type ComplianceSuggestionKind =

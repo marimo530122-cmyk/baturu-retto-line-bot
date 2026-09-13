@@ -4,6 +4,7 @@ import type {
   HandoffRecord,
   HandoffTarget,
   Patient,
+  PhysicianProfile,
   PrescriptionOrder,
   ReferralLetter,
   SoapNote,
@@ -48,6 +49,19 @@ export const api = {
   refreshPrescription: (sessionId: string) =>
     request<ConsultationSession>(`/api/sessions/${sessionId}/prescription/refresh`, {
       method: "POST",
+    }),
+
+  refreshLiveDraft: (sessionId: string) =>
+    request<ConsultationSession>(`/api/sessions/${sessionId}/live-draft/refresh`, {
+      method: "POST",
+    }),
+
+  getPhysicianProfile: () => request<PhysicianProfile>("/api/physician-profile"),
+
+  updatePhysicianProfile: (styleNotes: string) =>
+    request<PhysicianProfile>("/api/physician-profile", {
+      method: "PUT",
+      body: JSON.stringify({ style_notes: styleNotes }),
     }),
 
   updateSoap: (sessionId: string, patch: Partial<SoapNote>) =>

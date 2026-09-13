@@ -13,12 +13,15 @@ from datetime import datetime
 from app.config import Settings
 from app.models import (
     ConsultationSession,
+    LiveDraft,
+    PhysicianProfile,
     PrescriptionItem,
     PrescriptionOrder,
     ReferralLetter,
     SoapNote,
 )
 from app.prompts import (
+    LIVE_DRAFT_SYSTEM_PROMPT,
     MINUTES_SYSTEM_PROMPT,
     PRESCRIPTION_SYSTEM_PROMPT,
     REFERRAL_SYSTEM_PROMPT,
@@ -204,6 +207,64 @@ async def extract_prescription(settings: Settings, session: ConsultationSession)
         generated_at=datetime.utcnow(),
         is_mock=False,
     )
+
+
+LIVE_DRAFT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "chief_complaint": {"type": "string"},
+        "clinical_reasoning": {"type": "string"},
+        "prescription_draft": {"type": "string"},
+        "referral_letter": {"type": "string"},
+    },
+    "required": ["chief_complaint", "clinical_reasoning", "prescription_draft", "referral_letter"],
+    "additionalProperties": False,
+}
+
+
+def _style_reference_block(
+    physician_profile: PhysicianProfile, style_examples: list[ConsultationSession]
+) -> str:
+    parts = []
+    if physician_profile.style_notes.strip():
+        parts.append(f"# 医師プロファイル（文体・重視ポイント）\n{physician_profile.style_notes.strip()}")
+    for i, example in enumerate(style_examples, start=1):
+        parts.append(
+            f"# 過去のカルテ実例{i}（文体参考のみ。内容は今回とは無関係）\n"
+            f"S: {example.soap.subjective}\nO: {example.soap.objective}\n"
+            f"A: {example.soap.assessment}\nP: {example.soap.plan}"
+        )
+    if not parts:
+        return "（医師プロファイル・過去実例は未登録です。標準的な診療記録の文体で作成してください。）"
+    return "\n\n".join(parts)
+
+
+async def generate_live_draft(
+    settings: Settings,
+    session: ConsultationSession,
+    physician_profile: PhysicianProfile,
+    style_examples: list[ConsultationSession],
+) -> LiveDraft:
+    """会話ストリームから、手動入力なしで4項目のライブドラフトを生成する（アンビエントスクライブ）。"""
+    transcript = _transcript_text(session)
+    if not transcript.strip():
+        return LiveDraft(updated_at=datetime.utcnow(), is_mock=settings.mock_mode)
+
+    if settings.mock_mode:
+        mentions_referral = any(k in transcript for k in ("紹介", "専門医", "転院"))
+        return LiveDraft(
+            chief_complaint="[MOCK] " + transcript.splitlines()[0][:60],
+            clinical_reasoning="[MOCK] 医師の発言傾向に沿った治療方針の考察がここに入ります",
+            prescription_draft="[MOCK] 処方内容・生活指導のドラフトがここに入ります",
+            referral_letter="[MOCK] 紹介状ドラフト（会話中に紹介への言及があったため生成）" if mentions_referral else "",
+            updated_at=datetime.utcnow(),
+            is_mock=True,
+        )
+
+    style_block = _style_reference_block(physician_profile, style_examples)
+    user_content = f"{style_block}\n\n# 今回の診察会話（ここまでの全文）\n{transcript}"
+    data = await _chat_json(settings, LIVE_DRAFT_SYSTEM_PROMPT, user_content, "live_draft", LIVE_DRAFT_SCHEMA)
+    return LiveDraft(**data, updated_at=datetime.utcnow(), is_mock=False)
 
 
 async def run_full_pipeline(settings: Settings, session: ConsultationSession) -> None:

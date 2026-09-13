@@ -6,11 +6,19 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
-from app.models import ConsultationSession, HandoffRecord, Patient, PatientStatus
+from app.models import (
+    ConsultationSession,
+    HandoffRecord,
+    Patient,
+    PatientStatus,
+    PhysicianProfile,
+    SessionStatus,
+)
 
 _patients: dict[str, Patient] = {}
 _sessions: dict[str, ConsultationSession] = {}
 _handoff_outbox: list[HandoffRecord] = []
+_physician_profile = PhysicianProfile()
 
 
 def _seed() -> None:
@@ -89,3 +97,26 @@ def add_handoff(record: HandoffRecord) -> None:
 
 def list_handoff_outbox() -> list[HandoffRecord]:
     return list(reversed(_handoff_outbox))
+
+
+def get_physician_profile() -> PhysicianProfile:
+    return _physician_profile
+
+
+def set_physician_profile(style_notes: str) -> PhysicianProfile:
+    global _physician_profile
+    from datetime import datetime
+
+    _physician_profile = PhysicianProfile(style_notes=style_notes, updated_at=datetime.utcnow())
+    return _physician_profile
+
+
+def list_recent_finalized_sessions(limit: int = 2) -> list[ConsultationSession]:
+    """医師の文体を模倣するための少数例として、直近に確定したカルテを新しい順に返す。"""
+    finalized = [
+        s
+        for s in _sessions.values()
+        if s.status in (SessionStatus.REVIEW, SessionStatus.SENT) and s.soap.generated_at
+    ]
+    finalized.sort(key=lambda s: s.soap.generated_at, reverse=True)
+    return finalized[:limit]

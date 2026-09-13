@@ -9,6 +9,8 @@ import SoapEditor from "@/components/SoapEditor";
 import ReferralLetterEditor from "@/components/ReferralLetterEditor";
 import PrescriptionPanel from "@/components/PrescriptionPanel";
 import StaffHandoffBar from "@/components/StaffHandoffBar";
+import LiveDraftPreview from "@/components/LiveDraftPreview";
+import PhysicianProfileEditor from "@/components/PhysicianProfileEditor";
 
 const statusLabel: Record<ConsultationSession["status"], string> = {
   in_progress: "診察中",
@@ -36,12 +38,14 @@ export default function SessionPage() {
       .finally(() => setLoading(false));
   }, [sessionId]);
 
-  // 対話中に処方オーダをライブで自動構築する（発言追加のたびにデバウンスして再抽出）
+  // 対話中に処方オーダ・アンビエントスクライブのライブプレビューを自動構築する
+  // （発言追加のたびにデバウンスして再抽出。手動入力は一切不要）
   const handleNewFinalSegment = useCallback(() => {
     if (refreshDebounce.current) clearTimeout(refreshDebounce.current);
     refreshDebounce.current = setTimeout(async () => {
       try {
-        const updated = await api.refreshPrescription(sessionId);
+        await api.refreshPrescription(sessionId);
+        const updated = await api.refreshLiveDraft(sessionId);
         setSession(updated);
       } catch {
         // ライブ更新の失敗は致命的ではないため握りつぶす（finalize時に再生成される）
@@ -79,6 +83,8 @@ export default function SessionPage() {
         </span>
       </div>
 
+      {session.status === "in_progress" && <PhysicianProfileEditor />}
+
       <div className="grid md:grid-cols-2 gap-4">
         <TranscriptPanel
           sessionId={sessionId}
@@ -92,6 +98,10 @@ export default function SessionPage() {
           onChange={(prescription) => setSession({ ...session, prescription })}
         />
       </div>
+
+      {session.status === "in_progress" && (
+        <LiveDraftPreview liveDraft={session.live_draft} liveUpdating={liveUpdating} />
+      )}
 
       {session.status === "in_progress" && (
         <button

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import documents, handoff, patients, sessions
+from app.routers import documents, handoff, patients, physician, sessions
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,6 +26,7 @@ app.include_router(patients.router)
 app.include_router(sessions.router)
 app.include_router(documents.router)
 app.include_router(handoff.router)
+app.include_router(physician.router)
 
 
 @app.get("/api/health")

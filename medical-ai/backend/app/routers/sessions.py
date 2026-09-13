@@ -51,6 +51,24 @@ async def refresh_prescription(session_id: str) -> ConsultationSession:
     return session
 
 
+@router.post("/{session_id}/live-draft/refresh", response_model=ConsultationSession)
+async def refresh_live_draft(session_id: str) -> ConsultationSession:
+    """アンビエントスクライブのライブプレビュー（主訴・治療方針・処方・紹介状の4項目）を、
+    ここまでの会話全文から手動入力なしで再生成する。医師プロファイルと、直近にこの医師が
+    確定させたカルテを文体参考として利用する。finalize とは異なりセッションの
+    ステータスは変更しない。"""
+    session = store.get_session(session_id)
+    settings = get_settings()
+    physician_profile = store.get_physician_profile()
+    style_examples = store.list_recent_finalized_sessions(limit=2)
+
+    session.live_draft = await llm_pipeline.generate_live_draft(
+        settings, session, physician_profile, style_examples
+    )
+    store.save_session(session)
+    return session
+
+
 @router.post("/{session_id}/finalize", response_model=ConsultationSession)
 async def finalize_session(session_id: str) -> ConsultationSession:
     session = store.get_session(session_id)

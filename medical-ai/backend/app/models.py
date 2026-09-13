@@ -133,6 +133,32 @@ class HandoffRecord(BaseModel):
     sent_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class LiveDraft(BaseModel):
+    """アンビエントスクライブのリアルタイムプレビュー（手動入力なしで会話から自動更新）。
+
+    確定版のSOAP/紹介状/処方オーダ（別途 finalize で生成）とは別に、診察中ずっと
+    更新され続ける「速報版」のナラティブドラフト。ユーザー指定のJSON構造に対応する。
+    """
+
+    chief_complaint: str = ""
+    clinical_reasoning: str = ""
+    prescription_draft: str = ""
+    referral_letter: str = ""
+    updated_at: datetime | None = None
+    is_mock: bool = False
+
+
+class PhysicianProfile(BaseModel):
+    """医師ごとの文体・重視ポイントの登録（プロンプトに反映して文章の再現性を高める）。
+
+    本プロトタイプは医師アカウントを分離していないため、単一プロファイルとして扱う。
+    実運用では医師IDに紐づけて複数保持する形に拡張すること。
+    """
+
+    style_notes: str = ""
+    updated_at: datetime | None = None
+
+
 class ConsultationSession(BaseModel):
     id: str = Field(default_factory=_id)
     patient_id: str
@@ -144,6 +170,7 @@ class ConsultationSession(BaseModel):
     soap: SoapNote = Field(default_factory=SoapNote)
     referral: ReferralLetter = Field(default_factory=ReferralLetter)
     prescription: PrescriptionOrder = Field(default_factory=PrescriptionOrder)
+    live_draft: LiveDraft = Field(default_factory=LiveDraft)
 
 
 class ManualTranscriptIn(BaseModel):
@@ -180,3 +207,7 @@ class ComplianceCheckIn(BaseModel):
 class HandoffIn(BaseModel):
     targets: list[HandoffTarget]
     note: str = ""
+
+
+class PhysicianProfileUpdate(BaseModel):
+    style_notes: str
