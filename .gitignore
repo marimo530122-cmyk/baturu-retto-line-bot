@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 .venv/
 medical-ai/frontend/.next/
+medical-ai-local/certs/
