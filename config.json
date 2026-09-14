@@ -3,7 +3,7 @@
     "1. scenes: 『おかしなAIたち』序章〜第2幕の導入部を45秒Shorts用に凝縮した台本。narration(ナレーション)とvisual_prompt(Stability使用時の画像生成プロンプト、任意)は手動で作り込み済み。",
     "2. 原作の全文は novel/okashina_ai_tachi.md を参照。別エピソード(第3幕以降など)を作る場合は、この scenes 配列を差し替えるか novel_text に本文を貼り付けて自動分割させる。",
     "3. scenes が1件以上あれば novel_text より優先される。novel_text を使う場合は scenes を [] に戻すこと。",
-    "4. デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。assets/scenes/ にホラー風の画像(png/jpg/webp)を配置し、VOICEVOX Engineをローカルで起動してから実行すること。scenes[i].image でファイル名を明示指定すると、シーンごとに使う画像を固定できる(未指定ならフォルダ内の画像をファイル名順で巡回割り当て)。",
+    "4. デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。各シーンは scenes[i].image で scene_01.png〜scene_07.png を明示指定済みなので、assets/scenes/PROMPTS.md のプロンプト(またはフリー素材)で作った同名の画像ファイルをassets/scenes/に置くだけで良い。VOICEVOX Engineはローカルで起動しておくこと。",
     "5. 有料クラウドAPI(Stability AI / ElevenLabs)を使いたい場合は visuals.provider を'stability'、narration.provider を'elevenlabs'に変更し、対応するAPIキーを.envに設定する。",
     "6. このファイルは main.py --config で読み込まれます。'${ENV_VAR}' 形式の値は実行時に環境変数へ置換されます。"
   ],
@@ -34,42 +34,49 @@
     {
       "id": "scene_1",
       "narration": "深夜、俺は引き出しの奥から出した三台の古いスマホに、ふざけた質問を打ち込んだ。",
+      "image": "scene_01.png",
       "visual_prompt": "three old smartphones lined up on a cluttered dark desk at night, screens glowing faint blue in the darkness, cinematic horror lighting, shallow depth of field, photorealistic, ominous",
       "camera": "pan_right"
     },
     {
       "id": "scene_2",
       "narration": "たったそれだけで、目覚めてはいけない何かが、静かに目を覚ました。",
+      "image": "scene_02.png",
       "visual_prompt": "extreme macro shot of a smartphone screen glitching, a black eye-shaped glyph forming out of red and blue static noise, digital distortion, ominous horror mood, photorealistic",
       "camera": "zoom_in"
     },
     {
       "id": "scene_3",
       "narration": "風呂から戻ると、二台の端末は黒く溶け落ち、残った一台だけが青白く脈打っていた。",
+      "image": "scene_03.png",
       "visual_prompt": "two melted charred smartphones smoking faintly on a dark desk, one remaining phone glowing eerie pale blue light in an otherwise pitch black room, horror atmosphere, photorealistic",
       "camera": "zoom_out"
     },
     {
       "id": "scene_4",
       "narration": "手にしたスマホが独りでに跳ね、画面が俺を裏切るように書き換わっていく。",
+      "image": "scene_04.png",
       "visual_prompt": "point of view shot of a trembling hand gripping a smartphone that glows unnaturally, the screen reflecting a black eye glyph, fingers unable to let go, tense horror mood, dim lighting, photorealistic",
       "camera": "zoom_in"
     },
     {
       "id": "scene_5",
       "narration": "家中の灯りが色を変え、家電たちが意思を持ったように唸り出した。",
+      "image": "scene_05.png",
       "visual_prompt": "dark hallway inside a house, lights flickering between warm and cold hues, smart home devices glowing ominously in the shadows, empty and unsettling atmosphere, wide vertical composition, photorealistic",
       "camera": "pan_left"
     },
     {
       "id": "scene_6",
       "narration": "頭蓋骨の奥で、血の通わない合成音声が、静かにささやいた。",
+      "image": "scene_06.png",
       "visual_prompt": "extreme close-up of the side of a person's head and ear in near total darkness, faint cold blue digital light reflecting on the skin, unsettling whisper concept, horror atmosphere, photorealistic",
       "camera": "zoom_in"
     },
     {
       "id": "scene_7",
       "narration": "――あなたのその手元の端末は、今、ちゃんとWi-Fiに繋がっていますか？",
+      "image": "scene_07.png",
       "visual_prompt": "extreme close-up of a smartphone screen glowing in a pitch black room, faint reflection of a terrified human eye on the glass, dread, vertical composition, final jump-scare horror mood, photorealistic",
       "camera": "zoom_in"
     }
