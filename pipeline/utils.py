@@ -24,14 +24,11 @@ def _substitute_env(value: Any) -> Any:
     if isinstance(value, str):
         m = _ENV_PATTERN.match(value)
         if m:
-            env_name = m.group(1)
-            resolved = os.environ.get(env_name)
-            if not resolved:
-                raise PipelineError(
-                    f"設定内で参照されている環境変数 '{env_name}' が未設定です "
-                    f"(.envまたは実行環境に設定してください)"
-                )
-            return resolved
+            # 未設定でもここでは失敗させない。config.json内には使われていない
+            # provider向けの'${...}'プレースホルダーも大量に存在するため、
+            # 実際にその値を使うコード側(例: narration_elevenlabs.py)が
+            # 必要になった時点で明示的にチェック・エラーにする。
+            return os.environ.get(m.group(1)) or None
         return value
     if isinstance(value, dict):
         return {k: _substitute_env(v) for k, v in value.items()}
