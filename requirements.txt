@@ -1,5 +1,10 @@
 requests>=2.31.0
 python-dotenv>=1.0.1
+
+# narration.provider="pyttsx3" を使う場合のみ必要(voicevoxのみ使うなら不要)
+pyttsx3>=2.90
+
+# --upload / youtube.auto_upload を使う場合のみ必要
 google-api-python-client>=2.126.0
 google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.2.0

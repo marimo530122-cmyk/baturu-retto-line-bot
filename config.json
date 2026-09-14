@@ -1,9 +1,11 @@
 {
   "_instructions": [
-    "1. scenes: 『おかしなAIたち』序章〜第2幕の導入部を45秒Shorts用に凝縮した台本。narration(ナレーション)とvisual_prompt(画像生成プロンプト)は手動で作り込み済み。",
+    "1. scenes: 『おかしなAIたち』序章〜第2幕の導入部を45秒Shorts用に凝縮した台本。narration(ナレーション)とvisual_prompt(Stability使用時の画像生成プロンプト、任意)は手動で作り込み済み。",
     "2. 原作の全文は novel/okashina_ai_tachi.md を参照。別エピソード(第3幕以降など)を作る場合は、この scenes 配列を差し替えるか novel_text に本文を貼り付けて自動分割させる。",
     "3. scenes が1件以上あれば novel_text より優先される。novel_text を使う場合は scenes を [] に戻すこと。",
-    "4. このファイルは main.py --config で読み込まれます。'${ENV_VAR}' 形式の値は実行時に環境変数へ置換されます。"
+    "4. デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。assets/scenes/ にホラー風の画像(png/jpg/webp)を配置し、VOICEVOX Engineをローカルで起動してから実行すること。scenes[i].image でファイル名を明示指定すると、シーンごとに使う画像を固定できる(未指定ならフォルダ内の画像をファイル名順で巡回割り当て)。",
+    "5. 有料クラウドAPI(Stability AI / ElevenLabs)を使いたい場合は visuals.provider を'stability'、narration.provider を'elevenlabs'に変更し、対応するAPIキーを.envに設定する。",
+    "6. このファイルは main.py --config で読み込まれます。'${ENV_VAR}' 形式の値は実行時に環境変数へ置換されます。"
   ],
   "project": {
     "title": "おかしなAIたち",
@@ -72,21 +74,40 @@
       "camera": "zoom_in"
     }
   ],
-  "elevenlabs": {
-    "voice_id": "${ELEVENLABS_VOICE_ID}",
-    "model_id": "eleven_multilingual_v2",
-    "output_format": "mp3_44100_128",
-    "voice_settings": {
-      "stability": 0.35,
-      "similarity_boost": 0.75,
-      "style": 0.65,
-      "use_speaker_boost": true
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
     }
   },
-  "stability": {
-    "endpoint": "core",
-    "aspect_ratio": "9:16",
-    "output_format": "png"
+  "narration": {
+    "provider": "voicevox",
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
   },
   "subtitles": {
     "font_name": "Noto Sans JP Black",

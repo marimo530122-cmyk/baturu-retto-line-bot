@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """小説『おかしなAIたち』ホラーShorts自動生成パイプライン。
 
+デフォルトは完全無料・ローカル完結構成:
+    - ビジュアル: assets/scenes/ に配置した画像素材 (visuals.provider=local_assets)
+    - ナレーション: VOICEVOX Engine (narration.provider=voicevox、要ローカル起動)
+
 実行例:
     python main.py --config config.json
     python main.py --config config.json --upload      # 生成後にYouTube Shortsへ自動投稿
     python main.py --config config.json --no-upload    # config.youtube.auto_upload=true でもアップロードしない
 
-必要な環境変数 (.env に設定 / .env.example 参照):
-    STABILITY_API_KEY        Stability AI (背景/キャラクター画像生成)
-    ELEVENLABS_API_KEY       ElevenLabs (ホラーナレーション音声合成)
-    ELEVENLABS_VOICE_ID      使用するElevenLabsボイスID
+環境変数 (.env に設定 / .env.example 参照。デフォルト構成では基本的に不要):
+    VOICEVOX_HOST             VOICEVOX Engineの接続先 (デフォルト: http://127.0.0.1:50021)
+    STABILITY_API_KEY         (visuals.provider=stability のときのみ) Stability AI
+    ELEVENLABS_API_KEY        (narration.provider=elevenlabs のときのみ) ElevenLabs
+    ELEVENLABS_VOICE_ID       (同上) 使用するElevenLabsボイスID
     YOUTUBE_CLIENT_SECRETS_FILE  (--upload時のみ) Google CloudのOAuthクライアントJSON
-    YOUTUBE_TOKEN_FILE       (--upload時のみ) 認証トークンのキャッシュ先
+    YOUTUBE_TOKEN_FILE        (--upload時のみ) 認証トークンのキャッシュ先
 """
 from __future__ import annotations
 
@@ -54,10 +59,12 @@ def main() -> int:
         for scene in scenes:
             logger.info("  [%s] (camera=%s) %s", scene.id, scene.camera, scene.narration[:40])
 
-        logger.info("=== ステップ2a: ナレーション音声合成 (ElevenLabs) ===")
+        narration_provider = config.get("narration", {}).get("provider", "voicevox")
+        logger.info("=== ステップ2a: ナレーション音声合成 (%s) ===", narration_provider)
         narration.synthesize_all(scenes, config, cache_dir)
 
-        logger.info("=== ステップ2b: ビジュアル自動生成 (Stability AI) ===")
+        visuals_provider = config.get("visuals", {}).get("provider", "local_assets")
+        logger.info("=== ステップ2b: ビジュアル調達 (%s) ===", visuals_provider)
         visuals.generate_all(scenes, config, cache_dir)
 
         logger.info("=== ステップ3-4: 字幕焼き込み・MP4レンダリング ===")

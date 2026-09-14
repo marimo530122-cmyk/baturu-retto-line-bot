@@ -31,8 +31,10 @@ class SceneScript:
     duration_sec: float | None = field(default=None, repr=False)
     start_sec: float | None = field(default=None, repr=False)
     cues: list = field(default_factory=list, repr=False)
-    # visuals.py が画像生成後に埋める。
+    # visuals.py が画像生成/調達後に埋める。
     image_path: str | None = field(default=None, repr=False)
+    # scenes[].image で明示指定された画像ファイル名(ローカル素材provider用)。
+    image_hint: str | None = field(default=None, repr=False)
 
 
 def build_scene_scripts(config: dict) -> list[SceneScript]:
@@ -60,7 +62,14 @@ def _from_explicit_scenes(explicit: list[dict], config: dict) -> list[SceneScrip
         visual_prompt = raw.get("visual_prompt") or _default_visual_prompt(narration, config)
         camera = raw.get("camera") or CAMERA_CYCLE[i % len(CAMERA_CYCLE)]
         scenes.append(
-            SceneScript(id=scene_id, index=i, narration=narration, visual_prompt=visual_prompt, camera=camera)
+            SceneScript(
+                id=scene_id,
+                index=i,
+                narration=narration,
+                visual_prompt=visual_prompt,
+                camera=camera,
+                image_hint=raw.get("image"),
+            )
         )
     return scenes
 

@@ -122,8 +122,10 @@ def render(scenes: list[SceneScript], config: dict, cache_dir: Path) -> Path:
     _concat(clip_paths, silent_video, work_dir / "video_concat_list.txt")
 
     logger.info("ナレーション音声を結合中...")
-    narration_full = work_dir / "narration_full.mp3"
     audio_paths = [Path(scene.audio_path) for scene in scenes]
+    # 結合(-c copy)は元のコーデックのまま行うため、プロバイダの実際の拡張子
+    # (ElevenLabs=mp3, VOICEVOX/pyttsx3=wav)に合わせてコンテナを選ぶ。
+    narration_full = work_dir / f"narration_full{audio_paths[0].suffix}"
     _concat(audio_paths, narration_full, work_dir / "audio_concat_list.txt")
 
     logger.info("字幕(.ass)を生成中...")
