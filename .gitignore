@@ -1,2 +1,13 @@
 .env
 node_modules/
+
+# Python video pipeline
+__pycache__/
+*.pyc
+.venv/
+cache/*
+!cache/.gitkeep
+output.mp4
+client_secrets.json
+token.json
+

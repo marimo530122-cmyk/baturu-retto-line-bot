@@ -1,0 +1,70 @@
+{
+  "_instructions": [
+    "1. characters: 各キャラクターの名前と、画像生成用の英語ビジュアル特徴(visual_description)を記入してください。",
+    "2. novel_text に小説『おかしなAIたち』の本文をそのまま貼り付けると、自動でシーン分割されます(合計target_duration_secに収まるよう文字数で配分)。",
+    "3. より高品質にしたい場合は、novel_text の代わりに scenes 配列を直接編集し、各シーンの narration(日本語ナレーション)と visual_prompt(英語の画像生成プロンプト)を手動で指定してください。scenes が1件以上あればそちらが novel_text より優先されます。",
+    "4. このファイルは main.py --config で読み込まれます。'${ENV_VAR}' 形式の値は実行時に環境変数へ置換されます。"
+  ],
+  "project": {
+    "title": "おかしなAIたち",
+    "target_duration_sec": 45,
+    "output_path": "output.mp4",
+    "cache_dir": "cache",
+    "video": { "width": 1080, "height": 1920, "fps": 30 }
+  },
+  "characters": [
+    {
+      "name": "TODO: キャラクター名を記入",
+      "visual_description": "TODO: 例) a pale young woman with hollow eyes, wearing a torn lab coat, illuminated by a flickering monitor glow, photorealistic horror"
+    },
+    {
+      "name": "TODO: AIの名称を記入",
+      "visual_description": "TODO: 例) a faceless humanoid AI made of glitching red wireframes and static noise, ominous, photorealistic horror"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [],
+  "elevenlabs": {
+    "voice_id": "${ELEVENLABS_VOICE_ID}",
+    "model_id": "eleven_multilingual_v2",
+    "output_format": "mp3_44100_128",
+    "voice_settings": {
+      "stability": 0.35,
+      "similarity_boost": 0.75,
+      "style": 0.65,
+      "use_speaker_boost": true
+    }
+  },
+  "stability": {
+    "endpoint": "core",
+    "aspect_ratio": "9:16",
+    "output_format": "png"
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 14,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "『おかしなAIたち』 #Shorts #ホラー",
+    "description": "原作小説『おかしなAIたち』より。\n\nチャンネル登録・高評価お願いします。\n\n#Shorts #ホラー #AI #ショートホラー #都市伝説",
+    "tags": ["ホラー", "AI", "ショートホラー", "Shorts", "都市伝説", "怖い話", "AIホラー"],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}
