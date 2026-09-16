@@ -1,0 +1,87 @@
+# メモ自動蓄積パイプライン
+
+## 目的
+
+現役魚屋（48歳）が日々スマホから吐き出す「愚痴・修羅場・AI自動化の試行錯誤」の生メモを、
+Claude API で自動的に構造化し、このリポジトリの `docs/daily-logs/` に Markdown として
+蓄積する。将来のショート動画・SNS投稿・ブログ記事のネタ帳として使う一次データベース。
+
+## 全体フロー
+
+1. スマホの Gemini / メモアプリ等に吐き出したテキストを、GitHub Actions の
+   `repository_dispatch`（iOS ショートカット等からの自動POST）または
+   `workflow_dispatch`（GitHub モバイルアプリからの手動実行）でこのリポジトリに送る。
+2. `.github/workflows/process-memo.yml` が起動し、`scripts/process_memo.py` を実行する。
+3. スクリプトは Claude API（Anthropic API, `claude-opus-5`）にメモを渡し、
+   以下の3項目に自動分類・整形させる。
+4. 整形結果を Markdown ファイルとして `docs/daily-logs/` にコミット・プッシュする。
+5. (任意) 蓄積したログの中から動画化したいものを選び、`.github/workflows/generate-short-video.yml`
+   を起動すると、`scripts/generate_short_video.py` がナレーション音声・字幕付きの縦型
+   ショート動画(MP4)を生成し、GitHub Releaseに添付してダウンロードURLを発行する。
+
+## データフォーマットのルール
+
+各ログファイルは `docs/daily-logs/YYYY-MM-DD-HHMMSS-<slug>.md` という名前で保存する。
+ファイルの中身は必ず以下の3セクション構成に従う。
+
+```markdown
+# <フック用タイトル(最有力案)>
+
+- date: YYYY-MM-DD HH:MM
+- tags: <カンマ区切りのタグ>
+
+## ① ショート動画・フック用タイトル
+<3案程度の候補タイトル(箇条書き)>
+
+## ② 一次情報ドキュメント(事実と感情)
+<何が起きたか(事実)と、そのとき何を感じたか(感情)を分けて記述した一次データ>
+
+## ③ GitHub/ストック用Markdownデータ
+<検索・再利用しやすい形に整理した要約(箇条書き、キーワード込み)>
+
+---
+### 元メモ(生データ)
+<ユーザーが投げた元のテキストをそのまま保存>
+```
+
+- 元メモは絶対に加工せず、`### 元メモ(生データ)` セクションに原文のまま残す
+  (後から人間やAIが読み返して事実確認できるようにするため)。
+- タイトルや分類はあくまでClaudeによる一次整形であり、人間が後から
+  Markdownファイルを直接編集して修正してよい。
+- ファイル名の日時は取り込み時刻(UTC)を使う。
+
+## 動画生成エンジンの選定方針
+
+「既存のショート動画自動生成OSSアプリを丸ごと取り込む」のではなく、そうしたOSSアプリの
+内部で実際に使われているのと同じ枯れたビルディングブロックを直接組み合わせる方式を採用した。
+
+- **TTS(音声合成)**: [`edge-tts`](https://github.com/rany2/edge-tts)(MIT、APIキー不要、
+  無料)。Microsoft Edgeの高品質ニューラル音声を日本語含め利用でき、単語ごとの発話タイミング
+  (WordBoundary)も取得できるため、字幕の自動タイミング合わせに使える。
+- **動画合成・字幕焼き込み**: `ffmpeg` + `libass`(GitHub Actionsの `ubuntu-latest` に
+  標準搭載)。`.ass` 字幕ファイルを生成し、`ass` フィルタで縦型(9:16, 1080x1920)動画に
+  焼き込む。日本語フォント(`fonts-noto-cjk`)のインストールが別途必要(ワークフローに含む)。
+- 出所不明な大型OSSリポジトリを丸ごと依存に加えないことで、ライセンス・保守性・CI実行環境
+  との相性リスクを避けつつ、車輪の再発明もしていない(TTSエンジンもレンダラも既存OSS)。
+
+## ディレクトリ構成
+
+- `CLAUDE.md` — このファイル。プロジェクトの目的とルール。
+- `scripts/process_memo.py` — メモを受け取り、Claude API で分類・整形し、
+  Markdownとして保存する。`--commit` を付けるとその場で `git add/commit/push` まで行う。
+- `scripts/generate_short_video.py` — `docs/daily-logs/` のログ(または直接指定した
+  ナレーション文)から、TTS音声・字幕焼き込み済みの縦型ショート動画(MP4)を `output/` に
+  生成する。`output/` は `.gitignore` 対象(リポジトリを肥大化させないため)。
+- `scripts/requirements.txt` — 依存パッケージ(`anthropic`, `edge-tts`)。
+- `docs/daily-logs/` — 生成されたメモの蓄積先。
+- `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
+  (`repository_dispatch` / `workflow_dispatch`)。
+- `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。
+  生成したMP4はGitHub Releaseに添付され、スマホからダウンロードURLとして取得できる。
+
+## 必要なSecrets
+
+- `ANTHROPIC_API_KEY` — Claude API キー。GitHub リポジトリの
+  Settings → Secrets and variables → Actions に登録しておく。
+- 動画生成ワークフローは追加のSecret不要(標準の `GITHUB_TOKEN` でReleaseを作成)。
+  将来Googleドライブ等に連携する場合は、サービスアカウントJSON等を別途Secretsに追加する。
