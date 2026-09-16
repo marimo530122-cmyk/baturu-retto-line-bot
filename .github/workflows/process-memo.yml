@@ -1,0 +1,36 @@
+name: Process Memo to Daily Log
+
+on:
+  # スマホのショートカット等から curl で叩く場合:
+  #   POST https://api.github.com/repos/<owner>/<repo>/dispatches
+  #   { "event_type": "new_memo", "client_payload": { "memo": "<メモ本文>" } }
+  repository_dispatch:
+    types: [new_memo]
+  # GitHubモバイルアプリ / Web UI からの手動実行(短いメモのテスト用)
+  workflow_dispatch:
+    inputs:
+      memo:
+        description: "メモ本文(生データ)"
+        required: true
+        type: string
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Process memo and commit to docs/daily-logs
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MEMO_TEXT: ${{ github.event.client_payload.memo || github.event.inputs.memo }}
+        run: python scripts/process_memo.py --commit
