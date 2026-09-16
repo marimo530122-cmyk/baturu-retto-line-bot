@@ -1,0 +1,83 @@
+name: Generate Short Video
+
+on:
+  # スマホのショートカット等から curl で叩く場合:
+  #   POST https://api.github.com/repos/<owner>/<repo>/dispatches
+  #   { "event_type": "generate_video", "client_payload": { "log_file": "docs/daily-logs/xxx.md" } }
+  #   (script を直接渡す場合は client_payload.script / client_payload.title)
+  repository_dispatch:
+    types: [generate_video]
+  # GitHubモバイルアプリ / Web UI からの手動実行
+  workflow_dispatch:
+    inputs:
+      log_file:
+        description: "docs/daily-logs/ 配下のMarkdownファイルパス(このメモを動画化する)"
+        required: false
+        type: string
+      script:
+        description: "ナレーション文を直接指定する場合(log_fileより優先)"
+        required: false
+        type: string
+      title:
+        description: "動画タイトル(省略可)"
+        required: false
+        type: string
+      voice:
+        description: "edge-ttsの音声ID(省略時: ja-JP-KeitaNeural)"
+        required: false
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg and Japanese fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-noto-cjk
+
+      - name: Install Python dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Generate video
+        id: generate
+        env:
+          LOG_FILE: ${{ github.event.client_payload.log_file || github.event.inputs.log_file }}
+          SCRIPT_TEXT: ${{ github.event.client_payload.script || github.event.inputs.script }}
+          TITLE: ${{ github.event.client_payload.title || github.event.inputs.title }}
+          VOICE: ${{ github.event.client_payload.voice || github.event.inputs.voice }}
+        run: |
+          ARGS=()
+          if [ -n "$SCRIPT_TEXT" ]; then
+            ARGS+=(--script "$SCRIPT_TEXT")
+          elif [ -n "$LOG_FILE" ]; then
+            ARGS+=(--log "$LOG_FILE")
+          else
+            echo "log_file または script のいずれかを指定してください。" >&2
+            exit 1
+          fi
+          if [ -n "$TITLE" ]; then ARGS+=(--title "$TITLE"); fi
+          if [ -n "$VOICE" ]; then ARGS+=(--voice "$VOICE"); fi
+
+          python scripts/generate_short_video.py "${ARGS[@]}"
+          OUT_FILE=$(ls -t output/*.mp4 | head -n1)
+          echo "video_path=$OUT_FILE" >> "$GITHUB_OUTPUT"
+          echo "tag_name=video-$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      # スマホ納品ルート: GitHub Releaseに添付してダウンロードURLを発行する。
+      # (追加のクラウド連携が必要な場合はGoogleドライブAPI等への差し替えを検討)
+      - name: Publish video as a GitHub Release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.generate.outputs.tag_name }}
+          name: ${{ steps.generate.outputs.tag_name }}
+          files: ${{ steps.generate.outputs.video_path }}
+          body: "自動生成されたショート動画です。"
