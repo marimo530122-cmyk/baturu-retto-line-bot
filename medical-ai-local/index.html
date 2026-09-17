@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>医療AI ローカル完結アプリ</title>
+<title>お話しするだけカルテ</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -13,157 +13,213 @@
     background: #f4f7f6;
     color: #1f2937;
   }
-  header {
+  .topbar {
     background: #0f766e;
     color: #fff;
     padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
-  header h1 { margin: 0; font-size: 18px; }
-  header p { margin: 4px 0 0; font-size: 12px; opacity: 0.85; }
+  .topbar h1 { margin: 0; font-size: 17px; }
+  .link-btn {
+    background: none;
+    border: none;
+    color: #d1fae5;
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+  }
+
   main {
-    max-width: 900px;
+    max-width: 640px;
     margin: 0 auto;
-    padding: 16px;
-    display: grid;
-    gap: 16px;
+    padding: 24px 16px 60px;
   }
-  .card {
+
+  /* ---- メインの操作エリア ---- */
+  .mic-area {
+    text-align: center;
+    padding: 28px 16px 20px;
+  }
+  #mic-btn {
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 56px;
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  #mic-btn:active { transform: scale(0.96); }
+  #mic-btn.recording {
+    background: #dc2626;
+    box-shadow: 0 0 0 10px rgba(220, 38, 38, 0.15);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+    70% { box-shadow: 0 0 0 22px rgba(220, 38, 38, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  }
+  #mic-label {
+    margin-top: 16px;
+    font-size: 19px;
+    font-weight: 700;
+  }
+  #mic-sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #6b7280;
+    min-height: 20px;
+  }
+
+  .engine-banner {
+    text-align: center;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 0 0 8px;
+  }
+  .engine-banner.ok { background: #d1fae5; color: #065f46; }
+  .engine-banner.warn { background: #fef3c7; color: #92400e; }
+
+  /* ---- カルテカード ---- */
+  #draft-fields { display: grid; gap: 10px; margin-top: 22px; }
+  .field {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 16px;
+    border-left: 5px solid #0f766e;
+    border-radius: 8px;
+    padding: 12px 14px;
+    animation: fadein 0.4s ease;
   }
-  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
-  button {
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .field-label { font-size: 12px; font-weight: 700; color: #0f766e; margin-bottom: 4px; }
+  .field-value { font-size: 15px; white-space: pre-wrap; line-height: 1.5; }
+  .empty-hint {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+    margin-top: 28px;
+    line-height: 1.7;
+  }
+
+  /* ---- 認識した会話（控えめに表示） ---- */
+  #transcript-wrap { margin-top: 28px; }
+  #transcript-wrap summary {
     cursor: pointer;
+    font-size: 13px;
+    color: #6b7280;
+    outline: none;
+  }
+  #transcript {
+    margin-top: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+    background: #f9fafb;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 13px;
+    color: #4b5563;
+  }
+
+  /* ---- その他の入力方法（折りたたみ） ---- */
+  #other-input summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 18px;
+  }
+  #other-input .row { display: flex; gap: 8px; margin-top: 10px; }
+  #other-input input[type="text"] {
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  #other-input button, #reset-btn {
     border: none;
     border-radius: 6px;
     padding: 8px 14px;
     font-size: 13px;
     font-weight: 600;
+    cursor: pointer;
+    background: #e5e7eb;
+    color: #1f2937;
   }
-  .btn-primary { background: #0f766e; color: #fff; }
-  .btn-danger { background: #b91c1c; color: #fff; }
-  .btn-secondary { background: #e5e7eb; color: #1f2937; }
-  .btn-accent { background: #2563eb; color: #fff; }
-  button:disabled { opacity: 0.5; cursor: default; }
-  input[type="text"], textarea, select {
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 13px;
+  #reset-btn { margin-top: 18px; width: 100%; }
+
+  .detail-box {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
   }
-  #transcript {
-    height: 220px;
-    overflow-y: auto;
-    background: #f9fafb;
-    border: 1px solid #eee;
-    border-radius: 6px;
-    padding: 8px;
-    font-size: 14px;
-  }
-  .seg-doctor { color: #0f766e; font-weight: 600; }
-  .seg-patient { color: #1f2937; font-weight: 600; }
-  .seg-staff { color: #7c3aed; font-weight: 600; }
-  .badge {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-weight: 600;
-  }
-  .badge-green { background: #d1fae5; color: #065f46; }
-  .badge-gray { background: #f3f4f6; color: #6b7280; }
-  .badge-amber { background: #fef3c7; color: #92400e; }
-  .badge-blue { background: #dbeafe; color: #1e40af; }
-  .field { border: 1px solid #f3f4f6; background: #f9fafb; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
-  .field-label { font-size: 12px; font-weight: 700; color: #0f766e; margin-bottom: 4px; }
-  .field-value { font-size: 14px; white-space: pre-wrap; }
-  .muted { color: #9ca3af; font-size: 13px; }
-  .status-line { font-size: 12px; color: #6b7280; margin-top: 8px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>医療AI ローカル完結アプリ</h1>
-  <p>音声・カルテ生成のすべてがこのPC上で完結します（外部クラウドAPIへの送信なし）</p>
-</header>
+<div class="topbar">
+  <h1>🩺 お話しするだけカルテ</h1>
+  <button class="link-btn" onclick="toggleDetail()">詳細情報</button>
+</div>
 
 <main>
-  <div class="card">
-    <div class="row" style="justify-content: space-between;">
-      <div class="row">
-        <span id="badge-whisper" class="badge badge-gray">Whisper: 確認中...</span>
-        <span id="badge-ollama" class="badge badge-gray">ローカルLLM: 確認中...</span>
-      </div>
-      <button class="btn-secondary" onclick="resetSession()">新しい診察を開始（リセット）</button>
-    </div>
-    <p class="status-line" id="status-detail"></p>
+  <div id="engine-banner" class="engine-banner warn" style="display:none;"></div>
+
+  <div class="mic-area">
+    <button id="mic-btn" onclick="toggleMic()">🎤</button>
+    <div id="mic-label">タップして話しかけてください</div>
+    <div id="mic-sub"></div>
   </div>
 
-  <div class="grid2">
-    <div class="card">
-      <h3 style="margin-top:0;">リアルタイム議事録</h3>
-      <div id="transcript"></div>
+  <div id="draft-fields"></div>
 
-      <div class="row" style="margin-top:10px;">
-        <button id="mic-btn" class="btn-accent" onclick="toggleMic()">マイク開始</button>
-        <span class="row">
-          話者:
-          <select id="speaker-select">
-            <option value="doctor">医師</option>
-            <option value="patient" selected>患者</option>
-            <option value="staff">スタッフ</option>
-          </select>
-        </span>
-      </div>
-      <p class="muted" style="font-size:12px;">
-        ※1本のマイクで録音するため、話者の自動判別（話者分離）は行っていません。
-        発言者が変わったら上のプルダウンで切り替えてください。
-      </p>
+  <details id="transcript-wrap">
+    <summary>認識した会話を見る</summary>
+    <div id="transcript"></div>
+  </details>
 
-      <div class="row" style="margin-top:10px;">
-        <input id="manual-text" type="text" placeholder="手動入力（マイクなしモード/デモ用）" style="flex:1;" />
-        <button class="btn-primary" onclick="sendManualText()">追加</button>
-      </div>
+  <details id="other-input">
+    <summary>マイクが使えない場合（キーボードで入力）</summary>
+    <div class="row">
+      <input id="manual-text" type="text" placeholder="話した内容をここに入力..." />
+      <button onclick="sendManualText()">追加</button>
     </div>
+  </details>
 
-    <div class="card">
-      <h3 style="margin-top:0;">アンビエントスクライブ ライブプレビュー</h3>
-      <p class="muted" style="margin-top:-8px;">手動入力なし・会話から自動更新（ローカルLLM生成）</p>
-      <div id="draft-fields"></div>
-    </div>
-  </div>
+  <button id="reset-btn" onclick="resetSession()">🆕 次の患者さん（内容をリセット）</button>
+
+  <div id="detail-box" class="detail-box" style="display:none;"></div>
 </main>
 
 <script>
-const CHUNK_MS = 6000; // マイク録音のチャンク長（ミリ秒）。短くすると反応は速いが精度が落ちやすい。
+const CHUNK_MS = 6000; // マイク録音のチャンク長（ミリ秒）
 const LIVE_DRAFT_DEBOUNCE_MS = 1500;
 
 let mediaStream = null;
 let mediaRecorder = null;
 let recording = false;
 let liveDraftTimer = null;
+let pendingChunks = 0;
 
 const fieldLabels = {
-  chief_complaint: "主訴・症状の要約",
-  clinical_reasoning: "治療方針・提案",
-  prescription_draft: "処方内容・アドバイス",
-  referral_letter: "紹介状・診療情報提供書",
+  chief_complaint: "🗣️ 主訴・症状の要約",
+  clinical_reasoning: "🧭 治療方針・提案",
+  prescription_draft: "💊 処方内容・アドバイス",
+  referral_letter: "✉️ 紹介状・診療情報提供書",
 };
 
-function speakerClass(speaker) {
-  return { doctor: "seg-doctor", patient: "seg-patient", staff: "seg-staff" }[speaker] || "";
-}
-function speakerLabel(speaker) {
-  return { doctor: "医師", patient: "患者", staff: "スタッフ" }[speaker] || "話者不明";
-}
-
-function appendTranscriptUI(speaker, text) {
+function appendTranscriptUI(text) {
   const box = document.getElementById("transcript");
   const div = document.createElement("div");
-  div.innerHTML = `<span class="${speakerClass(speaker)}">${speakerLabel(speaker)}:</span> ${text}`;
+  div.textContent = text;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -183,21 +239,37 @@ function renderDraft(draft) {
     container.appendChild(div);
   }
   if (!any) {
-    container.innerHTML = '<p class="muted">会話が始まると、ここに主訴・治療方針・処方・紹介状のドラフトが自動的に表示されます。</p>';
+    container.innerHTML =
+      '<p class="empty-hint">マイクのボタンを押して話しかけると、<br>ここに自動でカルテの下書きが表示されます。</p>';
   }
-  const engineNote = document.createElement("p");
-  engineNote.className = "muted";
-  engineNote.style.fontSize = "11px";
-  engineNote.textContent = "生成エンジン: " + (draft.engine || "none");
-  container.appendChild(engineNote);
+}
+
+function setMicState(state) {
+  // state: "idle" | "recording" | "busy"
+  const btn = document.getElementById("mic-btn");
+  const label = document.getElementById("mic-label");
+  const sub = document.getElementById("mic-sub");
+  if (state === "recording") {
+    btn.classList.add("recording");
+    label.textContent = "🔴 聞いています…（もう一度タップで終了）";
+  } else {
+    btn.classList.remove("recording");
+    label.textContent = "タップして話しかけてください";
+  }
+  sub.textContent = pendingChunks > 0 ? "文字起こし中…" : "";
 }
 
 function scheduleLiveDraftRefresh() {
   if (liveDraftTimer) clearTimeout(liveDraftTimer);
   liveDraftTimer = setTimeout(async () => {
-    const res = await fetch("/api/live-draft/refresh", { method: "POST" });
-    const draft = await res.json();
-    renderDraft(draft);
+    document.getElementById("mic-sub").textContent = "カルテを作成しています…";
+    try {
+      const res = await fetch("/api/live-draft/refresh", { method: "POST" });
+      const draft = await res.json();
+      renderDraft(draft);
+    } finally {
+      setMicState(recording ? "recording" : "idle");
+    }
   }, LIVE_DRAFT_DEBOUNCE_MS);
 }
 
@@ -205,25 +277,18 @@ async function sendManualText() {
   const input = document.getElementById("manual-text");
   const text = input.value.trim();
   if (!text) return;
-  const speaker = document.getElementById("speaker-select").value;
   input.value = "";
-  const res = await fetch("/api/manual-text", {
+  await fetch("/api/manual-text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ speaker, text }),
+    body: JSON.stringify({ speaker: "unknown", text }),
   });
-  const data = await res.json();
-  appendTranscriptUI(speaker, text);
+  appendTranscriptUI(text);
   scheduleLiveDraftRefresh();
 }
 
 function pickMimeType() {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/ogg;codecs=opus",
-    "audio/mp4",
-  ];
+  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
   return candidates.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
 }
 
@@ -238,18 +303,17 @@ async function toggleMic() {
 async function startMicCycle() {
   const mimeType = pickMimeType();
   if (!mimeType) {
-    alert("このブラウザはMediaRecorderに対応していません。Chrome/Edge/Firefoxをお使いください。下の手動入力をご利用いただくこともできます。");
+    alert("このブラウザではマイク録音に対応していません。Chrome・Edgeでお試しいただくか、下の「マイクが使えない場合」からキーボード入力をご利用ください。");
     return;
   }
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    alert("マイクにアクセスできませんでした: " + e);
+    alert("マイクを使う許可が必要です。ブラウザの設定でマイクへのアクセスを許可してください。");
     return;
   }
   recording = true;
-  document.getElementById("mic-btn").textContent = "マイク停止";
-  document.getElementById("mic-btn").className = "btn-danger";
+  setMicState("recording");
   recordOneChunk(mimeType);
 }
 
@@ -275,52 +339,61 @@ function stopMicCycle() {
   recording = false;
   if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
   if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
-  document.getElementById("mic-btn").textContent = "マイク開始";
-  document.getElementById("mic-btn").className = "btn-accent";
+  setMicState("idle");
 }
 
 async function sendAudioChunk(blob) {
   if (blob.size < 800) return; // 極端に短い/無音チャンクは送らない
-  const speaker = document.getElementById("speaker-select").value;
+  pendingChunks++;
+  setMicState(recording ? "recording" : "idle");
   const form = new FormData();
   form.append("audio", blob, "chunk.webm");
-  form.append("speaker", speaker);
+  form.append("speaker", "unknown");
   try {
     const res = await fetch("/api/transcribe-chunk", { method: "POST", body: form });
     const data = await res.json();
     if (data.text && data.text.trim()) {
-      appendTranscriptUI(speaker, data.text.trim());
+      appendTranscriptUI(data.text.trim());
       scheduleLiveDraftRefresh();
     }
   } catch (e) {
     console.error("文字起こしエラー", e);
+  } finally {
+    pendingChunks = Math.max(0, pendingChunks - 1);
+    setMicState(recording ? "recording" : "idle");
   }
 }
 
 async function resetSession() {
+  if (recording) stopMicCycle();
   await fetch("/api/reset", { method: "POST" });
   document.getElementById("transcript").innerHTML = "";
   renderDraft({});
+}
+
+function toggleDetail() {
+  const box = document.getElementById("detail-box");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+  if (box.style.display === "block") refreshStatus();
 }
 
 async function refreshStatus() {
   try {
     const res = await fetch("/api/status");
     const s = await res.json();
-    const w = document.getElementById("badge-whisper");
-    w.textContent = "Whisper: " + s.whisper_model + (s.whisper_loaded ? "（読込済み）" : "（初回発話時に読込）");
-    w.className = "badge " + (s.whisper_loaded ? "badge-green" : "badge-blue");
 
-    const o = document.getElementById("badge-ollama");
+    const banner = document.getElementById("engine-banner");
     if (s.ollama_reachable) {
-      o.textContent = "ローカルLLM: 接続済み (" + s.ollama_model + ")";
-      o.className = "badge badge-green";
+      banner.style.display = "none";
     } else {
-      o.textContent = "ローカルLLM: 未接続（MOCK表示になります）";
-      o.className = "badge badge-amber";
+      banner.style.display = "block";
+      banner.className = "engine-banner warn";
+      banner.textContent = "⚠️ AIエンジン未接続のため、動作確認用のダミー内容を表示しています（README参照）";
     }
-    document.getElementById("status-detail").textContent =
-      s.ollama_reachable ? "" : "Ollamaが起動していません。README.mdの手順でOllamaを起動すると、実際のローカルAI生成に切り替わります。";
+
+    document.getElementById("detail-box").textContent =
+      `音声認識モデル: ${s.whisper_model}${s.whisper_loaded ? "（読込済み）" : "（初回発話時に読込）"} / ` +
+      `ローカルAI: ${s.ollama_reachable ? "接続済み (" + s.ollama_model + ")" : "未接続"}`;
   } catch (e) {
     console.error(e);
   }

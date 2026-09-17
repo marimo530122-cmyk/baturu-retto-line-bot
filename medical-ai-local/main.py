@@ -156,7 +156,9 @@ def reset() -> dict:
 # ローカルLLM（Ollama）によるライブカルテドラフト生成
 # ---------------------------------------------------------------------------
 LIVE_DRAFT_SYSTEM_PROMPT = """あなたは日本の診察室で動作する、完全ローカル動作のAIカルテ書記です。
-医師と患者の会話全文（ここまでの分）から、手動入力なしで以下4項目のJSONを更新してください。
+診察室の会話全文（ここまでの分、1本のマイクで録音したもので、話者ラベルは付いていません）から、
+手動入力なしで以下4項目のJSONを更新してください。発言内容や口調（症状を訴えている/診断や指示を
+出している等）から、医師の発言と患者の発言を文脈で推測して整理してください。
 まだ会話に出ていない項目は空文字にしてください。会話に含まれていない事実（診断名・薬剤名・数値など）を
 創作しないでください。出力は次のキーだけを持つJSONオブジェクトのみとしてください。
 
@@ -196,8 +198,13 @@ async def _call_ollama(transcript_text: str) -> dict:
 
 
 def _transcript_text() -> str:
-    label = {"doctor": "医師", "patient": "患者", "staff": "スタッフ", "unknown": "話者不明"}
-    return "\n".join(f"{label.get(t.speaker, '話者不明')}: {t.text}" for t in transcript)
+    """簡易UIでは話者を区別しないため、話者が明示的に分かっている場合のみラベルを付ける。"""
+    label = {"doctor": "医師", "patient": "患者", "staff": "スタッフ"}
+    lines = []
+    for t in transcript:
+        prefix = label.get(t.speaker)
+        lines.append(f"{prefix}: {t.text}" if prefix else t.text)
+    return "\n".join(lines)
 
 
 @app.post("/api/live-draft/refresh")
