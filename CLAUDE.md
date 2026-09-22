@@ -79,9 +79,23 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。
   生成したMP4はGitHub Releaseに添付され、スマホからダウンロードURLとして取得できる。
 
+## SNS自動投稿(X)とマネタイズ導線
+
+- `x_broadcast.js` + `x_episodes.json` — 毎日17:30 JSTに `.github/workflows/daily-x-post.yml`
+  がテンプレートを日替わりローテーションでXに投稿する(LINEの `broadcast.js` と同じ方式)。
+- リンク先はリポジトリ変数(Actions → Variables)で設定する: `GAME_URL`(バツルーレット)、
+  `MIKUCHIWARI_URL`(三口割り)、`AFFILIATE_URL`(Amazonアソシエイト等)、`SUPPORT_URL`
+  (Stripe Payment Link等の投げ銭・課金ページ)。未設定のURLを使うテンプレートは自動でスキップ。
+- 広告・アフィリエイトを含むテンプレートは `"ad": true` にすると先頭に `【PR】` が自動で付く
+  (ステマ規制=景品表示法への対応。外さないこと)。
+- 文字数はXの数え方(日本語2・URL23)で280以内かを投稿前にチェックする。
+- 手動実行時に `dry_run=1` を指定すると投稿せず文面だけ確認できる。
+
 ## 必要なSecrets
 
 - `ANTHROPIC_API_KEY` — Claude API キー。GitHub リポジトリの
   Settings → Secrets and variables → Actions に登録しておく。
+- `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` — X自動投稿用
+  (X Developer Portalで「Read and write」権限のアプリを作り、OAuth 1.0aのキーを発行する)。
 - 動画生成ワークフローは追加のSecret不要(標準の `GITHUB_TOKEN` でReleaseを作成)。
   将来Googleドライブ等に連携する場合は、サービスアカウントJSON等を別途Secretsに追加する。
