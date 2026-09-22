@@ -1,5 +1,6 @@
 import { ClassifiedUtterance } from "@/lib/types";
 import { ListTodo } from "lucide-react";
+import { AddToCalendarButton } from "./AddToCalendarButton";
 
 export function TodoList({
   utterances,
@@ -29,9 +30,10 @@ export function TodoList({
             onChange={() => onToggle(t.id)}
             className="mt-1 h-4 w-4 shrink-0 accent-blue-600"
           />
-          <span className={`text-sm ${t.done ? "text-gray-400 line-through" : "text-gray-800"}`}>
+          <span className={`flex-1 text-sm ${t.done ? "text-gray-400 line-through" : "text-gray-800"}`}>
             {t.summary || t.text}
           </span>
+          <AddToCalendarButton title={t.summary || t.text} />
         </li>
       ))}
     </ul>

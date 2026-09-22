@@ -44,6 +44,14 @@ export function useMeetingSession(mode: Mode = "meeting") {
     }
   }, [mode]);
 
+  const submitText = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (trimmed) classifyAndAppend(trimmed);
+    },
+    [classifyAndAppend]
+  );
+
   const start = useCallback(() => {
     if (!recognizerRef.current) {
       const recognizer = new WebSpeechRecognizer("ja-JP");
@@ -83,5 +91,5 @@ export function useMeetingSession(mode: Mode = "meeting") {
     setError(null);
   }, []);
 
-  return { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset };
+  return { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset, submitText };
 }

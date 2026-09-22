@@ -66,7 +66,12 @@ export function InsightPanel({
         {tab === "todo" && <TodoList utterances={utterances} onToggle={onToggleTodo} />}
         {tab === "appointment" && <AppointmentList utterances={utterances} />}
         {tab === "decisions" && <DecisionLog utterances={utterances} />}
-        {tab === "summary" && <SummaryView markdown={utterancesToSummaryMarkdown(utterances, mode)} />}
+        {tab === "summary" && (
+          <SummaryView
+            markdown={utterancesToSummaryMarkdown(utterances, mode)}
+            shareTitle={mode === "karte" ? "通院カルテ" : "議事録"}
+          />
+        )}
       </div>
     </div>
   );
