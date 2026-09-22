@@ -6,6 +6,7 @@ import { Timeline } from "@/components/Timeline";
 import { InsightPanel } from "@/components/InsightPanel";
 import { HistoryView } from "@/components/HistoryView";
 import { DocumentScanInput } from "@/components/DocumentScanInput";
+import { QrCodeButton } from "@/components/QrCodeButton";
 import { useMeetingSession } from "@/hooks/useMeetingSession";
 import { saveHistoryEntry } from "@/lib/history";
 import { MODE_META, Mode } from "@/lib/types";
@@ -66,6 +67,7 @@ export default function Home() {
           <p className="text-xs text-gray-400">{meta.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
+          <QrCodeButton />
           <button
             onClick={() => setShowHistory(true)}
             className="flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
