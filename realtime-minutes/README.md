@@ -14,6 +14,10 @@
   - `gemini`: Google Gemini API(`gemini-2.5-flash`)
   - `claude`: Anthropic Claude API
   - `ollama`: ローカルLLM([Ollama](https://ollama.com)、`ollama serve` 済み前提)
+  - `jev`: [TypeSafe](https://typesafe.ai)のSystem OneモデルJev。7分類をChoiceプリミティブ、
+    重要度をScoreプリミティブに対応させている(`lib/classify/jevClassifier.ts`)。
+    **エンドポイント/レスポンス形式は未検証**(構築時に`docs.typesafe.ai`へのネットワーク
+    アクセスがブロックされていたため)。本番投入前に公式ドキュメントで契約を確認すること。
 - **マインドマップ**: [markmap-lib](https://github.com/markmap/markmap) / [markmap-view](https://github.com/markmap/markmap) で
   分類済み発言からMarkdownアウトラインを生成し、そのままツリー可視化。
 
@@ -53,6 +57,10 @@ ANTHROPIC_MODEL=claude-haiku-4-5-20251001
 CLASSIFIER_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1
+
+# TypeSafe(Jev)を使う例(エンドポイント契約は未検証、上記の注意参照)
+CLASSIFIER_PROVIDER=jev
+TYPESAFE_API_KEY=xxxxx
 ```
 
 ## 画面構成
