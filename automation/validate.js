@@ -4,17 +4,40 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * Layer 1: structural validation. Pure JS, no network, always enforced.
  * Returns { ok, errors } — never throws.
  */
+const REQUIRED_STRING_FIELDS = ["overview", "symptoms"];
+const OPTIONAL_STRING_FIELDS = [
+  "visit_date",
+  "hospital_and_department",
+  "priority",
+  "background",
+  "cost_and_time",
+];
+const STRING_ARRAY_FIELDS = ["decisions", "concerns", "advice", "resources", "follow_up_points", "ng_items"];
+
 export function validateStructure(data) {
   const errors = [];
 
-  if (typeof data?.summary !== "string" || data.summary.trim().length === 0) {
-    errors.push("summary is missing or empty");
+  REQUIRED_STRING_FIELDS.forEach((field) => {
+    if (typeof data?.[field] !== "string" || data[field].trim().length === 0) {
+      errors.push(`${field} is missing or empty`);
+    }
+  });
+  OPTIONAL_STRING_FIELDS.forEach((field) => {
+    if (typeof data?.[field] !== "string") {
+      errors.push(`${field} is not a string`);
+    }
+  });
+  if (data?.visit_date && !DATE_RE.test(data.visit_date)) {
+    errors.push("visit_date is not empty and not YYYY-MM-DD");
   }
-  if (!Array.isArray(data?.decisions)) {
-    errors.push("decisions is not an array");
-  } else if (data.decisions.some((d) => typeof d !== "string")) {
-    errors.push("decisions contains a non-string entry");
-  }
+  STRING_ARRAY_FIELDS.forEach((field) => {
+    if (!Array.isArray(data?.[field])) {
+      errors.push(`${field} is not an array`);
+    } else if (data[field].some((v) => typeof v !== "string")) {
+      errors.push(`${field} contains a non-string entry`);
+    }
+  });
+
   if (!Array.isArray(data?.todos)) {
     errors.push("todos is not an array");
   } else {
@@ -69,8 +92,8 @@ export async function validateWithJev(rawText, extracted) {
       },
       body: JSON.stringify({
         instructions:
-          "Does the extracted summary/decisions/todos faithfully and completely " +
-          "represent the source meeting text, with no fabricated facts?",
+          "Does this extracted hospital-visit karte (symptoms/decisions/todos/advice/etc.) " +
+          "faithfully and completely represent the source memo, with no fabricated facts?",
         state: {
           source_text: rawText,
           extracted,
