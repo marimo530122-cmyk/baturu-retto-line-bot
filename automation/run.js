@@ -1,0 +1,126 @@
+#!/usr/bin/env node
+import "dotenv/config";
+import { $, fs, path } from "zx";
+import { fetchLatestMemo } from "./fetch-data.js";
+import { extractStructuredData } from "./gemini-extract.js";
+import { validate } from "./validate.js";
+
+$.quiet = true;
+
+const OUTPUT_DIR = process.env.OUTPUT_DIR || "./output";
+const LOG_DIR = "./logs";
+const LOG_FILE = path.join(LOG_DIR, "run.log");
+const STATE_FILE = path.join(OUTPUT_DIR, ".last-processed-file-id");
+
+async function log(level, message) {
+  await fs.ensureDir(LOG_DIR);
+  const line = `[${new Date().toISOString()}] [${level}] ${message}\n`;
+  await fs.appendFile(LOG_FILE, line);
+  if (level === "ERROR") process.stderr.write(line);
+  else process.stdout.write(line);
+}
+
+function bulletList(items) {
+  return items.length ? items.map((i) => `- ${i}`).join("\n") : "(なし)";
+}
+
+function toMarkdown(file, rawText, extracted) {
+  const decisions = bulletList(extracted.decisions);
+  const concerns = bulletList(extracted.concerns);
+  const advice = bulletList(extracted.advice);
+  const resources = bulletList(extracted.resources);
+  const followUps = bulletList(extracted.follow_up_points);
+  const ngItems = bulletList(extracted.ng_items);
+  const todos = extracted.todos.length
+    ? extracted.todos
+        .map((t) => `- [ ] ${t.task}${t.owner ? ` (担当: ${t.owner})` : ""}${t.due ? ` (期限: ${t.due})` : ""}`)
+        .join("\n")
+    : "(なし)";
+
+  return `# 通院カルテ&処方箋: ${file.name}
+
+- source: ${file.name} (Drive id: ${file.id})
+- processed_at: ${new Date().toISOString()}
+- 受診日: ${extracted.visit_date || "(不明)"}
+- 病院・診療科: ${extracted.hospital_and_department || "(不明)"}
+- 優先度: ${extracted.priority || "(不明)"}
+
+## カルテ(現状の記録)
+
+### 受診概要
+${extracted.overview}
+
+### 症状・様子
+${extracted.symptoms}
+
+### 決定事項(診断・治療方針)
+${decisions}
+
+### 未解決の懸念・不安
+${concerns}
+
+### これまでの経緯・背景
+${extracted.background || "(なし)"}
+
+### 想定される費用・時間
+${extracted.cost_and_time || "(不明)"}
+
+## 処方箋(次のアクション)
+
+### やることリスト
+${todos}
+
+### 医師からのアドバイス・注意点
+${advice}
+
+### 参考にすべき資料・紹介先
+${resources}
+
+### 次回受診時に確認すべきこと
+${followUps}
+
+### やってはいけないこと(NG事項)
+${ngItems}
+
+---
+### 元メモ(生データ)
+${rawText}
+`;
+}
+
+async function main() {
+  await fs.ensureDir(OUTPUT_DIR);
+
+  await log("INFO", "Run started");
+
+  const { file, text } = await fetchLatestMemo();
+  await log("INFO", `Fetched file: ${file.name} (${file.id}, modified ${file.modifiedTime})`);
+
+  const lastId = (await fs.pathExists(STATE_FILE)) ? await fs.readFile(STATE_FILE, "utf8") : null;
+  if (lastId === file.id) {
+    await log("INFO", `File ${file.id} already processed on a previous run; skipping.`);
+    return;
+  }
+
+  const extracted = await extractStructuredData(text);
+  await log("INFO", "Gemini extraction complete");
+
+  // Safety brake: throws and aborts the run on structural or Jev failure.
+  await validate(text, extracted);
+  await log("INFO", "Jev/structural validation passed");
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const jsonPath = path.join(OUTPUT_DIR, `${timestamp}.json`);
+  const mdPath = path.join(OUTPUT_DIR, `${timestamp}.md`);
+
+  await fs.writeJson(jsonPath, { file, extracted }, { spaces: 2 });
+  await fs.writeFile(mdPath, toMarkdown(file, text, extracted));
+  await fs.writeFile(STATE_FILE, file.id);
+
+  await log("INFO", `Wrote ${jsonPath} and ${mdPath}`);
+}
+
+main().catch(async (err) => {
+  await log("ERROR", `Pipeline aborted at stage "${err.stage || "unknown"}": ${err.message}`);
+  process.exitCode = 1;
+});
