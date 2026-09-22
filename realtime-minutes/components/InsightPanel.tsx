@@ -1,37 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { Network, ListTodo, Pin, FileText } from "lucide-react";
-import { ClassifiedUtterance } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { Network, ListTodo, Pin, FileText, CalendarClock } from "lucide-react";
+import { ClassifiedUtterance, Mode } from "@/lib/types";
 import { MindMapView } from "./MindMapView";
 import { TodoList } from "./TodoList";
 import { DecisionLog } from "./DecisionLog";
+import { AppointmentList } from "./AppointmentList";
 import { SummaryView } from "./SummaryView";
 import { utterancesToMarkdown } from "@/lib/markmapTransform";
 import { utterancesToSummaryMarkdown } from "@/lib/summaryTransform";
 
-type InsightTab = "mindmap" | "todo" | "decisions" | "summary";
+type InsightTab = "mindmap" | "todo" | "appointment" | "decisions" | "summary";
 
-const TABS: Array<{ id: InsightTab; label: string; icon: typeof Network }> = [
-  { id: "mindmap", label: "マインドマップ", icon: Network },
-  { id: "todo", label: "ToDo/宿題", icon: ListTodo },
-  { id: "decisions", label: "決定事項", icon: Pin },
-  { id: "summary", label: "サマリー", icon: FileText },
-];
+const TABS_BY_MODE: Record<Mode, Array<{ id: InsightTab; label: string; icon: typeof Network }>> = {
+  meeting: [
+    { id: "mindmap", label: "マインドマップ", icon: Network },
+    { id: "todo", label: "ToDo/宿題", icon: ListTodo },
+    { id: "decisions", label: "決定事項", icon: Pin },
+    { id: "summary", label: "サマリー", icon: FileText },
+  ],
+  karte: [
+    { id: "mindmap", label: "全体図", icon: Network },
+    { id: "decisions", label: "診断・決定", icon: Pin },
+    { id: "appointment", label: "次回の予約", icon: CalendarClock },
+    { id: "summary", label: "カルテ", icon: FileText },
+  ],
+};
 
 export function InsightPanel({
   utterances,
   onToggleTodo,
+  mode = "meeting",
 }: {
   utterances: ClassifiedUtterance[];
   onToggleTodo: (id: string) => void;
+  mode?: Mode;
 }) {
-  const [tab, setTab] = useState<InsightTab>("mindmap");
+  const tabs = TABS_BY_MODE[mode];
+  const [tab, setTab] = useState<InsightTab>(tabs[0].id);
+
+  // モード切り替え時、そのモードに存在しないタブが選ばれたままにならないようにする
+  useEffect(() => {
+    if (!tabs.some((t) => t.id === tab)) setTab(tabs[0].id);
+  }, [mode, tab, tabs]);
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1.5">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -45,10 +62,11 @@ export function InsightPanel({
         ))}
       </div>
       <div className="min-h-0 flex-1 bg-gray-50">
-        {tab === "mindmap" && <MindMapView markdown={utterancesToMarkdown(utterances)} />}
+        {tab === "mindmap" && <MindMapView markdown={utterancesToMarkdown(utterances, mode)} />}
         {tab === "todo" && <TodoList utterances={utterances} onToggle={onToggleTodo} />}
+        {tab === "appointment" && <AppointmentList utterances={utterances} />}
         {tab === "decisions" && <DecisionLog utterances={utterances} />}
-        {tab === "summary" && <SummaryView markdown={utterancesToSummaryMarkdown(utterances)} />}
+        {tab === "summary" && <SummaryView markdown={utterancesToSummaryMarkdown(utterances, mode)} />}
       </div>
     </div>
   );

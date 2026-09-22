@@ -1,5 +1,5 @@
-import { ClassifyResult } from "@/lib/types";
-import { ClassifierBackend, CLASSIFY_SYSTEM_PROMPT, buildUserPrompt, parseClassifyJson } from "./types";
+import { ClassifyResult, Mode } from "@/lib/types";
+import { ClassifierBackend, SYSTEM_PROMPTS, buildUserPrompt, parseClassifyJson } from "./types";
 
 export class GeminiClassifier implements ClassifierBackend {
   constructor(
@@ -7,14 +7,14 @@ export class GeminiClassifier implements ClassifierBackend {
     private model: string = "gemini-2.5-flash"
   ) {}
 
-  async classify(text: string, recentContext: string[]): Promise<ClassifyResult> {
+  async classify(text: string, recentContext: string[], mode: Mode): Promise<ClassifyResult> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: CLASSIFY_SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPTS[mode] }] },
         contents: [{ role: "user", parts: [{ text: buildUserPrompt(text, recentContext) }] }],
         generationConfig: {
           responseMimeType: "application/json",
@@ -30,6 +30,6 @@ export class GeminiClassifier implements ClassifierBackend {
 
     const data = await res.json();
     const raw: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-    return parseClassifyJson(raw);
+    return parseClassifyJson(raw, mode);
   }
 }

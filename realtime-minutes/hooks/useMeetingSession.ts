@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { ClassifiedUtterance } from "@/lib/types";
+import { ClassifiedUtterance, Mode } from "@/lib/types";
 import { WebSpeechRecognizer } from "@/lib/speech/webSpeechRecognizer";
 import { SpeechRecognizer } from "@/lib/speech/types";
 
 const CONTEXT_WINDOW = 5;
 
-export function useMeetingSession() {
+export function useMeetingSession(mode: Mode = "meeting") {
   const [utterances, setUtterances] = useState<ClassifiedUtterance[]>([]);
   const [interimText, setInterimText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -24,7 +24,7 @@ export function useMeetingSession() {
       const res = await fetch("/api/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, context: recentContext }),
+        body: JSON.stringify({ text, context: recentContext, mode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "分類に失敗しました");
@@ -42,7 +42,7 @@ export function useMeetingSession() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "分類に失敗しました");
     }
-  }, []);
+  }, [mode]);
 
   const start = useCallback(() => {
     if (!recognizerRef.current) {

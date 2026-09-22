@@ -1,5 +1,5 @@
-import { ClassifyResult } from "@/lib/types";
-import { ClassifierBackend, CLASSIFY_SYSTEM_PROMPT, buildUserPrompt, parseClassifyJson } from "./types";
+import { ClassifyResult, Mode } from "@/lib/types";
+import { ClassifierBackend, SYSTEM_PROMPTS, buildUserPrompt, parseClassifyJson } from "./types";
 
 export class ClaudeClassifier implements ClassifierBackend {
   constructor(
@@ -7,7 +7,7 @@ export class ClaudeClassifier implements ClassifierBackend {
     private model: string = "claude-haiku-4-5-20251001"
   ) {}
 
-  async classify(text: string, recentContext: string[]): Promise<ClassifyResult> {
+  async classify(text: string, recentContext: string[], mode: Mode): Promise<ClassifyResult> {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -18,7 +18,7 @@ export class ClaudeClassifier implements ClassifierBackend {
       body: JSON.stringify({
         model: this.model,
         max_tokens: 200,
-        system: CLASSIFY_SYSTEM_PROMPT,
+        system: SYSTEM_PROMPTS[mode],
         messages: [{ role: "user", content: buildUserPrompt(text, recentContext) }],
       }),
     });
@@ -29,6 +29,6 @@ export class ClaudeClassifier implements ClassifierBackend {
 
     const data = await res.json();
     const raw: string = data?.content?.[0]?.text ?? "{}";
-    return parseClassifyJson(raw);
+    return parseClassifyJson(raw, mode);
   }
 }

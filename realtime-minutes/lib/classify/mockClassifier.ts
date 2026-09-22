@@ -1,11 +1,11 @@
-import { Category, ClassifyResult } from "@/lib/types";
+import { Category, ClassifyResult, Mode } from "@/lib/types";
 import { ClassifierBackend } from "./types";
 
 /**
  * APIキー不要のルールベース分類器。
  * セットアップ直後の動作確認や、AIバックエンド未接続時のフォールバックとして使う。
  */
-const KEYWORD_RULES: Array<{ category: Category; keywords: string[] }> = [
+const MEETING_RULES: Array<{ category: Category; keywords: string[] }> = [
   { category: "decision", keywords: ["決定", "確定", "そうしましょう", "それでいきます", "合意"] },
   {
     category: "todo",
@@ -17,9 +17,18 @@ const KEYWORD_RULES: Array<{ category: Category; keywords: string[] }> = [
   { category: "important", keywords: ["重要", "大事", "ポイントは", "注意"] },
 ];
 
+const KARTE_RULES: Array<{ category: Category; keywords: string[] }> = [
+  { category: "symptom", keywords: ["痛い", "熱", "だるい", "気持ち悪い", "しびれ", "調子が"] },
+  { category: "decision", keywords: ["診断", "ということです", "所見", "様子を見ましょう"] },
+  { category: "treatment", keywords: ["薬", "処方", "注射", "点滴", "手術", "服用"] },
+  { category: "appointment", keywords: ["次回", "予約", "また来て", "来週", "1ヶ月後"] },
+  { category: "worry", keywords: ["心配", "大丈夫かな", "気になる", "不安", "どうなん"] },
+];
+
 export class MockClassifier implements ClassifierBackend {
-  async classify(text: string): Promise<ClassifyResult> {
-    for (const rule of KEYWORD_RULES) {
+  async classify(text: string, _recentContext: string[], mode: Mode = "meeting"): Promise<ClassifyResult> {
+    const rules = mode === "karte" ? KARTE_RULES : MEETING_RULES;
+    for (const rule of rules) {
       if (rule.keywords.some((kw) => text.includes(kw))) {
         return {
           category: rule.category,
@@ -29,7 +38,7 @@ export class MockClassifier implements ClassifierBackend {
       }
     }
     return {
-      category: "smalltalk",
+      category: mode === "karte" ? "other" : "smalltalk",
       summary: text.slice(0, 20),
       importance: 1,
     };

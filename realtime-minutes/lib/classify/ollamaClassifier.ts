@@ -1,5 +1,5 @@
-import { ClassifyResult } from "@/lib/types";
-import { ClassifierBackend, CLASSIFY_SYSTEM_PROMPT, buildUserPrompt, parseClassifyJson } from "./types";
+import { ClassifyResult, Mode } from "@/lib/types";
+import { ClassifierBackend, SYSTEM_PROMPTS, buildUserPrompt, parseClassifyJson } from "./types";
 
 export class OllamaClassifier implements ClassifierBackend {
   constructor(
@@ -7,13 +7,13 @@ export class OllamaClassifier implements ClassifierBackend {
     private model: string = "llama3.1"
   ) {}
 
-  async classify(text: string, recentContext: string[]): Promise<ClassifyResult> {
+  async classify(text: string, recentContext: string[], mode: Mode): Promise<ClassifyResult> {
     const res = await fetch(`${this.baseUrl}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: this.model,
-        system: CLASSIFY_SYSTEM_PROMPT,
+        system: SYSTEM_PROMPTS[mode],
         prompt: buildUserPrompt(text, recentContext),
         format: "json",
         stream: false,
@@ -27,6 +27,6 @@ export class OllamaClassifier implements ClassifierBackend {
 
     const data = await res.json();
     const raw: string = data?.response ?? "{}";
-    return parseClassifyJson(raw);
+    return parseClassifyJson(raw, mode);
   }
 }
