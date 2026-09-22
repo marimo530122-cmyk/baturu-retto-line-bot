@@ -17,7 +17,7 @@ type MobileTab = "timeline" | "insight";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("meeting");
-  const { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset, submitText } =
+  const { utterances, interimText, isRecording, error, status, supported, start, stop, toggleTodo, reset, submitText } =
     useMeetingSession(mode);
   const [mobileTab, setMobileTab] = useState<MobileTab>("timeline");
   const [showHistory, setShowHistory] = useState(false);
@@ -161,6 +161,7 @@ export default function Home() {
           {isRecording ? <Square className="h-8 w-8 text-white" /> : <Mic className="h-8 w-8 text-white" />}
         </button>
         <p className="text-xs text-gray-400">{isRecording ? "タップして停止" : "タップして録音開始"}</p>
+        {status && <p className="text-xs text-gray-400">{status}</p>}
 
         <button
           onClick={() => setShowTextInput((v) => !v)}
