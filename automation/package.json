@@ -1,0 +1,17 @@
+{
+  "name": "gijiroku-automation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Google Drive -> Gemini -> Jev(TypeSafe) safety-checked meeting-minutes pipeline",
+  "scripts": {
+    "start": "node run.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^16.4.5",
+    "googleapis": "^181.0.0",
+    "playwright": "^1.63.0",
+    "zx": "^8.8.5"
+  }
+}
