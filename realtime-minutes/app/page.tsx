@@ -5,6 +5,7 @@ import { Mic, Square, RotateCcw, AlertTriangle, MessagesSquare, LayoutGrid, Hist
 import { Timeline } from "@/components/Timeline";
 import { InsightPanel } from "@/components/InsightPanel";
 import { HistoryView } from "@/components/HistoryView";
+import { DocumentScanInput } from "@/components/DocumentScanInput";
 import { useMeetingSession } from "@/hooks/useMeetingSession";
 import { saveHistoryEntry } from "@/lib/history";
 import { MODE_META, Mode } from "@/lib/types";
@@ -48,6 +49,12 @@ export default function Home() {
     },
     [submitText, textValue]
   );
+
+  const handleExtractedText = useCallback((text: string) => {
+    // OCRは完璧ではないため、自動送信はせずテキスト欄に流し込んで人の目で確認してもらう
+    setShowTextInput(true);
+    setTextValue((prev) => (prev ? `${prev}\n${text}` : text));
+  }, []);
 
   const meta = MODE_META[mode];
 
@@ -132,14 +139,16 @@ export default function Home() {
           {showTextInput ? "キーボード入力を閉じる" : "声の代わりにキーボードで入力する"}
         </button>
 
+        <DocumentScanInput onExtractedText={handleExtractedText} />
+
         {showTextInput && (
-          <form onSubmit={handleTextSubmit} className="flex w-full max-w-sm gap-2">
-            <input
-              type="text"
+          <form onSubmit={handleTextSubmit} className="flex w-full max-w-sm items-end gap-2">
+            <textarea
               value={textValue}
               onChange={(e) => setTextValue(e.target.value)}
-              placeholder="内容を入力…"
-              className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+              placeholder="内容を入力(写真読み取り結果もここに入ります)…"
+              rows={textValue.includes("\n") ? 4 : 1}
+              className="min-w-0 flex-1 resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
             />
             <button
               type="submit"
