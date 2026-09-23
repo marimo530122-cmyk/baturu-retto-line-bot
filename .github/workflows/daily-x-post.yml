@@ -36,3 +36,5 @@ jobs:
           GAME_URL: ${{ vars.GAME_URL }}
           MIKUCHIWARI_URL: ${{ vars.MIKUCHIWARI_URL }}
           AFFILIATE_URL: ${{ vars.AFFILIATE_URL }}
+          # 1 にするとトレンドをJevでふるい分けて本文に織り込む(要 ANTHROPIC_API_KEY と TYPESAFE_API_KEY)
+          USE_TRENDS: ${{ vars.USE_TRENDS }}

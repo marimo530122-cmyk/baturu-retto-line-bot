@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const { pickTrend } = require("./x_trends");
 
 // DRY_RUN=1 のときはXに投稿せず、投稿予定の文面を表示するだけ
 const DRY_RUN = process.env.DRY_RUN === "1";
@@ -25,6 +26,10 @@ const TYPESAFE_BASE_URL = (process.env.TYPESAFE_BASE_URL || "https://api.typesaf
 const JEV_MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
 // 「はい」の確率がこれ以上なら違反とみなす。迷ったら固定文面に倒すため低めにしている
 const JEV_VIOLATION_THRESHOLD = Number(process.env.JEV_VIOLATION_THRESHOLD || "0.5");
+
+// USE_TRENDS=1 なら、その日のトレンドからJevが選んだ「安全で飲み会ネタに絡めやすい話題」を
+// Claudeに渡して本文に軽く織り込ませる(x_trends.js)。AIとJevの両方が使えるときだけ有効
+const USE_TRENDS = process.env.USE_TRENDS === "1" && USE_AI && Boolean(TYPESAFE_API_KEY);
 
 // 質問名 → [ログ用の日本語名, Jevへの質問]。state には topic / reference / post を渡す
 const JEV_SAFETY_QUESTIONS = {
@@ -57,7 +62,7 @@ const JEV_SAFETY_QUESTIONS = {
     {
       type: "noul",
       instructions:
-        "The `post` states a concrete fact that is supported by neither the `topic` nor the `reference`, such as a number of users, an effect, a price or a discount.",
+        "The `post` states a concrete fact that is supported by neither the `topic`, the `reference` nor the `trend`, such as a number of users, an effect, a price or a discount.",
     },
   ],
 };
@@ -125,7 +130,7 @@ const AI_SYSTEM_PROMPT = `あなたは飲み会向けミニツール(罰ゲー�
 - イッキ飲み、飲酒の強要、未成年の飲酒を連想させる内容にしない
 - 参考投稿をそのまま使わず、毎回違う切り口・状況で書く`;
 
-async function generateAiBody(episode, maxChars) {
+async function generateAiBody(episode, maxChars, trend) {
   const Anthropic = require("@anthropic-ai/sdk");
   const client = new Anthropic();
   const today = new Date().toISOString().slice(0, 10);
@@ -144,7 +149,11 @@ async function generateAiBody(episode, maxChars) {
         content:
           `日付: ${today}\n` +
           `テーマ: ${episode.topic}\n` +
-          `文字数: 全角${maxChars}文字以内\n\n` +
+          `文字数: 全角${maxChars}文字以内\n` +
+          (trend
+            ? `今日の話題: ${trend.title}(テーマと自然につながる範囲で軽く触れる。人名・企業名は出さない)\n`
+            : "") +
+          "\n" +
           `参考投稿(このまま使わないこと):\n${episode.text}`,
       },
     ],
@@ -169,11 +178,8 @@ async function generateAiBody(episode, maxChars) {
   return body;
 }
 
-// Jevに本文の安全性をまとめて聞き、違反と判定された項目の日本語名を返す(問題なければ空配列)
-async function jevFindViolations(episode, body) {
-  const questions = Object.fromEntries(
-    Object.entries(JEV_SAFETY_QUESTIONS).map(([name, [, question]]) => [name, question])
-  );
+// Jev(System One)に質問をまとめて投げ、質問名 → 回答 を返す
+async function jevAsk(state, questions) {
   const res = await fetch(`${TYPESAFE_BASE_URL}/v1/systemone`, {
     method: "POST",
     headers: {
@@ -181,26 +187,33 @@ async function jevFindViolations(episode, body) {
       Accept: "application/json",
       Authorization: `Bearer ${TYPESAFE_API_KEY}`,
     },
-    body: JSON.stringify({
-      model: JEV_MODEL,
-      state: { topic: episode.topic, reference: episode.text, post: body },
-      questions,
-    }),
+    body: JSON.stringify({ model: JEV_MODEL, state, questions }),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
     throw new Error(`Jev判定に失敗しました: ${res.status} ${(await res.text()).slice(0, 200)}`);
   }
-  const { answers } = await res.json();
+  return (await res.json()).answers;
+}
+
+// Jevに本文の安全性をまとめて聞き、違反と判定された項目の日本語名を返す(問題なければ空配列)
+async function jevFindViolations(episode, body, trend) {
+  const questions = Object.fromEntries(
+    Object.entries(JEV_SAFETY_QUESTIONS).map(([name, [, question]]) => [name, question])
+  );
+  const answers = await jevAsk(
+    { topic: episode.topic, reference: episode.text, trend: trend ? trend.title : null, post: body },
+    questions
+  );
   return Object.entries(JEV_SAFETY_QUESTIONS)
     .filter(([name]) => answers[name].noul >= JEV_VIOLATION_THRESHOLD)
     .map(([name, [label]]) => `${label}(${answers[name].noul.toFixed(2)})`);
 }
 
 // AIの本文を投稿してよいか確認する。ダメなら例外を投げ、呼び出し側で固定文面に切り替える
-async function checkAiBody(episode, body) {
+async function checkAiBody(episode, body, trend = null) {
   if (!TYPESAFE_API_KEY) return;
-  const violations = await jevFindViolations(episode, body);
+  const violations = await jevFindViolations(episode, body, trend);
   if (violations.length > 0) {
     throw new Error(`Jevがルール違反の可能性を検出: ${violations.join(", ")}: ${body}`);
   }
@@ -212,13 +225,14 @@ async function buildPost(episode) {
     try {
       const fixedPart = weightedLength(composeAiPost(episode, ""));
       const maxChars = Math.floor((280 - fixedPart) / 2) - 5;
-      const body = await generateAiBody(episode, maxChars);
-      await checkAiBody(episode, body);
+      const trend = USE_TRENDS ? await pickTrend(jevAsk) : null;
+      const body = await generateAiBody(episode, maxChars, trend);
+      await checkAiBody(episode, body, trend);
       const text = composeAiPost(episode, body);
       if (weightedLength(text) > 280) {
         throw new Error(`AIの文面が文字数オーバー(${weightedLength(text)}/280)`);
       }
-      return { text, source: "AI" };
+      return { text, source: trend ? `AI+トレンド「${trend.title}」` : "AI" };
     } catch (err) {
       console.warn(`AI生成をスキップして固定文面を使います: ${err.message}`);
     }

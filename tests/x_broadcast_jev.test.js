@@ -36,6 +36,7 @@ test("問題なしなら通過し、Jevに3つの質問をまとめて1回だけ
   assert.deepStrictEqual(calls[0].body.state, {
     topic: episode.topic,
     reference: episode.text,
+    trend: null,
     post: "ルーレットで変顔が決まった",
   });
   assert.deepStrictEqual(Object.keys(calls[0].body.questions), [
