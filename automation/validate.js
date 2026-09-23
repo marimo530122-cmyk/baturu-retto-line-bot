@@ -1,21 +1,45 @@
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const BASIC_INFO_FIELDS = ["visit_date", "department", "doctor", "companion"];
+const REQUIRED_STRING_FIELDS = ["chief_complaint", "diagnosis"];
+const OPTIONAL_STRING_FIELDS = ["readings_trend", "treatment_change_reason", "side_effects_and_allergies", "notes"];
+const STRING_ARRAY_FIELDS = ["treatment", "restrictions", "red_flags"];
+
+function validateTaskList(data, field, errors) {
+  if (!Array.isArray(data?.[field])) {
+    errors.push(`${field} is not an array`);
+    return;
+  }
+  data[field].forEach((item, i) => {
+    if (typeof item?.task !== "string" || item.task.trim().length === 0) {
+      errors.push(`${field}[${i}].task is missing or empty`);
+    }
+    if (typeof item?.owner !== "string") {
+      errors.push(`${field}[${i}].owner is not a string`);
+    }
+    if (typeof item?.due !== "string" || (item.due !== "" && !DATE_RE.test(item.due))) {
+      errors.push(`${field}[${i}].due is not empty and not YYYY-MM-DD`);
+    }
+  });
+}
+
 /**
  * Layer 1: structural validation. Pure JS, no network, always enforced.
  * Returns { ok, errors } — never throws.
  */
-const REQUIRED_STRING_FIELDS = ["overview", "symptoms"];
-const OPTIONAL_STRING_FIELDS = [
-  "visit_date",
-  "hospital_and_department",
-  "priority",
-  "background",
-  "cost_and_time",
-];
-const STRING_ARRAY_FIELDS = ["decisions", "concerns", "advice", "resources", "follow_up_points", "ng_items"];
-
 export function validateStructure(data) {
   const errors = [];
+
+  if (typeof data?.basic_info !== "object" || data.basic_info === null || Array.isArray(data.basic_info)) {
+    errors.push("basic_info is not an object");
+  } else {
+    BASIC_INFO_FIELDS.forEach((field) => {
+      if (typeof data.basic_info[field] !== "string") errors.push(`basic_info.${field} is not a string`);
+    });
+    if (data.basic_info.visit_date && !DATE_RE.test(data.basic_info.visit_date)) {
+      errors.push("basic_info.visit_date is not empty and not YYYY-MM-DD");
+    }
+  }
 
   REQUIRED_STRING_FIELDS.forEach((field) => {
     if (typeof data?.[field] !== "string" || data[field].trim().length === 0) {
@@ -23,13 +47,8 @@ export function validateStructure(data) {
     }
   });
   OPTIONAL_STRING_FIELDS.forEach((field) => {
-    if (typeof data?.[field] !== "string") {
-      errors.push(`${field} is not a string`);
-    }
+    if (typeof data?.[field] !== "string") errors.push(`${field} is not a string`);
   });
-  if (data?.visit_date && !DATE_RE.test(data.visit_date)) {
-    errors.push("visit_date is not empty and not YYYY-MM-DD");
-  }
   STRING_ARRAY_FIELDS.forEach((field) => {
     if (!Array.isArray(data?.[field])) {
       errors.push(`${field} is not an array`);
@@ -38,20 +57,26 @@ export function validateStructure(data) {
     }
   });
 
-  if (!Array.isArray(data?.todos)) {
-    errors.push("todos is not an array");
+  if (!Array.isArray(data?.qa_log)) {
+    errors.push("qa_log is not an array");
   } else {
-    data.todos.forEach((todo, i) => {
-      if (typeof todo?.task !== "string" || todo.task.trim().length === 0) {
-        errors.push(`todos[${i}].task is missing or empty`);
-      }
-      if (typeof todo?.owner !== "string") {
-        errors.push(`todos[${i}].owner is not a string`);
-      }
-      if (typeof todo?.due !== "string" || (todo.due !== "" && !DATE_RE.test(todo.due))) {
-        errors.push(`todos[${i}].due is not empty and not YYYY-MM-DD`);
-      }
+    data.qa_log.forEach((qa, i) => {
+      if (typeof qa?.question !== "string") errors.push(`qa_log[${i}].question is not a string`);
+      if (typeof qa?.answer !== "string") errors.push(`qa_log[${i}].answer is not a string`);
     });
+  }
+
+  validateTaskList(data, "homework", errors);
+
+  if (typeof data?.next_visit !== "object" || data.next_visit === null || Array.isArray(data.next_visit)) {
+    errors.push("next_visit is not an object");
+  } else {
+    ["date", "preparation", "cost_estimate"].forEach((field) => {
+      if (typeof data.next_visit[field] !== "string") errors.push(`next_visit.${field} is not a string`);
+    });
+    if (data.next_visit.date && !DATE_RE.test(data.next_visit.date)) {
+      errors.push("next_visit.date is not empty and not YYYY-MM-DD");
+    }
   }
 
   return { ok: errors.length === 0, errors };
@@ -92,8 +117,9 @@ export async function validateWithJev(rawText, extracted) {
       },
       body: JSON.stringify({
         instructions:
-          "Does this extracted hospital-visit karte (symptoms/decisions/todos/advice/etc.) " +
-          "faithfully and completely represent the source memo, with no fabricated facts?",
+          "Does this extracted hospital-visit karte (chief complaint/diagnosis/treatment/" +
+          "red flags/homework/etc.) faithfully and completely represent the source memo, " +
+          "with no fabricated facts, and no invented red-flag warnings not present in the memo?",
         state: {
           source_text: rawText,
           extracted,
