@@ -85,6 +85,7 @@ AIなしで保存する。キー未設定・API失敗・確信度不足のとき
 - `scripts/requirements.txt` — 依存パッケージ(`anthropic`, `edge-tts`)。
 - `package.json` — X自動投稿のAI生成用(`@anthropic-ai/sdk`)。
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
+- `tests/` — Jev連携のテスト(APIは呼ばない)。`.github/workflows/test.yml` で自動実行。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。
@@ -101,6 +102,8 @@ AIなしで保存する。キー未設定・API失敗・確信度不足のとき
 - `ANTHROPIC_API_KEY` があれば、その日のテンプレートの `topic` をもとに Claude(`claude-opus-5`)が
   本文だけを毎日書き直す。URL・ハッシュタグ・【PR】はプログラム側で付け、AIには書かせない。
   AIが失敗・拒否・ルール違反(URLやハッシュタグを含む等)・文字数オーバーのときは固定文面で投稿する。
+- `TYPESAFE_API_KEY` があれば、AIの本文を投稿前に Jev で意味的にチェックする(飲酒の強要・実在の
+  店名や人名・テーマにない事実の捏造)。違反の可能性あり・Jev失敗のときは固定文面で投稿する。
 - 広告・アフィリエイトを含むテンプレートは `"ad": true` にすると先頭に `【PR】` が自動で付く
   (ステマ規制=景品表示法への対応。外さないこと)。
 - 文字数はXの数え方(日本語2・URL23)で280以内かを投稿前にチェックする。

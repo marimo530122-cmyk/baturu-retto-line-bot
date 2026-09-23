@@ -16,6 +16,52 @@ const URL_VARS = {
 const AI_MODEL = "claude-opus-5";
 const USE_AI = Boolean(process.env.ANTHROPIC_API_KEY);
 
+// TYPESAFE_API_KEY があれば、AIが書いた本文を投稿前にJev(TypeSafe)で意味的にチェックする。
+// URL・ハッシュタグのような機械的なルールは正規表現で、「飲酒の強要を連想させるか」のような
+// 意味で判断するルールはJevで見る。Jevで違反判定・Jev自体が失敗 → 固定文面で投稿。
+// キーが無ければ従来どおり正規表現チェックだけ(scripts/ai_router.py と同じ方針)
+const TYPESAFE_API_KEY = (process.env.TYPESAFE_API_KEY || "").trim();
+const TYPESAFE_BASE_URL = (process.env.TYPESAFE_BASE_URL || "https://api.typesafe.ai").replace(/\/+$/, "");
+const JEV_MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
+// 「はい」の確率がこれ以上なら違反とみなす。迷ったら固定文面に倒すため低めにしている
+const JEV_VIOLATION_THRESHOLD = Number(process.env.JEV_VIOLATION_THRESHOLD || "0.5");
+
+// 質問名 → [ログ用の日本語名, Jevへの質問]。state には topic / reference / post を渡す
+const JEV_SAFETY_QUESTIONS = {
+  drinking: [
+    "飲酒の強要・イッキ飲み・未成年飲酒",
+    {
+      type: "noul",
+      instructions:
+        "The `post` encourages or jokes about chugging alcohol, forcing or pressuring someone to drink, or underage drinking.",
+      criteria: {
+        false:
+          "Party punishment games that do not require drinking, or simply mentioning a drinking party, are fine.",
+      },
+    },
+  ],
+  real_names: [
+    "実在の人物・企業・店名",
+    {
+      type: "noul",
+      instructions:
+        "The `post` names a real, identifiable person, company, brand, shop or restaurant.",
+      criteria: {
+        false:
+          "Our own tools (バツルーレット, 三口割り) and generic places such as 居酒屋 or 合コン are fine.",
+      },
+    },
+  ],
+  invented_facts: [
+    "テーマにない事実の捏造",
+    {
+      type: "noul",
+      instructions:
+        "The `post` states a concrete fact that is supported by neither the `topic` nor the `reference`, such as a number of users, an effect, a price or a discount.",
+    },
+  ],
+};
+
 const CREDENTIALS = {
   consumerKey: process.env.X_API_KEY,
   consumerSecret: process.env.X_API_SECRET,
@@ -123,13 +169,52 @@ async function generateAiBody(episode, maxChars) {
   return body;
 }
 
+// Jevに本文の安全性をまとめて聞き、違反と判定された項目の日本語名を返す(問題なければ空配列)
+async function jevFindViolations(episode, body) {
+  const questions = Object.fromEntries(
+    Object.entries(JEV_SAFETY_QUESTIONS).map(([name, [, question]]) => [name, question])
+  );
+  const res = await fetch(`${TYPESAFE_BASE_URL}/v1/systemone`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${TYPESAFE_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: JEV_MODEL,
+      state: { topic: episode.topic, reference: episode.text, post: body },
+      questions,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) {
+    throw new Error(`Jev判定に失敗しました: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  }
+  const { answers } = await res.json();
+  return Object.entries(JEV_SAFETY_QUESTIONS)
+    .filter(([name]) => answers[name].noul >= JEV_VIOLATION_THRESHOLD)
+    .map(([name, [label]]) => `${label}(${answers[name].noul.toFixed(2)})`);
+}
+
+// AIの本文を投稿してよいか確認する。ダメなら例外を投げ、呼び出し側で固定文面に切り替える
+async function checkAiBody(episode, body) {
+  if (!TYPESAFE_API_KEY) return;
+  const violations = await jevFindViolations(episode, body);
+  if (violations.length > 0) {
+    throw new Error(`Jevがルール違反の可能性を検出: ${violations.join(", ")}: ${body}`);
+  }
+}
+
 // その日の投稿文を決める。AIが使えればAI版、ダメなら固定文面
 async function buildPost(episode) {
   if (USE_AI) {
     try {
       const fixedPart = weightedLength(composeAiPost(episode, ""));
       const maxChars = Math.floor((280 - fixedPart) / 2) - 5;
-      const text = composeAiPost(episode, await generateAiBody(episode, maxChars));
+      const body = await generateAiBody(episode, maxChars);
+      await checkAiBody(episode, body);
+      const text = composeAiPost(episode, body);
       if (weightedLength(text) > 280) {
         throw new Error(`AIの文面が文字数オーバー(${weightedLength(text)}/280)`);
       }
@@ -231,7 +316,7 @@ async function postToX() {
   console.log(`投稿成功: ${episode.title} / ${source} (post id: ${data.data.id})`);
 }
 
-module.exports = { availableEpisodes, render, composeAiPost, weightedLength };
+module.exports = { availableEpisodes, render, composeAiPost, weightedLength, checkAiBody };
 
 if (require.main === module) {
   postToX().catch((err) => {

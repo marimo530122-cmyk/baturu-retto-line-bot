@@ -1,0 +1,22 @@
+name: Tests
+
+# Jev連携(メモの振り分け・X投稿の安全チェック)のテスト。実際のAPIは呼ばないのでSecret不要
+on:
+  push:
+    paths: ["scripts/**", "tests/**", "x_broadcast.js", ".github/workflows/test.yml"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: python -m unittest discover tests -v
+      - run: node --test tests/x_broadcast_jev.test.js
