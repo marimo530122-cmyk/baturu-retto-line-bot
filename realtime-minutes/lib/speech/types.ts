@@ -9,4 +9,6 @@ export interface SpeechRecognizer {
   onInterimResult?(callback: (text: string) => void): void;
   onError?(callback: (message: string) => void): void;
   isSupported(): boolean;
+  /** コールバックを外して認識を完全に止める(アンマウント時用、任意) */
+  dispose?(): void;
 }
