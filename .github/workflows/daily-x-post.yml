@@ -1,0 +1,36 @@
+name: Daily X Post
+
+on:
+  schedule:
+    # 毎日 17:30 JST (08:30 UTC)。飲み会前の時間帯を狙う
+    - cron: "30 8 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 にすると投稿せず文面の確認だけ行う"
+        required: false
+        default: "0"
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: node x_broadcast.js
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          # 設定されていれば投稿本文をClaudeが毎日書き直す(未設定・失敗時は固定文面)
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+          # リンク先はリポジトリ変数(Settings → Secrets and variables → Actions → Variables)で設定。
+          # 未設定のURLを使うテンプレートは自動でスキップされる
+          GAME_URL: ${{ vars.GAME_URL }}
+          MIKUCHIWARI_URL: ${{ vars.MIKUCHIWARI_URL }}
+          AFFILIATE_URL: ${{ vars.AFFILIATE_URL }}

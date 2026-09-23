@@ -1,0 +1,7 @@
+{
+  "name": "baturu-retto-line-bot",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0"
+  }
+}

@@ -27,11 +27,10 @@ export class WhisperRecognizer implements SpeechRecognizer {
   private loadPromise: Promise<void> | null = null;
   private nextId = 0;
   private listening = false;
-  private hasTranscribedSuccessfully = false;
 
   private finalCallback: ((text: string) => void) | null = null;
   private interimCallback: ((text: string) => void) | null = null;
-  private errorCallback: ((message: string) => void) | null = null;
+  private errorCallback: ((message: string, fatal: boolean) => void) | null = null;
   private statusCallback: ((message: string) => void) | null = null;
 
   isSupported(): boolean {
@@ -43,17 +42,13 @@ export class WhisperRecognizer implements SpeechRecognizer {
     );
   }
 
-  /** 一度もWhisperでの文字起こしに成功していないか(＝起動/モデルロード自体の失敗とみなせるか) */
-  hasNeverSucceeded(): boolean {
-    return !this.hasTranscribedSuccessfully;
-  }
-
   private ensureWorker(): Worker {
     if (!this.worker) {
       const worker = new Worker(new URL("./whisperWorker.ts", import.meta.url));
       worker.onmessage = (event: MessageEvent<WorkerMessage>) => this.handleWorkerMessage(event.data);
       worker.onerror = () => {
-        this.errorCallback?.("音声認識モデルの読み込み中にエラーが発生しました。");
+        this.listening = false;
+        this.errorCallback?.("音声認識モデルの読み込み中にエラーが発生しました。", true);
       };
       this.worker = worker;
     }
@@ -67,13 +62,12 @@ export class WhisperRecognizer implements SpeechRecognizer {
         break;
       case "result":
         this.interimCallback?.("");
-        if (msg.text) {
-          this.hasTranscribedSuccessfully = true;
-          this.finalCallback?.(msg.text);
-        }
+        if (msg.text) this.finalCallback?.(msg.text);
         break;
       case "error":
-        this.errorCallback?.(msg.message || "音声認識でエラーが発生しました。");
+        // idありは1発話の文字起こし失敗(セッション自体は継続=非fatal)、
+        // idなしはモデルロード自体の失敗(セッション継続不可=fatal)
+        this.errorCallback?.(msg.message || "音声認識でエラーが発生しました。", msg.id === undefined);
         break;
       default:
         break;
@@ -133,7 +127,8 @@ export class WhisperRecognizer implements SpeechRecognizer {
     } catch (err) {
       this.listening = false;
       this.errorCallback?.(
-        err instanceof Error ? err.message : "音声認識モデルの起動に失敗しました。"
+        err instanceof Error ? err.message : "音声認識モデルの起動に失敗しました。",
+        true
       );
     }
   }
@@ -144,6 +139,19 @@ export class WhisperRecognizer implements SpeechRecognizer {
     this.interimCallback?.("");
   }
 
+  dispose(): void {
+    this.listening = false;
+    this.finalCallback = null;
+    this.interimCallback = null;
+    this.errorCallback = null;
+    this.statusCallback = null;
+    void this.vad?.destroy();
+    this.vad = null;
+    this.worker?.terminate();
+    this.worker = null;
+    this.loadPromise = null;
+  }
+
   onFinalResult(callback: (text: string) => void): void {
     this.finalCallback = callback;
   }
@@ -152,7 +160,7 @@ export class WhisperRecognizer implements SpeechRecognizer {
     this.interimCallback = callback;
   }
 
-  onError(callback: (message: string) => void): void {
+  onError(callback: (message: string, fatal: boolean) => void): void {
     this.errorCallback = callback;
   }
 

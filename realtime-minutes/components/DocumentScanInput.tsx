@@ -35,7 +35,7 @@ export function DocumentScanInput({ onExtractedText }: { onExtractedText: (text:
   };
 
   return (
-    <div className="flex w-full max-w-sm flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1">
       <input
         ref={inputRef}
         type="file"
@@ -61,7 +61,7 @@ export function DocumentScanInput({ onExtractedText }: { onExtractedText: (text:
         ) : (
           <>
             <ScanText className="h-3.5 w-3.5" />
-            処方箋・領収書などの写真/PDFを読み込む
+            写真/PDFを読み込む
           </>
         )}
       </button>

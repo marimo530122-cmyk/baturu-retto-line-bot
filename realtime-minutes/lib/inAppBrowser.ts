@@ -1,66 +1,51 @@
 /**
- * スマホのSNSアプリ内ブラウザ(TikTok, LINE, Instagram, Facebook, X/Twitter)検知。
- *
- * 各アプリが自分のWebViewに付与する固有のUAトークンだけを見て判定する
- * (例: LINEは "Line/12.5.0"、Instagramは "Instagram 123.0.0" を含む)。
- * これらのトークンは通常のChrome/Safari本体のUAには絶対に出現しないため、
- * 「検知したのに実は通常ブラウザだった」という誤検知はほぼ起こらない。
- * 逆に、アプリ側がUAを変えて非対応になる(誤検知ゼロ・見逃し発生)ことはあり得る
- * (実装後の報告を参照)。
+ * 代表的なSNSアプリ内ブラウザ(WebView)の判定。
+ * 誤検知で通常のブラウザに案内を出さないよう、各アプリが User-Agent に付ける
+ * 固有の識別子だけを見る(Chrome/Safari/Brave/Edge/Firefox 等はどれにも該当しない)。
  */
+const IN_APP_BROWSERS: { name: string; pattern: RegExp }[] = [
+  // TikTok: "musical_ly_xx", "BytedanceWebview", "TikTok xx.x" 等
+  { name: "TikTok", pattern: /musical_ly|BytedanceWebview|\bTikTok\b/i },
+  // LINE: "Line/13.x.x"(大文字小文字を区別し、"Online/" 等の部分一致を防ぐ)
+  { name: "LINE", pattern: /\bLine\/\d/ },
+  { name: "Instagram", pattern: /\bInstagram\b/ },
+  // Facebook / Messenger: "FBAN/FBIOS", "FBAV/xxx", "FB_IAB/FB4A"
+  { name: "Facebook", pattern: /\bFBAN\/|\bFBAV\/|\bFB_IAB\/|\bFBIOS\b/ },
+  // Twitter/X: "Twitter for iPhone", "TwitterAndroid"
+  { name: "X(Twitter)", pattern: /\bTwitter/ },
+];
 
-export type InAppBrowserApp = "tiktok" | "line" | "instagram" | "facebook" | "twitter";
-
-const APP_LABELS: Record<InAppBrowserApp, string> = {
-  tiktok: "TikTok",
-  line: "LINE",
-  instagram: "Instagram",
-  facebook: "Facebook",
-  twitter: "X (Twitter)",
-};
-
-// Android上で intent:// によるChromeへの自動脱出が期待できるアプリ。
-// TikTokとXはJSからの自動脱出をブロックしていることが分かっているため対象外。
-const ANDROID_INTENT_ESCAPABLE: ReadonlySet<InAppBrowserApp> = new Set(["line", "instagram", "facebook"]);
-
-export interface InAppBrowserInfo {
-  app: InAppBrowserApp;
-  label: string;
-  isAndroid: boolean;
-  isIOS: boolean;
-  /** Android + intent:// 脱出が期待できる組み合わせか */
-  canAutoEscape: boolean;
-}
-
-function detectApp(ua: string): InAppBrowserApp | null {
-  if (/BytedanceWebview|musical_ly|TikTok/i.test(ua)) return "tiktok";
-  if (/\bLine\//.test(ua)) return "line";
-  if (/Instagram/i.test(ua)) return "instagram";
-  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return "facebook";
-  if (/Twitter for iPhone|Twitter for iPad|TwitterAndroid/i.test(ua)) return "twitter";
+/** アプリ内ブラウザならアプリ名を、通常のブラウザなら null を返す */
+export function detectInAppBrowser(userAgent: string): string | null {
+  for (const { name, pattern } of IN_APP_BROWSERS) {
+    if (pattern.test(userAgent)) return name;
+  }
   return null;
 }
 
-export function detectInAppBrowser(userAgent: string): InAppBrowserInfo | null {
-  const app = detectApp(userAgent);
-  if (!app) return null;
-
-  const isAndroid = /Android/.test(userAgent);
-  const isIOS = /iPhone|iPad|iPod/.test(userAgent);
-
-  return {
-    app,
-    label: APP_LABELS[app],
-    isAndroid,
-    isIOS,
-    canAutoEscape: isAndroid && ANDROID_INTENT_ESCAPABLE.has(app),
-  };
-}
-
-/** 現在のURLをAndroidのChromeで開き直すための intent:// URLを組み立てる */
-export function buildChromeIntentUrl(url: string): string {
-  const parsed = new URL(url);
-  const scheme = parsed.protocol.replace(":", "");
-  const rest = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
-  return `intent://${rest}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+/**
+ * アプリ内ブラウザから標準ブラウザへ飛ばすためのURLを作る。どのアプリでも確実に動く方法はないため、
+ * 失敗した場合に備えて画面側では必ずURLコピーも併用する。
+ * - LINE: 公式の `openExternalBrowser=1` パラメータで既定のブラウザが開く
+ * - Android: intent:// で Chrome を指定して開く
+ * - iOSはJSからの確実な自動脱出手段がないため(TikTok/Xの内部ブラウザも同様)、
+ *   ここでは何もせず、呼び出し側の案内画面(番号手順+URLコピー)に任せる。
+ */
+export function buildExternalBrowserUrl(appName: string, href: string, userAgent: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  if (appName === "LINE") {
+    url.searchParams.set("openExternalBrowser", "1");
+    return url.toString();
+  }
+  if (/Android/i.test(userAgent)) {
+    const rest = url.toString().replace(/^https?:\/\//, "");
+    const scheme = url.protocol.replace(":", "");
+    return `intent://${rest}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+  }
+  return null;
 }
