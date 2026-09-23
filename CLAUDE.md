@@ -29,6 +29,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 
 - date: YYYY-MM-DD HH:MM
 - tags: <カンマ区切りのタグ>
+- route: <Jevの判定 → 整形したAI(例: story → claude)>
 
 ## ① ショート動画・フック用タイトル
 <3案程度の候補タイトル(箇条書き)>
@@ -50,6 +51,14 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Markdownファイルを直接編集して修正してよい。
 - ファイル名の日時は取り込み時刻(UTC)を使う。
 
+## マルチAIルーティング(Jev + Claude + Gemini)
+
+詳細は `docs/ai-routing.md`。メモはまず Jev(TypeSafe)が種類を判定し、
+日常エピソード・AI自動化メモは Claude、生煮えアイデアは Gemini、テスト送信などは
+AIなしで保存する。キー未設定・API失敗・確信度不足のときは必ず Claude に戻す
+(取り込みを止めないため)。単純な分類・判定をClaude/Geminiに投げる処理を新しく書くときは、
+まず `scripts/ai_router.py` の `jev_ask()` で済まないか検討すること。
+
 ## 動画生成エンジンの選定方針
 
 「既存のショート動画自動生成OSSアプリを丸ごと取り込む」のではなく、そうしたOSSアプリの
@@ -69,6 +78,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `CLAUDE.md` — このファイル。プロジェクトの目的とルール。
 - `scripts/process_memo.py` — メモを受け取り、Claude API で分類・整形し、
   Markdownとして保存する。`--commit` を付けるとその場で `git add/commit/push` まで行う。
+- `scripts/ai_router.py` — Jevによる判定と、Claude / Gemini / AIなしへの振り分け。
 - `scripts/generate_short_video.py` — `docs/daily-logs/` のログ(または直接指定した
   ナレーション文)から、TTS音声・字幕焼き込み済みの縦型ショート動画(MP4)を `output/` に
   生成する。`output/` は `.gitignore` 対象(リポジトリを肥大化させないため)。
@@ -102,5 +112,6 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Settings → Secrets and variables → Actions に登録しておく。
 - `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` — X自動投稿用
   (X Developer Portalで「Read and write」権限のアプリを作り、OAuth 1.0aのキーを発行する)。
+- `TYPESAFE_API_KEY` / `GEMINI_API_KEY` — 任意。マルチAIルーティング用。未登録なら従来どおり全部Claude。
 - 動画生成ワークフローは追加のSecret不要(標準の `GITHUB_TOKEN` でReleaseを作成)。
   将来Googleドライブ等に連携する場合は、サービスアカウントJSON等を別途Secretsに追加する。
