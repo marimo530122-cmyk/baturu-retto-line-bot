@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 output/
 logs/
+
+# 受託案件のクライアント資料・成果物(機密のためGit管理しない)
+freelance/projects/

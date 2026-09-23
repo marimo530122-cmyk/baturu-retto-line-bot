@@ -74,6 +74,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   生成する。`output/` は `.gitignore` 対象(リポジトリを肥大化させないため)。
 - `scripts/requirements.txt` — 依存パッケージ(`anthropic`, `edge-tts`)。
 - `package.json` — X自動投稿のAI生成用(`@anthropic-ai/sdk`)。
+- `freelance/` — 受託案件・自動処理ワークフロー(下記参照)。
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。
@@ -95,6 +96,17 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   (ステマ規制=景品表示法への対応。外さないこと)。
 - 文字数はXの数え方(日本語2・URL23)で280以内かを投稿前にチェックする。
 - 手動実行時に `dry_run=1` を指定すると投稿せず文面だけ確認できる。
+
+## 受託案件・自動処理ワークフロー(freelance/)
+
+クラウドワークス等の受託案件(Excel・Word・PowerPoint・PDF・CSV整理・Web収集・クライアント文面)を
+Claude Code が司令塔になって自動で仕上げるための道具箱。案件の相談が来たら
+`.claude/skills/freelance-commander/SKILL.md` の手順に従う。
+
+- 入口は `python3 freelance/fl.py <コマンド>`(project / xlsx / docx / pptx / pdf / scrape / clean / check / write / doctor)。
+- 新しい環境では最初に `bash freelance/setup.sh`(依存導入 + 環境チェック)。
+- 案件データは `freelance/projects/` に置く。**クライアントの資料なので Git にコミットしない**(`.gitignore` 済み)。
+- 納品前は必ず `fl.py check` を通し、ERROR 0 件にしてから `fl.py project package` で zip 化する。
 
 ## 必要なSecrets
 

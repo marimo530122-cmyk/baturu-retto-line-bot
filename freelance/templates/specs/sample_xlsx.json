@@ -1,0 +1,28 @@
+{
+  "sheets": [
+    {
+      "name": "売上管理",
+      "title": "2026年9月 売上管理表",
+      "columns": [
+        {"header": "日付", "key": "date", "format": "yyyy/mm/dd", "width": 12},
+        {"header": "商品名", "key": "item", "width": 20},
+        {"header": "区分", "key": "type", "choices": ["店頭", "通販", "卸"]},
+        {"header": "数量", "key": "qty", "format": "#,##0"},
+        {"header": "単価", "key": "price", "format": "#,##0"},
+        {"header": "小計", "key": "subtotal", "formula": "={col:qty}{row}*{col:price}{row}", "format": "#,##0"},
+        {"header": "税込", "key": "total", "formula": "=ROUND({col:subtotal}{row}*1.08,0)", "format": "#,##0"}
+      ],
+      "rows": [
+        {"date": "2026-09-01", "item": "真鯛(1尾)", "type": "店頭", "qty": 3, "price": 1800},
+        {"date": "2026-09-01", "item": "本マグロ 中トロ", "type": "通販", "qty": 2, "price": 3200},
+        {"date": "2026-09-02", "item": "アジ開き", "type": "卸", "qty": 40, "price": 150}
+      ],
+      "totals": {"qty": "SUM", "subtotal": "SUM", "total": "SUM"},
+      "conditional": [{"column": "total", "operator": "greaterThan", "value": 5000, "color": "C6EFCE"}],
+      "cells": [
+        {"cell": "I3", "value": "通販の売上(税込)", "bold": true},
+        {"cell": "I4", "value": "=SUMIF(C4:C6,\"通販\",G4:G6)", "format": "#,##0"}
+      ]
+    }
+  ]
+}
