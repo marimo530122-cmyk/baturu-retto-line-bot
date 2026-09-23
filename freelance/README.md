@@ -1,79 +1,58 @@
 # クラウドワークス案件自動ハンター
 
-クラウドワークスの公開案件検索ページから、指定キーワードに合う新着案件を集めて
-`freelance/projects/` に一覧ファイル(CSV・HTML)として保存するツール。
+クラウドワークスの公開検索ページ(ログイン不要)を指定キーワードで検索し、
+「AIで9割自動化できて安全な事務系案件」だけを点数付きで一覧にします。
 
 ## 使い方
 
 ```bash
-cd freelance
-pip install -r requirements.txt
-cd ..
-
-python3 freelance/fl.py scrape-cw
+python3 freelance/fl.py scrape-cw                     # config.json のキーワードで新着パトロール
+python3 freelance/fl.py scrape-cw -k Excel -k 清書      # キーワードを指定
+python3 freelance/fl.py scrape-cw --new-only          # 前回までに見た案件を一覧から外す
+python3 freelance/fl.py scrape-cw --min-budget 5000   # 最低報酬を一時的に変える(--min-reward でも可)
+python3 freelance/fl.py scrape-cw --max-pages 2       # キーワードごとに2ページ目まで見る
+python3 freelance/fl.py scrape-cw --dump-html freelance/.debug  # 取得した生HTMLを保存(調査用)
+python3 freelance/fl.py scrape-cw --commit            # 最新版の一覧を git commit / push まで行う
+python3 freelance/fl.py scrape-cw --from-html 保存したページ.html  # ネットに繋がず解析だけ
 ```
 
-これだけで:
-- 既定のキーワード(スプレッドシート / Excel / データ入力 / 資料作成)で検索
-- 報酬3,000円未満、GAS/マクロ/VBA必須などの案件を自動で除外
-- `freelance/projects/cw_latest_projects.csv`(GitHubの画面でそのまま表にして見られる)
-- `freelance/projects/cw_latest_projects.html`(スマホのブラウザでそのまま開ける一覧)
+結果は `freelance/projects/` にできます。
 
-を作る。実行のたびに前回の内容を上書きする(「最新版」を保つ運用)。
+- `cw_日時.csv` — 厳選した案件(スコア順)。Excel でそのまま開けます。列は
+  `新着★ | 点数 | クライアント名 | 案件タイトル | 💡一発検索用コピペワード | 報酬 | 形式 | URL | 判定理由`
+- `cw_日時_excluded.csv` — 除外した案件と、その理由
+- `cw_日時.xlsx` — 上の2つを1ファイルにしたもの(`pip install openpyxl` 済みのときだけ)
+- `cw_latest_projects.csv` / `cw_latest_projects.html` — 厳選案件の「最新版」。毎回上書きします。
+  この2つだけは Git で管理するので、`--commit` を付ければ GitHub の画面やスマホのブラウザで見られます
+- `seen_ids.json` — 一度見た案件のID。次回以降、初めて見る案件に「★」が付きます
 
-### よく使うオプション
+最新版の2ファイル以外(日時付きの一覧・既読ID・デバッグ用HTML)は Git に入りません。
 
-```bash
-# キーワードを指定したいとき(複数指定可、指定すると既定のキーワードは使わない)
-python3 freelance/fl.py scrape-cw --keyword スプレッドシート --keyword Excel
+依存ライブラリは不要です(Python 3.9以上の標準機能だけで動きます。xlsx出力だけ openpyxl を使います)。
 
-# 報酬の下限を変える(円)
-python3 freelance/fl.py scrape-cw --min-reward 5000
+## 💡一発検索用コピペワード
 
-# キーワードごとに2ページ目まで見る
-python3 freelance/fl.py scrape-cw --max-pages 2
+クラウドワークスの検索窓にそのまま貼ると、その案件が出てくるように作ったキーワードです。
+タイトルから【急募】や★などの飾りを外し、特徴的な部分を最大25文字ほど取り出しています
+(スペースは AND 検索になります)。クライアント名は検索対象になっていない可能性が高く、
+混ぜると0件になりうるので入れていません。確実に開きたいときは URL 列を使ってください。
 
-# 生成後にそのままgit commit + pushまで行う(GitHub Actions等の自動実行用)
-python3 freelance/fl.py scrape-cw --commit
-```
+## 判定のしかた(`config.json` で調整)
 
-除外キーワードや既定のキーワード・最低報酬は `freelance/fl.py` 冒頭の
-`DEFAULT_KEYWORDS` / `EXCLUDE_KEYWORDS` / `DEFAULT_MIN_REWARD` で調整できる。
-
-## 動作確認について(重要な注記)
-
-このツールはクラウド版Claude Codeのサンドボックス環境で開発された。開発コンテナの組織egress
-ポリシーが `crowdworks.jp` への接続を許可していないため(403 Forbidden)、実際のクラウドワークス
-のページに対しては一度も検証できていない。
-
-検証済み(ネットワーク不要な部分をユニットテストで確認):
-- 報酬表記(「3,000円〜10,000円」「時給1,200円〜」等)からの金額抽出
-- 除外キーワード判定
-- 合成HTML(下記SELECTORSと同じ構造)からの案件抽出・重複排除
-- CSV/HTML出力
-- CLIの引数パース
-- ネットワーク不通時に例外で落ちず、分かりやすいメッセージで中断すること
-
-未検証(実機・実ネットワークでの確認が必須):
-- `SEARCH_URL`(検索ページのURL・クエリパラメータ名)が実際に正しいか
-- `SELECTORS`(案件カード・タイトル・報酬・カテゴリのCSSセレクタ)が実際のDOM構造と合っているか
-- 検索結果がサーバー側で描画されたHTMLとして返るか(もしJavaScriptで後から描画される
-  形式(SPA)だった場合、素の`requests`では中身が空で取れてしまう。その場合はHTML取得部分を
-  Playwright等のヘッドレスブラウザに差し替える必要がある)
-
-### 初回実行時にやること
-
-1. `python3 freelance/fl.py scrape-cw --dump-html freelance/.debug` を実行する
-   (`.debug/`配下に生HTMLが保存される。gitignore対象なのでコミットされない)
-2. `0件」という警告が出た場合、`freelance/.debug/*.html` を開いて実際の案件一覧の
-   HTML構造を確認する
-3. `freelance/fl.py` 冒頭の `SEARCH_URL` と `SELECTORS` を、確認した実際の構造に合わせて修正する
+| 項目 | 内容 |
+|---|---|
+| `search_keywords` | 検索するキーワード |
+| `target_words` | 対象ワードと点数。タイトルに出ると2倍 |
+| `ng_words` | マクロ/VBA/GAS必須、AI利用禁止、電話・出社ありなどを除外 |
+| `scam_words` | 外部LINE誘導・初期費用・誇大な「稼げる」表現などの要注意案件を除外 |
+| `min_fixed_budget_yen` / `min_hourly_wage_yen` | これ未満の報酬は除外(タスク形式の1件数十円案件もここで落ちます) |
+| `min_score` | この点数未満は一覧に出さない |
+| `request_interval_sec` | 検索リクエストの間隔(秒)。サイトに負荷をかけないため短くしないこと |
 
 ## 注意
 
-- robots.txtを起動時に確認し、許可されていない場合は自動で中断する(安全側のデフォルト)。
-- サーバーへの負荷を抑えるため、リクエストの間隔を意図的に空けている(`REQUEST_INTERVAL_SEC`)。
-- User-Agentに「個人が手動で動かすツールである」ことを正直に記載している(ブラウザを装って
-  検知を回避するような実装はしていない)。
-- クラウドワークスの利用規約は変更されることがあるため、自動アクセスが許可される条件を
-  各自で確認してから使うこと。
+- robots.txt で禁止されている場合や、サイトから拒否(403/429)された場合は自動で止まります。
+  取得は1キーワード1ページ・数秒間隔にしているので、実行は1日数回程度にしてください。
+- 案件を読み取れなかったときは、ページを `freelance/projects/debug/` に保存します。
+  サイトの作りが変わった可能性があるので、そのHTMLを添えて修正を依頼してください。
+- 「AI利用禁止」などは募集文の概要に書かれた範囲でしか判定できません。応募前に必ず本文を読んでください。
