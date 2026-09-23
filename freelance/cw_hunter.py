@@ -37,17 +37,18 @@ SEEN_PATH = PROJECTS_DIR / "seen_ids.json"
 CONFIG_PATH = FREELANCE_DIR / "config.json"
 
 COLUMNS = [
-    ("new", "新着"),
-    ("score", "スコア"),
-    ("title", "タイトル"),
+    ("new", "新着★"),
+    ("score", "点数"),
+    ("client", "クライアント名"),
+    ("title", "案件タイトル"),
+    ("search_phrase", "💡一発検索用コピペワード"),
     ("budget_text", "報酬"),
     ("payment_type", "形式"),
     ("url", "URL"),
-    ("summary", "概要"),
     ("reasons", "判定理由"),
-    ("matched_keyword", "検索キーワード"),
-    ("id", "案件ID"),
 ]
+
+CLIENT_NAME_KEYS = ("display_name", "username", "user_name", "nickname", "name")
 
 
 class FetchBlocked(Exception):
@@ -173,6 +174,39 @@ def _payment_info(entry):
     return {"payment_type": kind, "budget_min": int(min(values)), "budget_max": int(max(values))}
 
 
+def _client_name(entry):
+    """案件データの中の client(発注者)情報から表示名を取り出す。見つからなければ「不明」。"""
+    for d in _walk(entry):
+        client = d.get("client")
+        if isinstance(client, dict):
+            for key in CLIENT_NAME_KEYS:
+                if isinstance(client.get(key), str) and client[key].strip():
+                    return client[key].strip()
+        if isinstance(client, str) and client.strip():
+            return client.strip()
+    return "不明"
+
+
+def make_search_phrase(title, max_len=25, min_len=12):
+    """クラウドワークスの検索窓に貼ればその案件が出てくる、タイトルの特徴的な一部を作る。
+
+    【急募】や★などの飾りを外し、区切り記号で分けた部分を先頭から
+    min_len 文字ほどになるまでスペース区切り(=AND検索)でつなぐ。
+    クライアント名は検索対象になっていない可能性が高く、混ぜると0件になりうるので入れない。
+    """
+    text = re.sub(r"[【\[［].*?[】\]］]", " ", title)
+    text = re.sub(r"[^\w\s\u3000-\u30ff\u4e00-\u9fff\uff10-\uff5a・ー〜~]", " ", text)
+    parts = [p.strip() for p in re.split(r"[\s　/／|｜!！?？、。,，:：]+", text) if p.strip()]
+    if not parts:
+        return title.strip()[:max_len]
+    phrase = parts[0]
+    for part in parts[1:]:
+        if len(phrase) >= min_len or len(phrase) + 1 + len(part) > max_len:
+            break
+        phrase += " " + part
+    return phrase[:max_len]
+
+
 def _job_from_entry(entry):
     offer = entry.get("job_offer") if isinstance(entry.get("job_offer"), dict) else entry
     job_id = offer.get("id")
@@ -185,6 +219,7 @@ def _job_from_entry(entry):
         "title": title.strip(),
         "summary": re.sub(r"\s+", " ", html.unescape(str(summary))).strip(),
         "url": f"{BASE_URL}/public/jobs/{job_id}",
+        "client": _client_name(entry),
     }
     job.update(_payment_info(entry))
     return job
@@ -221,6 +256,7 @@ def parse_search_page(page_html):
             "title": text,
             "summary": "",
             "url": f"{BASE_URL}/public/jobs/{job_id}",
+            "client": "不明",
             "payment_type": "不明",
             "budget_min": None,
             "budget_max": None,
@@ -282,6 +318,7 @@ def evaluate(job, config):
     job["excluded"] = excluded
     job["reasons"] = " / ".join(reasons)
     job["budget_text"] = budget_text(job)
+    job["search_phrase"] = make_search_phrase(job["title"])
     return job
 
 
@@ -341,14 +378,16 @@ def write_xlsx(path, selected, excluded):
             url_cell = ws.cell(row=ws.max_row, column=[k for k, _ in COLUMNS].index("url") + 1)
             url_cell.hyperlink = url_cell.value
             url_cell.font = Font(color="0563C1", underline="single")
-        widths = {"new": 6, "score": 7, "title": 45, "budget_text": 18, "payment_type": 10,
-                  "url": 40, "summary": 70, "reasons": 40, "matched_keyword": 14, "id": 10}
+            phrase_cell = ws.cell(row=ws.max_row, column=[k for k, _ in COLUMNS].index("search_phrase") + 1)
+            phrase_cell.fill = PatternFill("solid", fgColor="FFF2CC")
+        widths = {"new": 7, "score": 6, "client": 18, "title": 45, "search_phrase": 30,
+                  "budget_text": 18, "payment_type": 10, "url": 40, "reasons": 50}
         for i, (key, _) in enumerate(COLUMNS, start=1):
             ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = widths[key]
         for row in ws.iter_rows(min_row=2):
             for cell in row:
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
-        ws.freeze_panes = "C2"
+        ws.freeze_panes = "E2"
         ws.auto_filter.ref = ws.dimensions
     wb.save(path)
     return True
@@ -434,6 +473,7 @@ def run(keywords=None, from_html=None, min_budget=None, only_new=False, log=prin
     log(f"取得 {len(jobs)}件 → 厳選 {len(selected)}件(うち新着 {new_count}件) / 除外 {len(excluded)}件")
     for job in selected[:10]:
         log(f"  {job['new'] or '  '} [{job['score']:>2}] {job['budget_text']:<16} {job['title'][:40]}")
+        log(f"          {job['client']} / 検索: {job['search_phrase']}")
         log(f"          {job['url']}")
     log("")
     log(f"一覧: {csv_path}")
