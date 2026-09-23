@@ -76,7 +76,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `package.json` — X自動投稿のAI生成用(`@anthropic-ai/sdk`)。
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
 - `freelance/` — クラウドワークス案件自動ハンター(`python3 freelance/fl.py scrape-cw`)。
-  詳細は `freelance/README.md`。取得結果の `freelance/projects/` は Git に入れない。
+  詳細は `freelance/README.md`。取得結果の `freelance/projects/` は、最新版(`cw_latest_projects.csv/.html`)以外 Git に入れない。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。

@@ -16,7 +16,7 @@ type MobileTab = "timeline" | "insight";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("meeting");
-  const { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset, submitText } =
+  const { utterances, interimText, isRecording, error, status, supported, start, stop, toggleTodo, reset, submitText } =
     useMeetingSession(mode);
   const [mobileTab, setMobileTab] = useState<MobileTab>("timeline");
   const [showHistory, setShowHistory] = useState(false);
@@ -148,6 +148,7 @@ export default function Home() {
                   ? "タップして停止"
                   : "タップして録音開始"}
             </p>
+            {status && <p className="text-xs text-gray-400">{status}</p>}
           </div>
         </div>
 
@@ -159,7 +160,7 @@ export default function Home() {
             <Keyboard className="h-3.5 w-3.5" />
             {showTextInput ? "キーボード入力を閉じる" : "キーボードで入力"}
           </button>
-  
+
           <DocumentScanInput onExtractedText={handleExtractedText} />
         </div>
 

@@ -1,3 +1,6 @@
-# 取得結果(案件一覧・既読ID・デバッグ用HTML)は各自のPCだけに置く
+# 取得結果(日時付きの一覧・既読ID・デバッグ用HTML)は各自のPCだけに置く。
+# 毎回上書きする「最新版」だけは Git で管理して、GitHub やスマホから見られるようにする
 *
 !.gitignore
+!cw_latest_projects.csv
+!cw_latest_projects.html

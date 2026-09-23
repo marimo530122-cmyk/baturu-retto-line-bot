@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.0",
+    "@ricky0123/vad-web": "^0.0.31",
     "lucide-react": "^0.468.0",
     "markmap-lib": "^0.18.8",
     "markmap-view": "^0.18.8",

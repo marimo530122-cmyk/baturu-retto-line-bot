@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Square, RotateCcw, AlertTriangle, MessagesSquare, LayoutGrid, History, Keyboard, Send } from "lucide-react";
 import { Timeline } from "@/components/Timeline";
 import { InsightPanel } from "@/components/InsightPanel";
 import { HistoryView } from "@/components/HistoryView";
 import { DocumentScanInput } from "@/components/DocumentScanInput";
 import { QrCodeButton } from "@/components/QrCodeButton";
+import { InAppBrowserGuideModal } from "@/components/InAppBrowserGuideModal";
 import { useMeetingSession } from "@/hooks/useMeetingSession";
 import { saveHistoryEntry } from "@/lib/history";
+import { buildChromeIntentUrl, detectInAppBrowser, InAppBrowserInfo } from "@/lib/inAppBrowser";
 import { Mode } from "@/lib/types";
 
 // このアプリは通院カルテ専用。モード切り替えはなく、常にこの1つだけ。
@@ -17,12 +19,39 @@ const MODE: Mode = "karte";
 type MobileTab = "timeline" | "insight";
 
 export default function Home() {
-  const { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset, submitText } =
+  const { utterances, interimText, isRecording, error, status, supported, start, stop, toggleTodo, reset, submitText } =
     useMeetingSession(MODE);
   const [mobileTab, setMobileTab] = useState<MobileTab>("timeline");
   const [showHistory, setShowHistory] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textValue, setTextValue] = useState("");
+  const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(null);
+  const [showInAppGuide, setShowInAppGuide] = useState(false);
+  const escapeAttempted = useRef(false);
+
+  useEffect(() => {
+    const info = detectInAppBrowser(navigator.userAgent);
+    if (!info) return;
+    setInAppBrowser(info);
+
+    if (info.canAutoEscape && !escapeAttempted.current) {
+      escapeAttempted.current = true;
+      window.location.href = buildChromeIntentUrl(window.location.href);
+      // intent:// が効かないアプリだった場合に備え、遷移しなければ案内モーダルを出す
+      const timer = setTimeout(() => setShowInAppGuide(true), 1500);
+      return () => clearTimeout(timer);
+    }
+
+    setShowInAppGuide(true);
+  }, []);
+
+  const handleStart = useCallback(() => {
+    if (inAppBrowser) {
+      setShowInAppGuide(true);
+      return;
+    }
+    start();
+  }, [inAppBrowser, start]);
 
   const saveThenClear = useCallback(() => {
     if (utterances.length > 0) {
@@ -94,7 +123,7 @@ export default function Home() {
         </p>
 
         <button
-          onClick={isRecording ? stop : start}
+          onClick={isRecording ? stop : handleStart}
           disabled={!supported}
           className={`flex h-24 w-24 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 disabled:opacity-40 ${
             isRecording ? "bg-red-600 hover:bg-red-700" : "bg-rose-700 hover:bg-rose-800"
@@ -103,6 +132,7 @@ export default function Home() {
           {isRecording ? <Square className="h-8 w-8 text-white" /> : <Mic className="h-8 w-8 text-white" />}
         </button>
         <p className="text-xs text-gray-400">{isRecording ? "タップして停止" : "タップして録音開始"}</p>
+        {status && <p className="text-xs text-gray-400">{status}</p>}
 
         <button
           onClick={() => setShowTextInput((v) => !v)}
@@ -170,6 +200,14 @@ export default function Home() {
       </main>
 
       {showHistory && <HistoryView mode={MODE} onClose={() => setShowHistory(false)} />}
+
+      {showInAppGuide && inAppBrowser && typeof window !== "undefined" && (
+        <InAppBrowserGuideModal
+          info={inAppBrowser}
+          url={window.location.href}
+          onClose={() => setShowInAppGuide(false)}
+        />
+      )}
     </div>
   );
 }

@@ -9,17 +9,24 @@
 python3 freelance/fl.py scrape-cw                     # config.json のキーワードで新着パトロール
 python3 freelance/fl.py scrape-cw -k Excel -k 清書      # キーワードを指定
 python3 freelance/fl.py scrape-cw --new-only          # 前回までに見た案件を一覧から外す
-python3 freelance/fl.py scrape-cw --min-budget 5000   # 最低報酬を一時的に変える
+python3 freelance/fl.py scrape-cw --min-budget 5000   # 最低報酬を一時的に変える(--min-reward でも可)
+python3 freelance/fl.py scrape-cw --max-pages 2       # キーワードごとに2ページ目まで見る
+python3 freelance/fl.py scrape-cw --dump-html freelance/.debug  # 取得した生HTMLを保存(調査用)
+python3 freelance/fl.py scrape-cw --commit            # 最新版の一覧を git commit / push まで行う
 python3 freelance/fl.py scrape-cw --from-html 保存したページ.html  # ネットに繋がず解析だけ
 ```
 
-結果は `freelance/projects/` にできます(Git には入りません)。
+結果は `freelance/projects/` にできます。
 
 - `cw_日時.csv` — 厳選した案件(スコア順)。Excel でそのまま開けます。列は
   `新着★ | 点数 | クライアント名 | 案件タイトル | 💡一発検索用コピペワード | 報酬 | 形式 | URL | 判定理由`
 - `cw_日時_excluded.csv` — 除外した案件と、その理由
 - `cw_日時.xlsx` — 上の2つを1ファイルにしたもの(`pip install openpyxl` 済みのときだけ)
+- `cw_latest_projects.csv` / `cw_latest_projects.html` — 厳選案件の「最新版」。毎回上書きします。
+  この2つだけは Git で管理するので、`--commit` を付ければ GitHub の画面やスマホのブラウザで見られます
 - `seen_ids.json` — 一度見た案件のID。次回以降、初めて見る案件に「★」が付きます
+
+最新版の2ファイル以外(日時付きの一覧・既読ID・デバッグ用HTML)は Git に入りません。
 
 依存ライブラリは不要です(Python 3.9以上の標準機能だけで動きます。xlsx出力だけ openpyxl を使います)。
 

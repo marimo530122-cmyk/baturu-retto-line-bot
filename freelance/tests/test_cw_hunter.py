@@ -129,6 +129,41 @@ class OutputTest(unittest.TestCase):
         self.assertEqual(first["💡一発検索用コピペワード"], "Excelの売上データ整理と集計表作成")
 
 
+class HtmlOutputTest(unittest.TestCase):
+    def test_html_list_escapes_and_contains_phrase(self):
+        import tempfile
+        config = cw_hunter.load_config()
+        jobs = [cw_hunter.evaluate(j, config) for j in cw_hunter.parse_search_page(JSON_PAGE)]
+        jobs[0]["title"] = "<script>x</script>" + jobs[0]["title"]
+        for j in jobs:
+            j["new"] = "★"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "out.html"
+            cw_hunter.write_html(path, jobs, "2026-09-24 10:00")
+            page = path.read_text(encoding="utf-8")
+        self.assertIn("山田商店", page)
+        self.assertIn("💡 Excelの売上データ整理と集計表作成", page)
+        self.assertNotIn("<script>x", page)
+
+
+class CliTest(unittest.TestCase):
+    def test_options_are_passed_to_run(self):
+        import fl
+        captured = {}
+        original = cw_hunter.run
+        cw_hunter.run = lambda **kw: captured.update(kw)
+        try:
+            fl.main(["scrape-cw", "-k", "Excel", "--min-reward", "5000", "--max-pages", "2",
+                     "--dump-html", "d", "--commit"])
+        finally:
+            cw_hunter.run = original
+        self.assertEqual(captured["keywords"], ["Excel"])
+        self.assertEqual(captured["min_budget"], 5000)
+        self.assertEqual(captured["max_pages"], 2)
+        self.assertEqual(captured["dump_html_dir"], "d")
+        self.assertTrue(captured["commit"])
+
+
 class RobotsTest(unittest.TestCase):
     def test_disallowed_url_is_not_fetched(self):
         import urllib.robotparser

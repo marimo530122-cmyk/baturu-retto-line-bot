@@ -19,6 +19,7 @@ import datetime as dt
 import html
 import json
 import re
+import subprocess
 import time
 import urllib.error
 import urllib.parse
@@ -34,6 +35,9 @@ USER_AGENT = "Mozilla/5.0 (compatible; cw-hunter/1.0; personal job patrol)"
 FREELANCE_DIR = Path(__file__).resolve().parent
 PROJECTS_DIR = FREELANCE_DIR / "projects"
 SEEN_PATH = PROJECTS_DIR / "seen_ids.json"
+# 毎回上書きする「最新版」。Git で管理して GitHub の画面やスマホから見られるようにする
+LATEST_CSV_PATH = PROJECTS_DIR / "cw_latest_projects.csv"
+LATEST_HTML_PATH = PROJECTS_DIR / "cw_latest_projects.html"
 CONFIG_PATH = FREELANCE_DIR / "config.json"
 
 COLUMNS = [
@@ -393,10 +397,64 @@ def write_xlsx(path, selected, excluded):
     return True
 
 
+def write_html(path, jobs, stamp):
+    """スマホのブラウザでそのまま見られる一覧ページ。"""
+    cards = []
+    for job in jobs:
+        e = {k: html.escape(str(job.get(k, ""))) for k, _ in COLUMNS}
+        cards.append(f"""  <div class="card">
+    <div class="meta">{e['new']} 点数 {e['score']} ・ {e['budget_text']}({e['payment_type']})</div>
+    <a class="title" href="{e['url']}" target="_blank" rel="noopener">{e['title']}</a>
+    <div class="client">{e['client']}</div>
+    <div class="phrase">💡 {e['search_phrase']}</div>
+    <div class="reasons">{e['reasons']}</div>
+  </div>""")
+    body = "\n".join(cards) if cards else "  <p>該当する案件はありませんでした。</p>"
+    path.write_text(f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>クラウドワークス厳選案件</title>
+<style>
+  body {{ font-family: sans-serif; margin: 0; padding: 16px; background: #f5f6f8; color: #222; }}
+  h1 {{ font-size: 20px; }}
+  .updated {{ color: #666; font-size: 13px; margin-bottom: 12px; }}
+  .card {{ background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }}
+  .meta {{ font-size: 13px; color: #555; }}
+  .title {{ display: block; font-weight: bold; margin: 4px 0; color: #0563c1; }}
+  .client {{ font-size: 13px; }}
+  .phrase {{ background: #fff2cc; padding: 4px 6px; border-radius: 4px; margin-top: 6px; font-size: 14px; user-select: all; }}
+  .reasons {{ font-size: 12px; color: #777; margin-top: 6px; }}
+</style>
+</head>
+<body>
+  <h1>クラウドワークス厳選案件</h1>
+  <div class="updated">最終取得: {html.escape(stamp)}(全{len(jobs)}件)</div>
+{body}
+</body>
+</html>
+""", encoding="utf-8")
+
+
+def commit_and_push(paths, log=print):
+    """最新版の一覧ファイルだけを git add / commit / push する。"""
+    repo_root = FREELANCE_DIR.parent
+    rel = [str(p.relative_to(repo_root)) for p in paths]
+    subprocess.run(["git", "add", *rel], cwd=repo_root, check=True)
+    if subprocess.run(["git", "diff", "--cached", "--quiet", "--", *rel], cwd=repo_root).returncode == 0:
+        log("変更なし(前回と同じ内容なのでコミットしませんでした)")
+        return
+    subprocess.run(["git", "commit", "-m", "Update CrowdWorks project list", "--", *rel],
+                   cwd=repo_root, check=True)
+    subprocess.run(["git", "push"], cwd=repo_root, check=True)
+    log("コミットしてプッシュしました")
+
+
 # ---------------------------------------------------------------- 実行
 
 
-def collect(keywords, config, from_html=None, log=print):
+def collect(keywords, config, from_html=None, dump_html_dir=None, log=print):
     """キーワードごとに検索して案件を集める。from_html を渡すと保存済み HTML を読む。"""
     jobs = {}
 
@@ -421,6 +479,10 @@ def collect(keywords, config, from_html=None, log=print):
             first = False
             url = search_url(keyword, page)
             page_html = fetch(url, robots)
+            if dump_html_dir:
+                dump_path = Path(dump_html_dir) / f"{keyword}_page{page}.html"
+                dump_path.parent.mkdir(parents=True, exist_ok=True)
+                dump_path.write_text(page_html, encoding="utf-8")
             found = parse_search_page(page_html)
             log(f"  「{keyword}」{page}ページ目: {len(found)}件")
             if not found:
@@ -433,15 +495,18 @@ def collect(keywords, config, from_html=None, log=print):
     return list(jobs.values())
 
 
-def run(keywords=None, from_html=None, min_budget=None, only_new=False, log=print):
+def run(keywords=None, from_html=None, min_budget=None, only_new=False,
+        max_pages=None, dump_html_dir=None, commit=False, log=print):
     config = load_config()
     if min_budget is not None:
         config["min_fixed_budget_yen"] = min_budget
+    if max_pages is not None:
+        config["max_pages_per_keyword"] = max_pages
     keywords = keywords or config["search_keywords"]
 
     PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
     log("案件を集めています…")
-    jobs = collect(keywords, config, from_html=from_html, log=log)
+    jobs = collect(keywords, config, from_html=from_html, dump_html_dir=dump_html_dir, log=log)
 
     seen = load_seen()
     for job in jobs:
@@ -464,6 +529,8 @@ def run(keywords=None, from_html=None, min_budget=None, only_new=False, log=prin
     write_csv(excluded_path, excluded)
     xlsx_path = PROJECTS_DIR / f"cw_{stamp}.xlsx"
     wrote_xlsx = write_xlsx(xlsx_path, selected, excluded)
+    write_csv(LATEST_CSV_PATH, selected)
+    write_html(LATEST_HTML_PATH, selected, dt.datetime.now().strftime("%Y-%m-%d %H:%M"))
 
     if not from_html:
         save_seen(seen | {j["id"] for j in jobs})
@@ -480,4 +547,7 @@ def run(keywords=None, from_html=None, min_budget=None, only_new=False, log=prin
     log(f"除外分: {excluded_path}")
     if wrote_xlsx:
         log(f"Excel: {xlsx_path}")
+    log(f"最新版: {LATEST_CSV_PATH} / {LATEST_HTML_PATH}")
+    if commit:
+        commit_and_push([LATEST_CSV_PATH, LATEST_HTML_PATH], log=log)
     return selected, excluded

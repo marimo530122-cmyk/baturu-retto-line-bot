@@ -39,7 +39,19 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
     };
 
     recognition.onerror = (event: any) => {
-      this.errorCallback?.(event.error ?? "unknown speech recognition error");
+      const code = event.error;
+      // "no-speech"(無音が続いただけ)と "aborted"(自動再開に伴う中断)は
+      // onend側で自動的に聞き直すため、正常な動作の一部。エラー表示すると
+      // 「喋っても反応してない」ように見えてしまうので画面には出さない。
+      if (code === "no-speech" || code === "aborted") return;
+
+      const message: Record<string, string> = {
+        "not-allowed": "マイクの使用が許可されていません。ブラウザの設定でマイクへのアクセスを許可してください。",
+        "service-not-allowed": "マイクの使用が許可されていません。ブラウザの設定でマイクへのアクセスを許可してください。",
+        "audio-capture": "マイクが見つかりません。マイクの接続や、他のアプリで使用中でないか確認してください。",
+        network: "通信状態が悪く音声認識が中断されました。電波の良い場所でもう一度お試しください。",
+      };
+      this.errorCallback?.(message[code] ?? "音声認識でエラーが発生しました。もう一度タップしてみてください。");
     };
 
     // 無音等でセッションが切れた場合、録音継続中なら自動再開する
