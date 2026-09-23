@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ClassifiedUtterance, Mode } from "@/lib/types";
 import { WebSpeechRecognizer } from "@/lib/speech/webSpeechRecognizer";
 import { SpeechRecognizer } from "@/lib/speech/types";
@@ -16,6 +16,7 @@ export function useMeetingSession(mode: Mode = "meeting") {
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const utterancesRef = useRef<ClassifiedUtterance[]>([]);
+  const isRecordingRef = useRef(false);
 
   const classifyAndAppend = useCallback(async (text: string) => {
     const recentContext = utterancesRef.current.slice(-CONTEXT_WINDOW).map((u) => u.summary || u.text);
@@ -44,6 +45,19 @@ export function useMeetingSession(mode: Mode = "meeting") {
     }
   }, [mode]);
 
+  // 認識器は一度だけ生成して使い回すため、コールバックは ref 経由で常に最新(=現在のモード)の関数を呼ぶ
+  const classifyRef = useRef(classifyAndAppend);
+  useEffect(() => {
+    classifyRef.current = classifyAndAppend;
+  }, [classifyAndAppend]);
+
+  useEffect(() => {
+    return () => {
+      recognizerRef.current?.dispose?.();
+      recognizerRef.current = null;
+    };
+  }, []);
+
   const submitText = useCallback(
     (text: string) => {
       const trimmed = text.trim();
@@ -53,6 +67,7 @@ export function useMeetingSession(mode: Mode = "meeting") {
   );
 
   const start = useCallback(() => {
+    if (isRecordingRef.current) return;
     if (!recognizerRef.current) {
       const recognizer = new WebSpeechRecognizer("ja-JP");
       if (!recognizer.isSupported()) {
@@ -62,19 +77,28 @@ export function useMeetingSession(mode: Mode = "meeting") {
       }
       recognizer.onFinalResult((text) => {
         setInterimText("");
-        if (text) classifyAndAppend(text);
+        if (text) classifyRef.current(text);
       });
       recognizer.onInterimResult?.((text) => setInterimText(text));
-      recognizer.onError?.((message) => setError(message));
+      recognizer.onError?.((message, fatal) => {
+        setError(message);
+        if (fatal) {
+          isRecordingRef.current = false;
+          setIsRecording(false);
+          setInterimText("");
+        }
+      });
       recognizerRef.current = recognizer;
     }
     setError(null);
     recognizerRef.current.start();
+    isRecordingRef.current = true;
     setIsRecording(true);
-  }, [classifyAndAppend]);
+  }, []);
 
   const stop = useCallback(() => {
     recognizerRef.current?.stop();
+    isRecordingRef.current = false;
     setIsRecording(false);
     setInterimText("");
   }, []);
