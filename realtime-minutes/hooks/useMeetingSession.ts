@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ClassifiedUtterance, Mode } from "@/lib/types";
 import { WebSpeechRecognizer } from "@/lib/speech/webSpeechRecognizer";
+import { WhisperRecognizer } from "@/lib/speech/whisperRecognizer";
 import { SpeechRecognizer } from "@/lib/speech/types";
 
 const CONTEXT_WINDOW = 5;
@@ -12,6 +13,7 @@ export function useMeetingSession(mode: Mode = "meeting") {
   const [interimText, setInterimText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [supported, setSupported] = useState(true);
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
@@ -66,21 +68,37 @@ export function useMeetingSession(mode: Mode = "meeting") {
     [classifyAndAppend]
   );
 
-  const start = useCallback(() => {
-    if (isRecordingRef.current) return;
-    if (!recognizerRef.current) {
-      const recognizer = new WebSpeechRecognizer("ja-JP");
-      if (!recognizer.isSupported()) {
-        setSupported(false);
-        setError("このブラウザは音声認識(Web Speech API)に対応していません。Chromeでの利用を推奨します。");
-        return;
-      }
+  // WhisperRecognizer(オンデバイスWhisper、日本語対応)を優先的に使う。継続不能な(fatalな)
+  // エラーが出たときは、ブラウザ標準の WebSpeechRecognizer に自動で切り替える。
+  const attachRecognizer = useCallback(
+    (recognizer: SpeechRecognizer) => {
       recognizer.onFinalResult((text) => {
         setInterimText("");
         if (text) classifyRef.current(text);
       });
       recognizer.onInterimResult?.((text) => setInterimText(text));
+      recognizer.onStatus?.((message) => setStatus(message || null));
       recognizer.onError?.((message, fatal) => {
+        if (fatal && recognizer instanceof WhisperRecognizer) {
+          recognizer.dispose?.();
+          setStatus(null);
+
+          const fallback = new WebSpeechRecognizer("ja-JP");
+          if (!fallback.isSupported()) {
+            setSupported(false);
+            setError("音声認識を利用できませんでした。Chromeでの利用を推奨します。");
+            isRecordingRef.current = false;
+            setIsRecording(false);
+            setInterimText("");
+            return;
+          }
+          attachRecognizer(fallback);
+          recognizerRef.current = fallback;
+          fallback.start();
+          isRecordingRef.current = true;
+          setError("オンデバイス音声認識が使えなくなったため、ブラウザ標準の音声認識に切り替えました。");
+          return;
+        }
         setError(message);
         if (fatal) {
           isRecordingRef.current = false;
@@ -88,19 +106,35 @@ export function useMeetingSession(mode: Mode = "meeting") {
           setInterimText("");
         }
       });
-      recognizerRef.current = recognizer;
+    },
+    []
+  );
+
+  const start = useCallback(() => {
+    if (isRecordingRef.current) return;
+    if (!recognizerRef.current) {
+      const whisper = new WhisperRecognizer();
+      const initial: SpeechRecognizer = whisper.isSupported() ? whisper : new WebSpeechRecognizer("ja-JP");
+      if (!initial.isSupported()) {
+        setSupported(false);
+        setError("このブラウザは音声認識に対応していません。Chromeでの利用を推奨します。");
+        return;
+      }
+      attachRecognizer(initial);
+      recognizerRef.current = initial;
     }
     setError(null);
     recognizerRef.current.start();
     isRecordingRef.current = true;
     setIsRecording(true);
-  }, []);
+  }, [attachRecognizer]);
 
   const stop = useCallback(() => {
     recognizerRef.current?.stop();
     isRecordingRef.current = false;
     setIsRecording(false);
     setInterimText("");
+    setStatus(null);
   }, []);
 
   const toggleTodo = useCallback((id: string) => {
@@ -115,5 +149,17 @@ export function useMeetingSession(mode: Mode = "meeting") {
     setError(null);
   }, []);
 
-  return { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset, submitText };
+  return {
+    utterances,
+    interimText,
+    isRecording,
+    error,
+    status,
+    supported,
+    start,
+    stop,
+    toggleTodo,
+    reset,
+    submitText,
+  };
 }
