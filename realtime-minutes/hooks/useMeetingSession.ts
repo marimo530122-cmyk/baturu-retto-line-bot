@@ -80,7 +80,14 @@ export function useMeetingSession(mode: Mode = "meeting") {
         if (text) classifyRef.current(text);
       });
       recognizer.onInterimResult?.((text) => setInterimText(text));
-      recognizer.onError?.((message) => setError(message));
+      recognizer.onError?.((message, fatal) => {
+        setError(message);
+        if (fatal) {
+          isRecordingRef.current = false;
+          setIsRecording(false);
+          setInterimText("");
+        }
+      });
       recognizerRef.current = recognizer;
     }
     setError(null);

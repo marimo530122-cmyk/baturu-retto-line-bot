@@ -2,6 +2,18 @@ import { SpeechRecognizer } from "./types";
 
 const DUPLICATE_WINDOW_MS = 3000;
 
+/** 自動再開しても直らないエラー(再開し続けるとエラーが延々と出るので止める) */
+const FATAL_ERRORS = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
+
+const ERROR_MESSAGES: Record<string, string> = {
+  "not-allowed":
+    "マイクの使用が許可されていません。アプリ内ブラウザ(TikTok・LINE等)の場合はChromeやSafariで開き直し、それ以外はブラウザの設定でマイクを許可してください。",
+  "service-not-allowed": "このブラウザでは音声認識が使えません。ChromeやSafariで開き直してください。",
+  "audio-capture": "マイクが見つかりません。マイクの接続や他のアプリでの使用状況を確認してください。",
+  network: "音声認識サーバーに接続できません。通信状況を確認してください。",
+  "language-not-supported": "このブラウザは日本語の音声認識に対応していません。",
+};
+
 /**
  * ブラウザ標準 Web Speech API を使った実装。
  * 将来 whisper.cpp(WASM) 等に差し替える場合は、この SpeechRecognizer
@@ -11,7 +23,7 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
   private recognition: any = null;
   private finalCallback: ((text: string) => void) | null = null;
   private interimCallback: ((text: string) => void) | null = null;
-  private errorCallback: ((message: string) => void) | null = null;
+  private errorCallback: ((message: string, fatal: boolean) => void) | null = null;
 
   constructor(lang: string = "ja-JP") {
     if (typeof window === "undefined") return;
@@ -52,7 +64,12 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
     };
 
     recognition.onerror = (event: any) => {
-      this.errorCallback?.(event.error ?? "unknown speech recognition error");
+      const code: string = event.error ?? "unknown";
+      // 無音(no-speech)や停止操作による中断(aborted)はエラー表示しない。自動再開に任せる
+      if (code === "no-speech" || code === "aborted") return;
+      const fatal = FATAL_ERRORS.has(code);
+      if (fatal) this.shouldRestart = false;
+      this.errorCallback?.(ERROR_MESSAGES[code] ?? `音声認識でエラーが発生しました(${code})`, fatal);
     };
 
     // 無音等でセッションが切れた場合、録音継続中なら自動再開する
@@ -129,7 +146,7 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
     this.interimCallback = callback;
   }
 
-  onError(callback: (message: string) => void): void {
+  onError(callback: (message: string, fatal: boolean) => void): void {
     this.errorCallback = callback;
   }
 }

@@ -22,3 +22,32 @@ export function detectInAppBrowser(userAgent: string): string | null {
   }
   return null;
 }
+
+/**
+ * アプリ内ブラウザから標準ブラウザへ飛ばすためのURLを作る。どのアプリでも確実に動く方法はないため、
+ * 失敗した場合に備えて画面側では必ずURLコピーも併用する。
+ * - LINE: 公式の `openExternalBrowser=1` パラメータで既定のブラウザが開く
+ * - Android: intent:// で Chrome を指定して開く
+ * - iOS: `x-safari-https://`(iOS 17以降)で Safari を開く
+ */
+export function buildExternalBrowserUrl(appName: string, href: string, userAgent: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  if (appName === "LINE") {
+    url.searchParams.set("openExternalBrowser", "1");
+    return url.toString();
+  }
+  if (/Android/i.test(userAgent)) {
+    const rest = url.toString().replace(/^https?:\/\//, "");
+    const scheme = url.protocol.replace(":", "");
+    return `intent://${rest}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+  }
+  if (/iPhone|iPad|iPod/i.test(userAgent)) {
+    return url.toString().replace(/^https?:\/\//, (m) => (m === "https://" ? "x-safari-https://" : "x-safari-http://"));
+  }
+  return null;
+}
