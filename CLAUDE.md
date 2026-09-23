@@ -79,6 +79,7 @@ AIなしで保存する。キー未設定・API失敗・確信度不足のとき
 - `scripts/process_memo.py` — メモを受け取り、Claude API で分類・整形し、
   Markdownとして保存する。`--commit` を付けるとその場で `git add/commit/push` まで行う。
 - `scripts/ai_router.py` — Jevによる判定と、Claude / Gemini / AIなしへの振り分け。
+- `scripts/jev_local_router.py` — ターミナルから Jev に1問だけ判定させるツール(noul / choice / score / route)。
 - `scripts/generate_short_video.py` — `docs/daily-logs/` のログ(または直接指定した
   ナレーション文)から、TTS音声・字幕焼き込み済みの縦型ショート動画(MP4)を `output/` に
   生成する。`output/` は `.gitignore` 対象(リポジトリを肥大化させないため)。

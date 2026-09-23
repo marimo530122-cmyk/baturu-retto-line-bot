@@ -121,6 +121,28 @@ Claude が書いた本文を、投稿前に Jev へ `noul` 3問まとめて1回�
 Jev の判定精度は実環境で未検証。RSS 取得・解析・Jev のどれかが失敗しても、トレンドなしの
 普段の投稿に戻る。
 
+## ターミナルから使う (`scripts/jev_local_router.py`)
+
+「これは Claude に聞くほどでもない」軽い判定を、ターミナルから Jev だけで済ませるためのツール。
+結果は1行のJSONで返る。
+
+```
+export TYPESAFE_API_KEY=...   # 未設定なら常に {"engine": "claude", "fallback": true}
+
+python scripts/jev_local_router.py noul "飲酒を強要しているか" "イッキ!イッキ!"
+python scripts/jev_local_router.py choice "メモの種類は?" "仕入れ値がまた上がった" --options 愚痴 アイデア 報告
+python scripts/jev_local_router.py score "急ぎ度は?" "明日の朝までに発注" --levels 急がない 今週中 今日中
+python scripts/jev_local_router.py route "このツイートがネガティブか判定して"   # jev で済むか claude か
+cat memo.txt | python scripts/jev_local_router.py noul "愚痴か"                  # 標準入力も可
+```
+
+- キー未設定・通信エラー・確信度不足のときは `"engine": "claude"` を返す(終了コードは 0)。
+  「Jev では判定できなかったので普通に Claude に頼めばいい」という合図。
+- Claude Code の手前に自動で割り込む仕組みではない。Claude Code は指示を必ず自分で読んでから動くので、
+  開発中の Claude のトークンはこのツールでは減らない。減らせるのは「判定だけのために Claude を呼ぶ」回数。
+- Claude Code on the web(スマホ)で使うには、環境設定で `TYPESAFE_API_KEY` を環境変数に入れ、
+  ネットワークポリシーで `api.typesafe.ai` への通信を許可する必要がある(既定では遮断される)。
+
 ## テスト
 
 実際のAPIを呼ばずに振り分けと安全チェックの全パターンを確認する(`.github/workflows/test.yml` で自動実行)。
