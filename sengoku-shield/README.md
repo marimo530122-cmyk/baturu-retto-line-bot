@@ -11,10 +11,28 @@ Twilio の電話番号にかかってきた電話に AI が「のんびりした
 | 自動応答 | 冒頭で「自動応答システムが応対し、通話内容は記録されます」と**事実だけ**を告げてから会話する |
 | AIおとり応答 | Claude(`claude-opus-5`)が1〜2文で返事。個人情報・番号は絶対に言わない。APIキーが無い/失敗/拒否のときは固定の時間稼ぎフレーズ |
 | 詐欺パターン検知 | 正規表現で「還付金」「ATM」「暗証番号」「ギフトカード」「未納・訴訟」「口座凍結」「公的機関を名乗る」「今日中」「口止め」などを検知し、スコア化(高/中/低/なし) |
+| Jevで2段目の判定(任意) | 通話が終わったら、TypeSafe の Jev に会話全体を渡して「詐欺らしさ」を判定。正規表現の結果と合わせて最終判定を出す(下記) |
 | 家族の電話は素通し | `SHIELD_ALLOWLIST` の番号は AI を通さず `SHIELD_FORWARD_TO` に転送 |
 | LINE通知(任意) | 疑い「高」の通話が終わったら持ち主に通知(番号は下4桁以外を伏せる) |
 | SNS下書き | `node sns-draft.js <CallSid>` で注意喚起投稿の**下書きだけ**を作る。自動投稿はしない |
 | 料金の上限 | 1通話あたり最大20往復・10分で自動終了(変更可) |
+
+## Jev(TypeSafe)との組み合わせ方
+
+正規表現は「決まった言い回し」しか拾えないため、Jev で会話の**流れ**を見て補う。
+
+| 正規表現の判定 | Jevの判定 | 最終判定 | ねらい |
+|---|---|---|---|
+| 高 | 何でも | **高** | 典型的な手口は見逃さない |
+| 何でも | 詐欺の可能性大 / 危険度3 | **高** | 言い換え(「お金が戻る手続き」等)を拾う |
+| 中 | 普通の用件 / 危険度0 | **低** | 単語だけの誤検知(本物の宅配業者の「今日中に」等)を減らす |
+| 低・なし | 怪しい / 危険度2 | **中** | 言い回しに出ない怪しさを拾う |
+| (Jev未設定・失敗) | — | 正規表現のまま | Jevが止まってもシールドは止まらない |
+
+- Jev は**通話が終わってから1回だけ**呼ぶ(通話中に呼ぶと応答が遅れて電話が切れるため)。
+- Jev の判定も自動判定であり、相手を詐欺と断定する根拠にはしない。
+- 会話の文字起こしが TypeSafe(外部サービス)に送られる点に注意。
+- API の形式は `realtime-minutes/lib/classify/jevClassifier.ts` と同じ `POST /v1/systemone`。本番で使う前に、実際の Jev で1回試して応答形式を確認すること。
 
 ## あえてやらないこと(と理由)
 
@@ -42,6 +60,8 @@ npm install
 | `ANTHROPIC_API_KEY` | | あれば AI が返事をする。無ければ固定フレーズ |
 | `SHIELD_ALLOWLIST` | | AIを通さず転送する番号(カンマ区切り、`+8190...` 形式) |
 | `SHIELD_FORWARD_TO` | | 転送先の電話番号 |
+| `TYPESAFE_API_KEY` | | あれば通話終了後に Jev で2段目の判定をする |
+| `TYPESAFE_API_BASE_URL` / `JEV_MODEL` | | 既定 `https://api.typesafe.ai` / `jev-1.13.0` |
 | `LINE_CHANNEL_ACCESS_TOKEN` / `SHIELD_LINE_USER_ID` | | 両方あれば疑い「高」を LINE に通知 |
 | `SHIELD_MAX_TURNS` / `SHIELD_MAX_CALL_SEC` | | 1通話の上限(既定 20往復 / 600秒) |
 | `TWILIO_VOICE` | | 読み上げ音声(既定 `Polly.Mizuki`) |
@@ -76,6 +96,7 @@ npm test                    # テスト(APIキー・Twilio不要)
 - `server.js` — Twilio の webhook を受けるサーバー(`/voice/incoming`, `/voice/turn`, `/voice/status`, `/health`)
 - `lib/detector.js` — 詐欺パターン検知(正規表現+重み付けスコア)
 - `lib/decoy.js` — AIおとり応答(Claude API、失敗時は固定フレーズ)
+- `lib/jev.js` — Jev(TypeSafe)による2段目の判定と、正規表現の判定との組み合わせ
 - `lib/twilio.js` — 署名検証・TwiML生成
 - `lib/store.js` — 通話ログの保存
 - `lib/notify.js` — LINE 通知

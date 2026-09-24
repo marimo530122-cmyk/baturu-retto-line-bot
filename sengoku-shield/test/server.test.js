@@ -9,6 +9,7 @@ process.env.SHIELD_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "shield-"));
 process.env.TWILIO_AUTH_TOKEN = "test-token";
 process.env.SHIELD_PUBLIC_URL = "https://example.test";
 delete process.env.ANTHROPIC_API_KEY;
+delete process.env.TYPESAFE_API_KEY;
 delete process.env.SHIELD_SKIP_SIGNATURE;
 
 const { server } = require("../server");
@@ -50,5 +51,6 @@ test("着信→会話→終了で通話ログと判定が残る", async (t) => {
   const call = store.load("CA1");
   assert.strictEqual(call.durationSec, 95);
   assert.strictEqual(call.detection.level, "high");
+  assert.strictEqual(call.verdict.level, "high");
   assert.strictEqual(call.history.filter((h) => h.role === "caller").length, 2);
 });

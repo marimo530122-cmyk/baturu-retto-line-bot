@@ -10,6 +10,7 @@ const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
 const { notifyOwner } = require("./lib/notify");
+const jev = require("./lib/jev");
 const { maskPhone } = require("./lib/mask");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -121,14 +122,16 @@ async function handleStatus(params, res) {
   call.endedAt = new Date().toISOString();
   call.durationSec = Number(params.CallDuration) || null;
   call.detection = score(callerUtterances(call));
-  if (call.detection.level === "high" && !call.notified) {
+  call.jev = await jev.judgeCall(call.history);
+  call.verdict = jev.combine(call.detection, call.jev);
+  if (call.verdict.level === "high" && !call.notified) {
     call.notified = await notifyOwner(call).catch((err) => {
       console.error("[notify]", err.message);
       return false;
     });
   }
   store.save(call);
-  console.log(`[done] ${call.callSid} ${call.durationSec}s ${call.detection.label}`);
+  console.log(`[done] ${call.callSid} ${call.durationSec}s ${call.verdict.label} (${call.verdict.by})`);
 }
 
 const ROUTES = {
@@ -174,7 +177,7 @@ if (require.main === module) {
     process.exit(1);
   }
   server.listen(PORT, () => {
-    console.log(`戦国シールド起動: port ${PORT}(AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"})`);
+    console.log(`戦国シールド起動: port ${PORT}(AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
   });
 }
 
