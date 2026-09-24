@@ -1,0 +1,18 @@
+{
+  "name": "sengoku-shield",
+  "private": true,
+  "description": "戦国シールド: 詐欺電話にAIが応対して時間を稼ぎ、通話内容から詐欺パターンを検知する",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "report": "node report.js",
+    "draft": "node sns-draft.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0"
+  }
+}
