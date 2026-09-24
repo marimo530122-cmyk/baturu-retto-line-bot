@@ -32,5 +32,8 @@ jobs:
       - name: Process memo and commit to docs/daily-logs
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 任意。未登録なら全メモを従来どおりClaudeで処理する(scripts/ai_router.py 参照)
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MEMO_TEXT: ${{ github.event.client_payload.memo || github.event.inputs.memo }}
         run: python scripts/process_memo.py --commit

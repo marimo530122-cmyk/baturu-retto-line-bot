@@ -29,6 +29,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 
 - date: YYYY-MM-DD HH:MM
 - tags: <カンマ区切りのタグ>
+- route: <Jevの判定 → 整形したAI(例: story → claude)>
 
 ## ① ショート動画・フック用タイトル
 <3案程度の候補タイトル(箇条書き)>
@@ -50,6 +51,14 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Markdownファイルを直接編集して修正してよい。
 - ファイル名の日時は取り込み時刻(UTC)を使う。
 
+## マルチAIルーティング(Jev + Claude + Gemini)
+
+詳細は `docs/ai-routing.md`。メモはまず Jev(TypeSafe)が種類を判定し、
+日常エピソード・AI自動化メモは Claude、生煮えアイデアは Gemini、テスト送信などは
+AIなしで保存する。キー未設定・API失敗・確信度不足のときは必ず Claude に戻す
+(取り込みを止めないため)。単純な分類・判定をClaude/Geminiに投げる処理を新しく書くときは、
+まず `scripts/ai_router.py` の `jev_ask()` で済まないか検討すること。
+
 ## 動画生成エンジンの選定方針
 
 「既存のショート動画自動生成OSSアプリを丸ごと取り込む」のではなく、そうしたOSSアプリの
@@ -69,12 +78,15 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `CLAUDE.md` — このファイル。プロジェクトの目的とルール。
 - `scripts/process_memo.py` — メモを受け取り、Claude API で分類・整形し、
   Markdownとして保存する。`--commit` を付けるとその場で `git add/commit/push` まで行う。
+- `scripts/ai_router.py` — Jevによる判定と、Claude / Gemini / AIなしへの振り分け。
+- `scripts/jev_local_router.py` — ターミナルから Jev に1問だけ判定させるツール(noul / choice / score / route)。
 - `scripts/generate_short_video.py` — `docs/daily-logs/` のログ(または直接指定した
   ナレーション文)から、TTS音声・字幕焼き込み済みの縦型ショート動画(MP4)を `output/` に
   生成する。`output/` は `.gitignore` 対象(リポジトリを肥大化させないため)。
 - `scripts/requirements.txt` — 依存パッケージ(`anthropic`, `edge-tts`)。
 - `package.json` — X自動投稿のAI生成用(`@anthropic-ai/sdk`)。
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
+- `tests/` — Jev連携のテスト(APIは呼ばない)。`.github/workflows/test.yml` で自動実行。
 - `freelance/` — クラウドワークス案件自動ハンター(`python3 freelance/fl.py scrape-cw`)。
   詳細は `freelance/README.md`。取得結果の `freelance/projects/` は、最新版(`cw_latest_projects.csv/.html`)以外 Git に入れない。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
@@ -93,6 +105,11 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `ANTHROPIC_API_KEY` があれば、その日のテンプレートの `topic` をもとに Claude(`claude-opus-5`)が
   本文だけを毎日書き直す。URL・ハッシュタグ・【PR】はプログラム側で付け、AIには書かせない。
   AIが失敗・拒否・ルール違反(URLやハッシュタグを含む等)・文字数オーバーのときは固定文面で投稿する。
+- `TYPESAFE_API_KEY` があれば、AIの本文を投稿前に Jev で意味的にチェックする(飲酒の強要・実在の
+  店名や人名・テーマにない事実の捏造)。違反の可能性あり・Jev失敗のときは固定文面で投稿する。
+- リポジトリ変数 `USE_TRENDS=1` のときは `x_trends.js` が Google Trends(日本)を取得し、Jev で
+  「不謹慎」「特定の人物・企業が主役」「飲み会ネタとの相性が低い」ものを除いて1つ選び、本文に
+  軽く織り込ませる。検証結果と設計理由は `docs/ai-routing.md` の「トレンド追従との相性」。
 - 広告・アフィリエイトを含むテンプレートは `"ad": true` にすると先頭に `【PR】` が自動で付く
   (ステマ規制=景品表示法への対応。外さないこと)。
 - 文字数はXの数え方(日本語2・URL23)で280以内かを投稿前にチェックする。
@@ -104,5 +121,6 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Settings → Secrets and variables → Actions に登録しておく。
 - `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` — X自動投稿用
   (X Developer Portalで「Read and write」権限のアプリを作り、OAuth 1.0aのキーを発行する)。
+- `TYPESAFE_API_KEY` / `GEMINI_API_KEY` — 任意。マルチAIルーティング用。未登録なら従来どおり全部Claude。
 - 動画生成ワークフローは追加のSecret不要(標準の `GITHUB_TOKEN` でReleaseを作成)。
   将来Googleドライブ等に連携する場合は、サービスアカウントJSON等を別途Secretsに追加する。
