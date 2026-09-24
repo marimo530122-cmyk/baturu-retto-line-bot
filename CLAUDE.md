@@ -87,6 +87,8 @@ AIなしで保存する。キー未設定・API失敗・確信度不足のとき
 - `package.json` — X自動投稿のAI生成用(`@anthropic-ai/sdk`)。
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
 - `tests/` — Jev連携のテスト(APIは呼ばない)。`.github/workflows/test.yml` で自動実行。
+- `freelance/` — クラウドワークス案件自動ハンター(`python3 freelance/fl.py scrape-cw`)。
+  詳細は `freelance/README.md`。取得結果の `freelance/projects/` は、最新版(`cw_latest_projects.csv/.html`)以外 Git に入れない。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。

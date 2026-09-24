@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ClassifiedUtterance, Mode } from "@/lib/types";
 import { WebSpeechRecognizer } from "@/lib/speech/webSpeechRecognizer";
+import { WhisperRecognizer } from "@/lib/speech/whisperRecognizer";
 import { SpeechRecognizer } from "@/lib/speech/types";
 
 const CONTEXT_WINDOW = 5;
@@ -12,6 +13,7 @@ export function useMeetingSession(mode: Mode = "meeting") {
   const [interimText, setInterimText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [supported, setSupported] = useState(true);
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
@@ -52,31 +54,61 @@ export function useMeetingSession(mode: Mode = "meeting") {
     [classifyAndAppend]
   );
 
-  const start = useCallback(() => {
-    if (!recognizerRef.current) {
-      const recognizer = new WebSpeechRecognizer("ja-JP");
-      if (!recognizer.isSupported()) {
-        setSupported(false);
-        setError("このブラウザは音声認識(Web Speech API)に対応していません。Chromeでの利用を推奨します。");
-        return;
-      }
+  // WhisperRecognizer(オンデバイスWhisper、日本語対応)を優先的に使い、モデルの起動自体に
+  // 失敗した場合だけブラウザ標準の WebSpeechRecognizer に自動で切り替える。
+  const attachRecognizer = useCallback(
+    (recognizer: SpeechRecognizer) => {
       recognizer.onFinalResult((text) => {
         setInterimText("");
         if (text) classifyAndAppend(text);
       });
       recognizer.onInterimResult?.((text) => setInterimText(text));
-      recognizer.onError?.((message) => setError(message));
-      recognizerRef.current = recognizer;
+      recognizer.onStatus?.((message) => setStatus(message || null));
+      recognizer.onError?.((message) => {
+        if (recognizer instanceof WhisperRecognizer && recognizer.hasNeverSucceeded()) {
+          recognizer.stop();
+          setStatus(null);
+
+          const fallback = new WebSpeechRecognizer("ja-JP");
+          if (!fallback.isSupported()) {
+            setSupported(false);
+            setError("音声認識を利用できませんでした。Chromeでの利用を推奨します。");
+            return;
+          }
+          attachRecognizer(fallback);
+          recognizerRef.current = fallback;
+          fallback.start();
+          setError("オンデバイス音声認識の起動に失敗したため、ブラウザ標準の音声認識に切り替えました。");
+          return;
+        }
+        setError(message);
+      });
+    },
+    [classifyAndAppend]
+  );
+
+  const start = useCallback(() => {
+    if (!recognizerRef.current) {
+      const whisper = new WhisperRecognizer();
+      const initial: SpeechRecognizer = whisper.isSupported() ? whisper : new WebSpeechRecognizer("ja-JP");
+      if (!initial.isSupported()) {
+        setSupported(false);
+        setError("このブラウザは音声認識に対応していません。Chromeでの利用を推奨します。");
+        return;
+      }
+      attachRecognizer(initial);
+      recognizerRef.current = initial;
     }
     setError(null);
     recognizerRef.current.start();
     setIsRecording(true);
-  }, [classifyAndAppend]);
+  }, [attachRecognizer]);
 
   const stop = useCallback(() => {
     recognizerRef.current?.stop();
     setIsRecording(false);
     setInterimText("");
+    setStatus(null);
   }, []);
 
   const toggleTodo = useCallback((id: string) => {
@@ -91,5 +123,17 @@ export function useMeetingSession(mode: Mode = "meeting") {
     setError(null);
   }, []);
 
-  return { utterances, interimText, isRecording, error, supported, start, stop, toggleTodo, reset, submitText };
+  return {
+    utterances,
+    interimText,
+    isRecording,
+    error,
+    status,
+    supported,
+    start,
+    stop,
+    toggleTodo,
+    reset,
+    submitText,
+  };
 }
