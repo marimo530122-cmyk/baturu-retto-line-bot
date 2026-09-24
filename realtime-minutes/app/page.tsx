@@ -8,6 +8,7 @@ import { HistoryView } from "@/components/HistoryView";
 import { DocumentScanInput } from "@/components/DocumentScanInput";
 import { QrCodeButton } from "@/components/QrCodeButton";
 import { InAppBrowserBanner, InAppBrowserOverlay, useInAppBrowser } from "@/components/InAppBrowserNotice";
+import { BraveNotice, useBraveDetection } from "@/components/BraveNotice";
 import { useMeetingSession } from "@/hooks/useMeetingSession";
 import { saveHistoryEntry } from "@/lib/history";
 import { MODE_META, Mode } from "@/lib/types";
@@ -26,6 +27,10 @@ export default function Home() {
   const inAppBrowser = useInAppBrowser();
   const [showInAppGuide, setShowInAppGuide] = useState(true);
   const recordingBlocked = !supported || inAppBrowser !== null;
+
+  // Brave はデフォルトで音声認識サーバーをブロックするため、事前に警告する
+  const isBrave = useBraveDetection();
+  const [showBraveNotice, setShowBraveNotice] = useState(true);
 
   const saveThenClear = useCallback(() => {
     if (utterances.length > 0) {
@@ -119,6 +124,9 @@ export default function Home() {
         </div>
 
         {inAppBrowser && <InAppBrowserBanner appName={inAppBrowser} onOpenGuide={() => setShowInAppGuide(true)} />}
+        {!inAppBrowser && isBrave && showBraveNotice && (
+          <BraveNotice onDismiss={() => setShowBraveNotice(false)} />
+        )}
 
         <div className="flex w-full max-w-sm items-center gap-3">
           <button
