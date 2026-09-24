@@ -79,6 +79,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   詳細は `freelance/README.md`。取得結果の `freelance/projects/` は、最新版(`cw_latest_projects.csv/.html`)以外 Git に入れない。
 - `sengoku-shield/` — 戦国シールド(詐欺電話対策ツール)。Twilio着信にAIが応対して時間を稼ぎ、
   正規表現+Jev(TypeSafe、任意)で詐欺パターンを検知する。声紋照合・公的機関の名乗り・SNS自動投稿は意図的に入れていない。
+  検知ルールはAI提案→機械チェック→人間承認で育てる(`evolve.js`、自動反映はしない)。
   詳細は `sengoku-shield/README.md`。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。

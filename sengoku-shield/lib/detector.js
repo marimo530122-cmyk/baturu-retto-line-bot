@@ -5,7 +5,10 @@
 //   判定(オレオレ詐欺検知)は、精度が低く誤判定の実害が大きいので入れない。
 // - 結果はあくまで「疑いの強さ」の目安。相手を詐欺師と断定する用途には使わない。
 
-const PATTERNS = [
+const fs = require("fs");
+const path = require("path");
+
+const BUILTIN_PATTERNS = [
   {
     id: "refund",
     label: "還付金・払い戻し",
@@ -74,6 +77,22 @@ const PATTERNS = [
   },
 ];
 
+// evolve.js で人間が承認した追加パターン(patterns.custom.json)を読み込む
+const CUSTOM_PATTERNS_PATH =
+  process.env.SHIELD_CUSTOM_PATTERNS || path.join(__dirname, "..", "patterns.custom.json");
+
+function loadCustomPatterns() {
+  let raw;
+  try {
+    raw = JSON.parse(fs.readFileSync(CUSTOM_PATTERNS_PATH, "utf-8"));
+  } catch {
+    return [];
+  }
+  return raw.map((p) => ({ ...p, regex: new RegExp(p.source, p.flags || "") }));
+}
+
+const PATTERNS = [...BUILTIN_PATTERNS, ...loadCustomPatterns()];
+
 const LEVELS = [
   { min: 8, level: "high", label: "詐欺の疑い:高" },
   { min: 4, level: "medium", label: "詐欺の疑い:中" },
@@ -105,4 +124,4 @@ function score(utterances) {
   return { score: total, level, label, matches };
 }
 
-module.exports = { PATTERNS, detect, score };
+module.exports = { PATTERNS, BUILTIN_PATTERNS, CUSTOM_PATTERNS_PATH, detect, score };
