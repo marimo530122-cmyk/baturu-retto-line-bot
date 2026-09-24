@@ -48,7 +48,9 @@ function getTranscriber(): Promise<AutomaticSpeechRecognitionPipeline> {
       },
     });
   }
-  return transcriberPromise;
+  // transcriberPromise は上の if ブロックで必ず代入されるが、
+  // TypeScript が null でないと推論できないため非 null アサーションで明示する。
+  return transcriberPromise!;
 }
 
 function post(message: OutgoingMessage) {

@@ -3,14 +3,24 @@ import { SpeechRecognizer } from "./types";
 const DUPLICATE_WINDOW_MS = 3000;
 
 /** 自動再開しても直らないエラー(再開し続けるとエラーが延々と出るので止める) */
-const FATAL_ERRORS = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
+const FATAL_ERRORS = new Set([
+  "not-allowed",
+  "service-not-allowed",
+  "audio-capture",
+  "language-not-supported",
+  // network エラーは Brave のプライバシーブロックや通信断で発生する。
+  // 自動再開するとエラーがループするため、fatal 扱いにして一度止める。
+  // ユーザーが手動でボタンを押し直せば再試行できる。
+  "network",
+]);
 
 const ERROR_MESSAGES: Record<string, string> = {
   "not-allowed":
     "マイクの使用が許可されていません。アプリ内ブラウザ(TikTok・LINE等)の場合はChromeやSafariで開き直し、それ以外はブラウザの設定でマイクを許可してください。",
   "service-not-allowed": "このブラウザでは音声認識が使えません。ChromeやSafariで開き直してください。",
   "audio-capture": "マイクが見つかりません。マイクの接続や他のアプリでの使用状況を確認してください。",
-  network: "音声認識サーバーに接続できません。通信状況を確認してください。",
+  network:
+    "音声認識サーバーに接続できません。Braveブラウザをお使いの場合、プライバシー設定でGoogleのサーバーがブロックされている可能性があります。ChromeかSafariでお試しいただくか、通信状況を確認してください。",
   "language-not-supported": "このブラウザは日本語の音声認識に対応していません。",
 };
 
