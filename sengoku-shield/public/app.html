@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a44">
+<title>戦国シールド 見守り</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --fg: #1d1d1f; --muted: #5f6368; --card: #ffffff; --line: #d9d7d0;
+    --safe: #1e7b4f; --safe-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fff2cc;
+    --danger: #b3261e; --danger-bg: #fde3e1; --accent: #1f2a44; --accent-fg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141518; --fg: #ececec; --muted: #a0a4ab; --card: #1f2126; --line: #34373e;
+      --safe: #7fd4a6; --safe-bg: #17301f; --warn: #ffd166; --warn-bg: #3a2f10;
+      --danger: #ff8a80; --danger-bg: #3d1614; --accent: #c9d4f2; --accent-fg: #141518;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141518; --fg: #ececec; --muted: #a0a4ab; --card: #1f2126; --line: #34373e;
+    --safe: #7fd4a6; --safe-bg: #17301f; --warn: #ffd166; --warn-bg: #3a2f10;
+    --danger: #ff8a80; --danger-bg: #3d1614; --accent: #c9d4f2; --accent-fg: #141518;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 18px/1.6 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 48px; }
+  h1 { font-size: 22px; margin: 4px 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 12px 0; }
+  .status { border-radius: 14px; padding: 18px 16px; margin: 12px 0; font-size: 22px; font-weight: 700; text-align: center; }
+  .status small { display: block; font-size: 16px; font-weight: 400; margin-top: 6px; }
+  .SAFE { background: var(--safe-bg); color: var(--safe); }
+  .MEDIUM { background: var(--warn-bg); color: var(--warn); }
+  .HIGH { background: var(--danger-bg); color: var(--danger); }
+  .IDLE { background: var(--card); color: var(--muted); border: 1px dashed var(--line); }
+  .AI { background: var(--accent); color: var(--accent-fg); }
+  button {
+    font: inherit; border: 0; border-radius: 12px; padding: 16px; width: 100%;
+    margin: 6px 0; cursor: pointer; font-weight: 700;
+  }
+  .primary { background: var(--accent); color: var(--accent-fg); }
+  .secondary { background: transparent; color: var(--fg); border: 2px solid var(--line); }
+  .handoff { background: var(--danger); color: #fff; font-size: 24px; padding: 22px; }
+  .hidden { display: none !important; }
+  input[type="text"], input[type="password"] {
+    font: inherit; width: 100%; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  label { display: block; font-size: 15px; color: var(--muted); margin-bottom: 4px; }
+  #log { list-style: none; padding: 0; margin: 0; max-height: 40vh; overflow-y: auto; }
+  #log li { padding: 8px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  #log .who { font-size: 13px; color: var(--muted); display: block; }
+  .note { font-size: 15px; color: var(--muted); }
+  .note:empty { display: none; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+</style>
+</head>
+<body>
+<main>
+  <h1>戦国シールド 見守り</h1>
+
+  <div id="status" class="status IDLE">停止中<small>「聞き取りを始める」を押してください</small></div>
+
+  <button id="handoffBtn" class="handoff hidden" type="button">AIに応対を代わる</button>
+  <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
+
+  <div class="card">
+    <button id="startBtn" class="primary" type="button">聞き取りを始める</button>
+    <button id="stopBtn" class="secondary hidden" type="button">止める</button>
+    <p class="note" id="support"></p>
+  </div>
+
+  <div class="card">
+    <strong>会話</strong>
+    <ul id="log"></ul>
+  </div>
+
+  <div class="card">
+    <label for="testText">文字で試す(マイクなしで判定だけ確認)</label>
+    <div class="row">
+      <input id="testText" type="text" placeholder="例: 還付金があるのでATMに行ってください">
+    </div>
+    <button id="testBtn" class="secondary" type="button">判定する</button>
+  </div>
+
+  <div class="card">
+    <label for="token">合言葉(サーバーの SHIELD_APP_TOKEN)</label>
+    <input id="token" type="password" autocomplete="off">
+    <p class="note">
+      使い方: 家の電話をスピーカーにして、この端末をそばに置きます。相手の声を文字にして判定し、
+      怪しいときは警告と「AIに応対を代わる」ボタンを出します。電話を切る・代わるかどうかは、いつもあなたが決めます。<br>
+      ※ 音声の文字起こしにはブラウザの音声認識(Chromeでは Google のサーバー)を使います。判定のため会話の文字が戦国シールドのサーバーに送られます。
+    </p>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const storage = {
+    get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null;
+  let listening = false;
+  let speaking = false;
+  let mode = "watch"; // watch: 自分が応対・裏で判定 / ai: AIが応対
+  let lastRisk = "SAFE";
+  const recent = [];   // 判定用の直近の相手の発話
+  const history = [];  // AI応対中の会話
+
+  $("token").value = storage.get("shieldToken");
+  $("token").addEventListener("change", () => storage.set("shieldToken", $("token").value.trim()));
+
+  if (!Recognition) {
+    $("support").textContent = "このブラウザは音声認識に対応していません。Android の Chrome か、iPhone の Safari を使ってください(「文字で試す」は使えます)。";
+    $("startBtn").disabled = true;
+  }
+
+  function addLog(who, text) {
+    const li = document.createElement("li");
+    const w = document.createElement("span");
+    w.className = "who";
+    w.textContent = who;
+    li.append(w, document.createTextNode(text));
+    $("log").prepend(li);
+  }
+
+  function setStatus(cls, title, sub) {
+    const el = $("status");
+    el.className = `status ${cls}`;
+    el.textContent = title;
+    const small = document.createElement("small");
+    small.textContent = sub || "";
+    el.append(small);
+  }
+
+  async function api(path, body) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${$("token").value.trim()}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `エラー ${res.status}`);
+    return data;
+  }
+
+  // 危険度が上がったときだけ、音と振動で知らせる
+  function alarm(level) {
+    try { navigator.vibrate && navigator.vibrate(level === "HIGH" ? [400, 150, 400, 150, 400] : [250]); } catch {}
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = level === "HIGH" ? 880 : 660;
+      gain.gain.value = 0.15;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + (level === "HIGH" ? 0.8 : 0.3));
+    } catch {}
+  }
+
+  const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
+
+  async function judge(text) {
+    recent.push(text);
+    if (recent.length > 10) recent.shift();
+    const r = await api("/api/judge", { utterance: text, recent: recent.slice(0, -1) });
+    // 一度上がった警告は、通話の途中で勝手に下げない(相手が話題を変えても安心させない)
+    const level = RANK[r.risk_level] >= RANK[lastRisk] ? r.risk_level : lastRisk;
+    if (RANK[level] > RANK[lastRisk]) alarm(level);
+    lastRisk = level;
+    if (mode === "ai") return;
+    if (level === "HIGH") {
+      setStatus("HIGH", "【警告】詐欺の可能性が高い電話です", `${r.reason_short}。お金・カード・暗証番号の話には応じないでください。`);
+      $("handoffBtn").classList.remove("hidden");
+    } else if (level === "MEDIUM") {
+      setStatus("MEDIUM", "注意: 怪しい点があります", `${r.reason_short}。いったん切って家族に相談しても大丈夫です。`);
+      $("handoffBtn").classList.remove("hidden");
+    } else {
+      setStatus("SAFE", "聞き取り中", "今のところ怪しい言い回しはありません");
+    }
+  }
+
+  function speak(text) {
+    return new Promise((resolve) => {
+      if (!window.speechSynthesis) return resolve();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 0.95;
+      // 端末によっては読み上げ終わりの合図が来ないので、長さから見積もった時間で打ち切る
+      const guard = setTimeout(resolve, 3000 + text.length * 250);
+      u.onend = u.onerror = () => { clearTimeout(guard); resolve(); };
+      speechSynthesis.speak(u);
+    });
+  }
+
+  async function aiReply(text) {
+    history.push({ role: "caller", text });
+    const r = await api("/api/decoy", { history });
+    history.push({ role: "shield", text: r.text });
+    addLog("AI", r.text);
+    // 自分の読み上げを自分で聞き取らないよう、話している間は聞き取りを止める
+    speaking = true;
+    try { recognizer && recognizer.stop(); } catch {}
+    await speak(r.text);
+    speaking = false;
+    if (listening) startRecognizer();
+  }
+
+  async function onUtterance(text) {
+    addLog("相手", text);
+    try {
+      await judge(text);
+      if (mode === "ai") await aiReply(text);
+    } catch (err) {
+      setStatus("IDLE", "判定できませんでした", err.message);
+    }
+  }
+
+  function startRecognizer() {
+    recognizer = new Recognition();
+    recognizer.lang = "ja-JP";
+    recognizer.continuous = true;
+    recognizer.interimResults = false;
+    recognizer.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          const t = e.results[i][0].transcript.trim();
+          if (t) onUtterance(t);
+        }
+      }
+    };
+    recognizer.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        listening = false;
+        setStatus("IDLE", "マイクが使えません", "ブラウザの設定でマイクを許可してください");
+        toggleButtons();
+      } else if (e.error === "network") {
+        listening = false;
+        setStatus("IDLE", "音声認識につながりません", "Braveなどでは使えないことがあります。Chrome か Safari をお試しください");
+        toggleButtons();
+      }
+    };
+    // 音声認識は無音が続くと自分で止まるので、聞き取り中なら再開する
+    recognizer.onend = () => { if (listening && !speaking) startRecognizer(); };
+    try { recognizer.start(); } catch {}
+  }
+
+  function toggleButtons() {
+    $("startBtn").classList.toggle("hidden", listening);
+    $("stopBtn").classList.toggle("hidden", !listening);
+  }
+
+  $("startBtn").addEventListener("click", () => {
+    if (!$("token").value.trim()) return setStatus("IDLE", "合言葉を入れてください", "画面下の欄に入力します");
+    storage.set("shieldToken", $("token").value.trim());
+    listening = true;
+    lastRisk = "SAFE";
+    recent.length = 0;
+    setStatus("SAFE", "聞き取り中", "電話をスピーカーにして、この端末をそばに置いてください");
+    toggleButtons();
+    startRecognizer();
+  });
+
+  $("stopBtn").addEventListener("click", () => {
+    listening = false;
+    mode = "watch";
+    try { recognizer && recognizer.stop(); } catch {}
+    try { speechSynthesis.cancel(); } catch {}
+    $("handoffBtn").classList.add("hidden");
+    $("backBtn").classList.add("hidden");
+    setStatus("IDLE", "停止中", "「聞き取りを始める」を押してください");
+    toggleButtons();
+  });
+
+  $("handoffBtn").addEventListener("click", async () => {
+    mode = "ai";
+    history.length = 0;
+    $("handoffBtn").classList.add("hidden");
+    $("backBtn").classList.remove("hidden");
+    setStatus("AI", "AIが応対しています", "端末を電話のそばに置いたままにしてください。あなたは話さなくて大丈夫です");
+    const opening = "はい、代わりました。もう一度、ご用件をゆっくりお願いできますか。";
+    history.push({ role: "shield", text: opening });
+    addLog("AI", opening);
+    speaking = true;
+    try { recognizer && recognizer.stop(); } catch {}
+    await speak(opening);
+    speaking = false;
+    if (listening) startRecognizer();
+  });
+
+  $("backBtn").addEventListener("click", () => {
+    mode = "watch";
+    try { speechSynthesis.cancel(); } catch {}
+    $("backBtn").classList.add("hidden");
+    $("handoffBtn").classList.toggle("hidden", lastRisk === "SAFE");
+    setStatus(lastRisk === "SAFE" ? "SAFE" : lastRisk, "自分の応対に戻しました", "判定は続けています");
+  });
+
+  // 「文字で試す」は、AI応対中なら相手の発話としてAIに返事をさせる(マイクなしで流れを確認できる)
+  $("testBtn").addEventListener("click", () => {
+    const t = $("testText").value.trim();
+    if (!t) return;
+    if (!$("token").value.trim()) return setStatus("IDLE", "合言葉を入れてください", "画面下の欄に入力します");
+    storage.set("shieldToken", $("token").value.trim());
+    onUtterance(t);
+  });
+})();
+</script>
+</body>
+</html>

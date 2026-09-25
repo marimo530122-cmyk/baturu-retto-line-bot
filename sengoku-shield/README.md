@@ -65,6 +65,51 @@ AIに渡すのは相手側の発話だけで、電話番号・長い数字は伏
 | Browser Use(AIがブラウザを操作して業者を調べる) | 不採用。詐欺業者が教えるURLはフィッシング・マルウェアの入口であることが多く、自動で踏みに行くのは危ない。電話ではURLが出てくること自体も少ない |
 | Dify / Flowise(画面でつなぐAIワークフロー) | 不採用。すでにコードで動いているものを、別のサーバー(Difyなど)を立てて作り直すことになり、管理する物が増えるだけ |
 
+## スマホ連動(見守り画面 `/app`)
+
+Twilio の番号を使わず、**いつもの電話(固定電話・携帯)にかかってきた電話**を見守るモード。
+
+1. 電話をスピーカーにして、見守り端末(スマホ・タブレット)をそばに置き、`https://<サーバー>/app` を開いて「聞き取りを始める」。
+2. 相手の声を端末が文字にし、1発言ごとに `/api/judge` で判定する(正規表現で1ミリ秒未満。Jev は任意)。
+3. 怪しいときだけ、音・振動と一緒に警告を出し、**「AIに応対を代わる」ボタン**を出す。普通の電話では何もしない。
+4. ボタンを押すと、AIが端末のスピーカーから相手に返事をして時間を稼ぐ(`/api/decoy`)。「自分の応対に戻す」でいつでも戻せる。
+
+| 危険度 | 画面 | 例 |
+|---|---|---|
+| SAFE | 何もしない(「聞き取り中」のまま) | 宅配・病院・本物の警察からの連絡 |
+| MEDIUM | 黄色の注意+「AIに代わる」ボタン | 警察を名乗る+キャッシュカードの話 |
+| HIGH | 赤の警告・強い振動+「AIに代わる」ボタン | 還付金+ATM+今日中 |
+
+- **電話を切る・AIに代わるのは、いつも本人がボタンで決める。** 自動で切り替えることはしない。
+- 一度上がった警告は、通話の途中で勝手に下げない(相手が話題を変えても安心させないため)。
+- 「警察を名乗った」「家族を名乗った」だけでは詐欺扱いしない。名乗り+お金・カードの話がそろったときだけ「なりすまし」に分類する。
+
+### 判定API(`POST /api/judge`)
+
+アプリから直接使える形。`Authorization: Bearer <SHIELD_APP_TOKEN>` が必要。
+
+```json
+// リクエスト
+{ "utterance": "今日中にATMに行ってください", "recent": ["市役所です。還付金があります"] }
+// レスポンス
+{
+  "risk_score": 1, "trigger_alert": true, "risk_level": "HIGH",
+  "detected_category": "TAX_REFUND", "suggested_action": "TRIGGER_AI_SWITCH_BUTTON",
+  "reason_short": "還付金・払い戻し・ATM操作の誘導・…", "engine": "regex", "latency_ms": 0.3
+}
+```
+
+- `risk_score` は目安の数値(0〜1)で、**確率として較正したものではない**。画面に「詐欺の確率〇%」と出す用途には使わない(`fraud_probability` という名前にしなかった理由)。
+- `JEV_REALTIME=1` にすると発話ごとに Jev にも聞く。`JEV_REALTIME_TIMEOUT_MS`(既定 1500ms)で間に合わなければ正規表現の結果だけで返す。
+- Jev(`/v1/systemone`)は自由文のプロンプトではなく「選択肢(choice)」「段階評価(score)」の質問形式で使う。「JSONだけ返して」という指示文はJevには不要で、このAPIがアプリ向けのJSONに整えて返す。
+
+### できないこと(正直な限界)
+
+- **通話の音声をアプリが直接聞くことはできない。** iPhone・Android ともに、通話中の音声を他のアプリに渡さない仕組みになっている。そのため「スピーカー+そばに置いた端末」で聞き取る方式にしている(通話中の同じスマホではマイクが使えないことが多いので、見守り端末は別の1台が確実)。
+- 音声の文字起こしはブラウザの音声認識を使う(Chrome は Google のサーバーに音声を送る)。Brave など一部ブラウザでは使えない。
+- 端末のスピーカーでAIが話す方式なので、相手にはスピーカー越しの声として聞こえる。
+- 本当の「通話アプリへの組み込み」は、Android の `CallScreeningService`(着信時に番号で振り分け)や、IP電話アプリとして作り直す必要があり、この画面の次の段階。
+
 ## 信頼性のエビデンス(ベンチマーク・監査ログ・CI)
 
 「誤検知しないこと」「誰が何を決めたか」を、後から第三者が確かめられる形で残す仕組み。
@@ -139,6 +184,8 @@ npm install
 | `LINE_CHANNEL_ACCESS_TOKEN` / `SHIELD_LINE_USER_ID` | | 両方あれば疑い「高」を LINE に通知 |
 | `SHIELD_MAX_TURNS` / `SHIELD_MAX_CALL_SEC` | | 1通話の上限(既定 20往復 / 600秒) |
 | `TWILIO_VOICE` | | 読み上げ音声(既定 `Polly.Mizuki`) |
+| `SHIELD_APP_TOKEN` | | スマホ連動(`/app`・`/api/*`)の合言葉。未設定なら `/api/*` は使えない |
+| `JEV_REALTIME` / `JEV_REALTIME_TIMEOUT_MS` | | `1` で発話ごとの判定にも Jev を使う / そのときの待ち時間(既定 1500ms) |
 | `PORT` | | 既定 3000 |
 
 ### Twilio の設定
@@ -169,7 +216,7 @@ npm run audit               # 監査ログの検証
 
 ## 構成
 
-- `server.js` — Twilio の webhook を受けるサーバー(`/voice/incoming`, `/voice/turn`, `/voice/status`, `/health`)
+- `server.js` — Twilio の webhook を受けるサーバー(`/voice/incoming`, `/voice/turn`, `/voice/status`)、スマホ連動(`/app`, `/api/judge`, `/api/decoy`)、`/health`
 - `lib/detector.js` — 詐欺パターン検知(正規表現+重み付けスコア)
 - `lib/decoy.js` — AIおとり応答(Claude API、失敗時は固定フレーズ)
 - `lib/jev.js` — Jev(TypeSafe)による2段目の判定と、正規表現の判定との組み合わせ
@@ -182,6 +229,8 @@ npm run audit               # 監査ログの検証
 - `evolve.js` — 検知ルールの提案・承認
 - `patterns.custom.json` — 人間が承認した追加ルール(最初は空)
 - `benign-samples.json` — 普通の電話の例文集(誤検知チェック用。増やすほど安全。追加するときは `"split": "dev"`)
+- `lib/realtime.js` — スマホ連動用の発話ごとの判定(画面制御用JSON)
+- `public/app.html` — 見守り画面(聞き取り・警告・「AIに応対を代わる」ボタン)
 - `lib/twilio.js` — 署名検証・TwiML生成
 - `lib/store.js` — 通話ログの保存
 - `lib/notify.js` — LINE 通知

@@ -4,7 +4,8 @@
 // 言い換え(「お金が戻ってくる手続き」等)の見逃しと、
 // 単語だけの誤検知(本物の宅配業者が「今日中に」と言った等)をJevで補う。
 //
-// - 呼び出しは通話終了後の1回だけ(通話中に呼ぶとTwilioの15秒タイムアウトに響くため)。
+// - Twilio 経由の通話では、通話終了後の1回だけ呼ぶ(通話中に呼ぶとTwilioの15秒タイムアウトに響くため)。
+// - スマホ連動(lib/realtime.js)では、発話ごとに短いタイムアウトで呼ぶ。
 // - TYPESAFE_API_KEY が無い・失敗したときは null を返し、正規表現の判定だけで動く。
 // - API形式は realtime-minutes/lib/classify/jevClassifier.ts と同じ POST /v1/systemone。
 
@@ -32,7 +33,7 @@ function enabled() {
   return Boolean(process.env.TYPESAFE_API_KEY);
 }
 
-async function judgeCall(history) {
+async function judgeCall(history, { timeoutMs = 15_000 } = {}) {
   if (!enabled()) return null;
   const baseUrl = process.env.TYPESAFE_API_BASE_URL || "https://api.typesafe.ai";
   const model = process.env.JEV_MODEL || "jev-1.13.0";
@@ -54,7 +55,7 @@ async function judgeCall(history) {
           risk: { type: "score", instructions: INSTRUCTIONS, criteria: RISK_LEVELS },
         },
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) throw new Error(`Jev API error: ${res.status} ${(await res.text()).slice(0, 300)}`);
     const answers = (await res.json())?.answers ?? {};

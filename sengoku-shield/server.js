@@ -4,13 +4,17 @@
 //   A call comes in  → POST  <SHIELD_PUBLIC_URL>/voice/incoming
 //   Call status changes → POST <SHIELD_PUBLIC_URL>/voice/status
 
+const crypto = require("crypto");
+const fs = require("fs");
 const http = require("http");
+const path = require("path");
 const { isValidSignature, say, gather, twiml, escapeXml } = require("./lib/twilio");
 const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
 const { notifyOwner } = require("./lib/notify");
 const jev = require("./lib/jev");
+const { judgeUtterance } = require("./lib/realtime");
 const { maskPhone } = require("./lib/mask");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -29,6 +33,10 @@ const FORWARD_TO = process.env.SHIELD_FORWARD_TO;
 const MAX_TURNS = Number(process.env.SHIELD_MAX_TURNS || 20);
 const MAX_CALL_SEC = Number(process.env.SHIELD_MAX_CALL_SEC || 600);
 const MAX_SILENCE = 3;
+
+// スマホ連動(/app と /api/*)用の合言葉。未設定なら /api/* は使えない
+const APP_TOKEN = process.env.SHIELD_APP_TOKEN;
+const APP_HTML_PATH = path.join(__dirname, "public", "app.html");
 
 // 冒頭アナウンス: やっていないことは言わない(虚偽告知にならないよう、事実だけを告げる)
 const GREETING =
@@ -134,6 +142,64 @@ async function handleStatus(params, res) {
   console.log(`[done] ${call.callSid} ${call.durationSec}s ${call.verdict.label} (${call.verdict.by})`);
 }
 
+// ---- スマホ連動用 API ----
+
+function sendJson(res, status, body) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(JSON.stringify(body));
+}
+
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (chunk) => {
+      data += chunk;
+      if (data.length > 50_000) reject(new Error("body too large"));
+    });
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(data || "{}"));
+      } catch {
+        reject(new Error("invalid json"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function isAuthorizedApp(req) {
+  if (!APP_TOKEN) return false;
+  const given = Buffer.from(String(req.headers.authorization || "").replace(/^Bearer\s+/i, ""));
+  const expected = Buffer.from(APP_TOKEN);
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+}
+
+// 発話1つを判定して、画面制御用のJSONを返す
+async function apiJudge(body, res) {
+  if (typeof body.utterance !== "string" || !body.utterance.trim()) {
+    return sendJson(res, 400, { error: "utterance が必要です" });
+  }
+  sendJson(res, 200, await judgeUtterance({ utterance: body.utterance, recent: body.recent }));
+}
+
+// 「AIに代わる」を押した後、相手の発話にAIが返事をする
+async function apiDecoy(body, res) {
+  const history = (Array.isArray(body.history) ? body.history : [])
+    .filter((h) => h && ["caller", "shield"].includes(h.role) && typeof h.text === "string")
+    .slice(-30)
+    .map((h) => ({ role: h.role, text: h.text.slice(0, 500) }));
+  if (!history.length || history[history.length - 1].role !== "caller") {
+    return sendJson(res, 400, { error: "最後は相手(caller)の発話にしてください" });
+  }
+  const turn = history.filter((h) => h.role === "shield").length + 1;
+  sendJson(res, 200, await decoy.reply(history, turn));
+}
+
+const API_ROUTES = {
+  "/api/judge": apiJudge,
+  "/api/decoy": apiDecoy,
+};
+
 const ROUTES = {
   "/voice/incoming": handleIncoming,
   "/voice/turn": handleTurn,
@@ -145,6 +211,20 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && pathname === "/health") {
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end("ok");
+  }
+  if (req.method === "GET" && pathname === "/app") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(fs.readFileSync(APP_HTML_PATH));
+  }
+  if (API_ROUTES[pathname]) {
+    if (req.method !== "POST" || !APP_TOKEN) return sendJson(res, 404, { error: "not found" });
+    if (!isAuthorizedApp(req)) return sendJson(res, 401, { error: "合言葉が違います" });
+    try {
+      return await API_ROUTES[pathname](await readJson(req), res);
+    } catch (err) {
+      console.error("[api]", err.message);
+      return sendJson(res, 400, { error: "リクエストを読めませんでした" });
+    }
   }
   const handler = ROUTES[pathname];
   if (req.method !== "POST" || !handler) {

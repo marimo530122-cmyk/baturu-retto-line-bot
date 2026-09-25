@@ -84,6 +84,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   ハッシュでつないだ監査ログ(`audit/audit-log.jsonl`、追記のみ・手で編集しない)があり、
   `.github/workflows/sengoku-shield-ci.yml` で毎回検証する。
   ベンチマークの holdout 例文に合わせてルールを調整しないこと(数字が実力以上に良く見えるため)。
+  スマホ連動の見守り画面(`/app`)と判定API(`/api/judge`)もある。警告とボタンを出すまでで、
+  電話を切る・AIに代わるのは必ず本人の操作にする(自動切り替えは入れない)。
   詳細は `sengoku-shield/README.md`。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。

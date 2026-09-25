@@ -11,6 +11,7 @@ process.env.SHIELD_PUBLIC_URL = "https://example.test";
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.TYPESAFE_API_KEY;
 delete process.env.SHIELD_SKIP_SIGNATURE;
+process.env.SHIELD_APP_TOKEN = "app-secret";
 
 const { server } = require("../server");
 const store = require("../lib/store");
@@ -53,4 +54,34 @@ test("着信→会話→終了で通話ログと判定が残る", async (t) => {
   assert.strictEqual(call.detection.level, "high");
   assert.strictEqual(call.verdict.level, "high");
   assert.strictEqual(call.history.filter((h) => h.role === "caller").length, 2);
+});
+
+test("スマホ連動: 合言葉が無いと使えず、あれば判定とAI応対が返る", async (t) => {
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = (p, body, token = "app-secret") =>
+    fetch(base + p, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+
+  const page = await fetch(`${base}/app`);
+  assert.strictEqual(page.status, 200);
+  assert.match(await page.text(), /AIに応対を代わる/);
+
+  assert.strictEqual((await call("/api/judge", { utterance: "ATM" }, "wrong")).status, 401);
+  assert.strictEqual((await call("/api/judge", {})).status, 400);
+
+  const judged = await (await call("/api/judge", {
+    utterance: "暗証番号を教えてください",
+    recent: ["警察です。あなたの口座が犯罪に使われています"],
+  })).json();
+  assert.strictEqual(judged.risk_level, "HIGH");
+  assert.strictEqual(judged.suggested_action, "TRIGGER_AI_SWITCH_BUTTON");
+
+  const reply = await (await call("/api/decoy", { history: [{ role: "caller", text: "還付金があります" }] })).json();
+  assert.strictEqual(typeof reply.text, "string");
+  assert.strictEqual((await call("/api/decoy", { history: [] })).status, 400);
 });
