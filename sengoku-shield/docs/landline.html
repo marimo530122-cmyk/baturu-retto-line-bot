@@ -1,0 +1,177 @@
+<title>固定電話の見守り設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@800&display=swap">
+<style>
+  :root {
+    --paper: #f3f5f8; --surface: #ffffff; --ink: #1b2231; --muted: #5b6475; --line: #d5dae3;
+    --accent: #2c3d6b; --accent-ink: #ffffff; --good: #1d6b45; --good-bg: #e2f1e8; --warn: #8a5a00; --warn-bg: #fdf0cf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+      --accent: #b9c6ec; --accent-ink: #12151c; --good: #86d4a9; --good-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+    --accent: #b9c6ec; --accent-ink: #12151c; --good: #86d4a9; --good-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 17px/1.75 "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    padding-inline: 16px; padding-block: 20px 56px;
+  }
+  main { max-width: 680px; margin: 0 auto; display: grid; gap: 22px; }
+  h1 { font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", serif; font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
+  h2 { font-size: 21px; margin: 0; text-wrap: balance; }
+  h3 { font-size: 18px; margin: 0; }
+  p { margin: 0; }
+  .lead { color: var(--muted); }
+  section { display: grid; gap: 10px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; }
+  .flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .flow li { display: grid; grid-template-columns: 2.2em 1fr; gap: 8px; align-items: start; }
+  .flow b { display: inline-grid; place-items: center; width: 1.9em; height: 1.9em; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 15px; }
+  .steps { margin: 0; padding-left: 1.4em; display: grid; gap: 14px; }
+  .steps li::marker { font-weight: 700; }
+  .steps p + p { margin-top: 4px; }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .option { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+  .option.recommend { border: 2px solid var(--accent); }
+  .tag { justify-self: start; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 1px 10px; background: var(--good-bg); color: var(--good); }
+  .option ul { margin: 0; padding-left: 1.2em; }
+  .note { background: var(--warn-bg); color: var(--ink); border-radius: 12px; padding: 12px 14px; }
+  .note strong { color: var(--warn); }
+  code { font: 15px ui-monospace, "SFMono-Regular", Menlo, monospace; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; overflow-wrap: anywhere; }
+  .num { font-weight: 700; user-select: all; }
+  .muted { color: var(--muted); font-size: 15px; }
+</style>
+
+<main>
+  <header style="display:grid;gap:6px">
+    <h1>固定電話の見守り設定</h1>
+    <p class="lead">表示画面のない家の固定電話でも、戦国シールドのAIが「受付係」として先に電話に出られるようにする手順です。ご家族が見ながら設定する前提で書いています。</p>
+  </header>
+
+  <section aria-labelledby="what">
+    <h2 id="what">この設定でできること</h2>
+    <div class="panel">
+      <ol class="flow">
+        <li><b>1</b><span>家の固定電話にかかってきた電話を、NTTの「ボイスワープ」(着信転送)で戦国シールドのAIの番号に回します。</span></li>
+        <li><b>2</b><span>AIが「この電話は、詐欺電話対策のため自動応答システムが応対しており、通話内容は記録されます」と伝えます。これだけで切れる詐欺電話が多くあります。</span></li>
+        <li><b>3</b><span>粘る相手には、AIが話を合わせて時間をかせぎながら、名前・振込先の口座・受け渡しの日時と場所を聞き出します。お金を払う・渡すといった約束はしません。</span></li>
+        <li><b>4</b><span>相手が口座や会う日時・場所を言った瞬間に、登録したご家族のLINEに知らせ、自動音声の電話もかけます。ご家族から110番や銀行に伝えてもらいます。</span></li>
+      </ol>
+      <p class="muted">本人は電話に出ないので、画面を見る必要も、ボタンを押す必要もありません。動くのはご家族です。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="need">
+    <h2 id="need">準備するもの</h2>
+    <div class="panel">
+      <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
+        <li><strong>NTTの固定電話</strong>(加入電話、またはひかり電話)と、オプションの<strong>「ボイスワープ」</strong>の契約。月額は数百円ほどです(最新の料金はNTTで確認してください)。</li>
+        <li><strong>戦国シールドのサーバー</strong>と、AIが電話に出るための<strong>Twilioの電話番号</strong>。日本の番号を取るには、Twilioでの住所確認(本人確認書類)が必要です。</li>
+        <li>知らせてほしい<strong>ご家族のLINE登録</strong>(見守り画面の招待番号をLINEで送る)。自動電話を受けたい人は、電話番号もLINEで送っておきます。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="choose">
+    <h2 id="choose">転送のしかたを選ぶ</h2>
+    <div class="options">
+      <div class="option recommend">
+        <span class="tag">おすすめ</span>
+        <h3>A. すべての電話にAIが先に出る</h3>
+        <p>ボイスワープの「無条件転送」。家の電話は鳴らず、すべての電話にAIが先に出ます。</p>
+        <ul>
+          <li>本人が詐欺電話に出てしまうことがない、いちばん強い守り方です。</li>
+          <li>ご家族や知り合いの番号を登録しておけば、その人からの電話は本人の携帯などに回せます(下の手順5)。</li>
+          <li>家の電話が鳴らなくなるので、本人とご家族でよく話し合ってから使ってください。</li>
+        </ul>
+      </div>
+      <div class="option">
+        <span class="tag" style="background:var(--paper);color:var(--muted)">まずはここから</span>
+        <h3>B. 出られないときだけAIが出る</h3>
+        <p>ボイスワープの「無応答時転送」。家の電話が鳴り、決めた秒数(例: 15秒)出なかったらAIに回ります。</p>
+        <ul>
+          <li>いつもどおり電話が鳴るので、本人が戸惑いにくいです。</li>
+          <li>「知らない電話には出ない」と決めておくと、効果が上がります。</li>
+          <li>本人が出てしまった電話は守れません。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="steps">
+    <h2 id="steps">設定の手順</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <p><strong>ボイスワープを申し込む</strong></p>
+          <p>NTT(局番なしの <span class="num">116</span>)に電話して、「ボイスワープを使いたい」と伝えます。ひかり電話の場合も同じ窓口で申し込めます。</p>
+        </li>
+        <li>
+          <p><strong>Twilioで電話番号を取る</strong></p>
+          <p>Twilioで日本の電話番号を1つ取ります。取った番号の着信先(A call comes in)を <code>https://&lt;サーバー&gt;/voice/incoming</code>、状態の通知先(Call status changes)を <code>https://&lt;サーバー&gt;/voice/status</code> にします。</p>
+        </li>
+        <li>
+          <p><strong>サーバーの設定をする</strong></p>
+          <p><code>TWILIO_AUTH_TOKEN</code>・<code>SHIELD_PUBLIC_URL</code>(電話に出るため)、<code>TWILIO_ACCOUNT_SID</code>・<code>SHIELD_CALLER_ID</code>(ご家族への自動電話のため)、LINEの設定(ご家族への知らせのため)を入れます。<code>SHIELD_VOICE_GENDER</code> を <code>male</code> にすると、AIの声が男性になります(本人の声は真似しません)。</p>
+        </li>
+        <li>
+          <p><strong>家の電話で、転送先をTwilioの番号にする</strong></p>
+          <p>家の固定電話から、ボイスワープの操作用の番号(<span class="num">142</span>)にかけ、音声案内に従って転送先にTwilioの番号を登録し、転送を開始します。A・Bのどちらにするかも、ここで選びます。操作が分からないときは、NTTの説明書か116で確認してください。</p>
+        </li>
+        <li>
+          <p><strong>(Aを選んだとき)ご家族の番号を登録する</strong></p>
+          <p>ご家族や知り合いの番号を <code>SHIELD_ALLOWLIST</code> に、つなぎたい先(本人の携帯など)を <code>SHIELD_FORWARD_TO</code> に入れます。その番号からの電話は、AIを通さずにつながります。</p>
+          <p class="muted">つなぎ先に<strong>家の固定電話そのもの</strong>を入れないでください。転送がぐるぐる回ってしまいます。</p>
+        </li>
+        <li>
+          <p><strong>ご家族をLINEで登録する</strong></p>
+          <p>見守り画面の「家族を登録する」で出る6桁の番号を、ご家族が戦国シールドのLINEに送ります。自動電話を受けたい人は、続けて携帯電話の番号も送ります。</p>
+        </li>
+        <li>
+          <p><strong>試しに電話してみる</strong></p>
+          <p>ご家族の携帯(登録していない番号)から家の電話にかけ、AIが出ること、「還付金があります。口座番号は1234567です」と話すとLINEと自動電話が届くことを確かめます。</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section aria-labelledby="more">
+    <h2 id="more">あわせてやると、もっと守れること</h2>
+    <div class="panel">
+      <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
+        <li><strong>国際電話の着信を止める</strong>: 固定電話への国際電話の着信は、「国際電話不取扱受付センター」に申し込むと無料で止められます。最近の詐欺は国際電話からのものが多くあります。</li>
+        <li><strong>非通知の電話を断る</strong>: NTTの「ナンバー・リクエスト」を使うと、番号を通知しない電話に、番号を通知してかけ直すよう自動で案内します。</li>
+        <li><strong>家にいても留守番電話にしておく</strong>: 警察も勧めている、いちばん簡単で効き目のある方法です。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="care">
+    <h2 id="care">気をつけること</h2>
+    <div class="note">
+      <p><strong>転送した通話の料金は、固定電話の契約者の負担です。</strong> AIが長く時間をかせぐほど、転送の通話料がかかります(1通話の長さは最大10分に設定してあります)。</p>
+      <p style="margin-top:8px">110番や119番に<strong>かける</strong>ことには影響しません。ボイスワープで回るのは、かかってきた電話だけです。</p>
+      <p style="margin-top:8px">AIが自動で110番することはありません。警察への連絡は、知らせを受けたご家族からお願いします。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="trouble">
+    <h2 id="trouble">うまくいかないとき</h2>
+    <div class="panel">
+      <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
+        <li><strong>AIが出ない</strong>: ボイスワープが「開始」になっているか、転送先の番号が合っているか、142で確認します。</li>
+        <li><strong>AIは出るが、すぐ切れる</strong>: サーバーが動いているか、Twilioの着信先のURLが合っているかを確認します。</li>
+        <li><strong>ご家族に知らせが来ない</strong>: 見守り画面の「見守り家族」に名前が出ているか、自動電話なら「電話 末尾〇〇〇〇」と出ているかを確認します。</li>
+      </ul>
+    </div>
+  </section>
+</main>
