@@ -48,6 +48,11 @@
   .hidden { display: none !important; }
   .bridge { border: 2px solid var(--danger); }
   .bridge-label { font-size: 15px; color: var(--muted); }
+  .linkbtn {
+    display: block; text-align: center; text-decoration: none; border-radius: 12px;
+    padding: 16px; margin: 6px 0; font-weight: 700;
+  }
+  .family-note { text-align: center; font-weight: 700; color: var(--safe); margin: 4px 0; }
   .bridge-text { font-size: 24px; font-weight: 700; margin: 6px 0 0; line-height: 1.5; }
   input[type="text"], input[type="password"] {
     font: inherit; width: 100%; padding: 12px; border-radius: 10px;
@@ -75,6 +80,15 @@
   </div>
   <button id="handoffBtn" class="handoff hidden" type="button">AIに応対を代わる</button>
   <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
+  <p id="familyNote" class="family-note hidden">ご家族のLINEに知らせました</p>
+
+  <div id="helpCard" class="card hidden">
+    <strong>電話を切ったあと、相談できます</strong>
+    <a class="linkbtn primary" href="tel:%239110">#9110 警察相談専用電話にかける</a>
+    <a class="linkbtn secondary" href="tel:110">お金を渡す・家に来ると言われた → 110番</a>
+    <button id="memoBtn" class="secondary" type="button">相談用メモをコピー</button>
+    <p class="note" id="memoNote">相談するときに、いつ・どんな電話だったかをそのまま伝えられるメモです。</p>
+  </div>
 
   <div class="card">
     <button id="startBtn" class="primary" type="button">聞き取りを始める</button>
@@ -121,6 +135,19 @@
   let mode = "watch"; // watch: 自分が応対・裏で判定 / ai: AIが応対
   let lastRisk = "SAFE";
   let bridge = "";     // 時間稼ぎの一言(通話中は最初に出たものを使い続ける)
+  let sessionId = "";  // 見守り1回ごとのID(家族への通知を1回にするため)
+  const reasons = new Set(); // この通話で出た手口(相談用メモ用)
+  const callerLines = [];    // この通話の相手の発言(相談用メモ用)
+  let startedAt = null;
+
+  function newSession() {
+    sessionId = (crypto.randomUUID && crypto.randomUUID()) || `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    reasons.clear();
+    callerLines.length = 0;
+    startedAt = new Date();
+    $("familyNote").classList.add("hidden");
+    $("helpCard").classList.add("hidden");
+  }
   const recent = [];   // 判定用の直近の相手の発話
   const history = [];  // AI応対中の会話
 
@@ -181,12 +208,17 @@
   async function judge(text) {
     recent.push(text);
     if (recent.length > 10) recent.shift();
-    const r = await api("/api/judge", { utterance: text, recent: recent.slice(0, -1) });
+    if (!sessionId) newSession();
+    callerLines.push(text);
+    const r = await api("/api/judge", { utterance: text, recent: recent.slice(0, -1), session_id: sessionId });
+    if (r.family_notice === "sent" || r.family_notice === "already") $("familyNote").classList.remove("hidden");
+    if (r.risk_level !== "SAFE" && r.reason_short) reasons.add(r.reason_short);
     // 一度上がった警告は、通話の途中で勝手に下げない(相手が話題を変えても安心させない)
     const level = RANK[r.risk_level] >= RANK[lastRisk] ? r.risk_level : lastRisk;
     if (RANK[level] > RANK[lastRisk]) alarm(level);
     lastRisk = level;
     if (!bridge && r.natural_excuse_ja) bridge = r.natural_excuse_ja;
+    $("helpCard").classList.toggle("hidden", level === "SAFE");
     if (mode === "ai") return;
     showBridge(level !== "SAFE");
     if (level === "HIGH") {
@@ -283,6 +315,7 @@
     bridge = "";
     showBridge(false);
     recent.length = 0;
+    newSession();
     setStatus("SAFE", "聞き取り中", "電話をスピーカーにして、この端末をそばに置いてください");
     toggleButtons();
     startRecognizer();
@@ -290,6 +323,7 @@
 
   $("stopBtn").addEventListener("click", () => {
     listening = false;
+    sessionId = ""; // 次の聞き取りは別の通話として扱う(相談用メモは残す)
     mode = "watch";
     try { recognizer && recognizer.stop(); } catch {}
     try { speechSynthesis.cancel(); } catch {}
@@ -324,6 +358,25 @@
     $("handoffBtn").classList.toggle("hidden", lastRisk === "SAFE");
     showBridge(lastRisk !== "SAFE");
     setStatus(lastRisk === "SAFE" ? "SAFE" : lastRisk, "自分の応対に戻しました", "判定は続けています");
+  });
+
+  // 警察相談(#9110)で伝えやすいよう、この通話の内容をメモにしてコピーする
+  $("memoBtn").addEventListener("click", async () => {
+    const when = (startedAt || new Date()).toLocaleString("ja-JP");
+    const memo = [
+      "【不審な電話の記録(戦国シールド)】",
+      `日時: ${when}ごろ`,
+      `自動判定: ${lastRisk === "HIGH" ? "詐欺の疑い 高" : lastRisk === "MEDIUM" ? "詐欺の疑い 中" : "該当なし"}`,
+      `気になった点: ${[...reasons].join(" / ") || "なし"}`,
+      "相手の発言(聞き取った文字、聞き間違いを含むことがあります):",
+      ...callerLines.map((t) => `・${t}`),
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(memo);
+      $("memoNote").textContent = "コピーしました。メモ帳やLINEに貼り付けて使えます。";
+    } catch {
+      $("memoNote").textContent = memo;
+    }
   });
 
   // 「文字で試す」は、AI応対中なら相手の発話としてAIに返事をさせる(マイクなしで流れを確認できる)

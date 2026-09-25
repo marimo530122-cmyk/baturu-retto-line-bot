@@ -85,3 +85,46 @@ test("スマホ連動: 合言葉が無いと使えず、あれば判定とAI応�
   assert.strictEqual(typeof reply.text, "string");
   assert.strictEqual((await call("/api/decoy", { history: [] })).status, 400);
 });
+
+test("見守り中に「疑い:高」になったら、1通話につき1回だけ家族のLINEに知らせる", async (t) => {
+  process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+  process.env.SHIELD_FAMILY_LINE_IDS = "Ufamily1,Ufamily2";
+  t.after(() => {
+    delete process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    delete process.env.SHIELD_FAMILY_LINE_IDS;
+  });
+  const pushed = [];
+  const orig = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (String(url).startsWith("https://api.line.me/")) {
+      pushed.push(JSON.parse(opts.body));
+      return new Response("{}", { status: 200 });
+    }
+    return orig(url, opts);
+  };
+  t.after(() => (global.fetch = orig));
+
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const judge = async (utterance, session_id) =>
+    (await orig(`${base}/api/judge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer app-secret" },
+      body: JSON.stringify({ utterance, session_id }),
+    })).json();
+
+  const safe = await judge("宅配便です。お届け日時の確認です", "session-aaaa-1");
+  assert.strictEqual(safe.family_notice, "none");
+  const first = await judge("還付金があるので今日中にATMへ行って、電話番号090-1234-5678に", "session-aaaa-1");
+  assert.strictEqual(first.family_notice, "sent");
+  const again = await judge("キャッシュカードと暗証番号を用意して。還付金のATM手続きです", "session-aaaa-1");
+  assert.strictEqual(again.family_notice, "already");
+  await new Promise((r) => setTimeout(r, 50));
+
+  assert.deepStrictEqual(pushed.map((p) => p.to).sort(), ["Ufamily1", "Ufamily2"]);
+  const text = pushed[0].messages[0].text;
+  assert.match(text, /詐欺の疑いが「高」/);
+  assert.match(text, /#9110/);
+  assert.doesNotMatch(text, /1234-5678/); // 番号は伏せる
+});

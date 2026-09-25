@@ -89,6 +89,15 @@ Twilio の番号を使わず、**いつもの電話(固定電話・携帯)にか
 - AIは本人の代わりに話す間、**約束ごと(予約・契約・申し込み・同意・支払い)は一切しない**。名前や続柄を聞かれても特定の誰かを名乗らず、はぐらかす。誤検知で相手が本物の業者や家族だったときに、本人の代わりに勝手な約束をしてしまわないため。
 - 「警察を名乗った」「家族を名乗った」だけでは詐欺扱いしない。名乗り+お金・カードの話がそろったときだけ「なりすまし」に分類する。
 
+### 家族への通知と、警察への相談(エスカレーション)
+
+- **家族のLINEに通知**: 見守り中に「疑い:高」になった瞬間、`SHIELD_FAMILY_LINE_IDS` に登録した家族のLINEへ知らせる(1通話につき1回だけ)。
+  送るのは手口の種類と、番号を伏せた発言の一部だけで、会話の全文は送らない。「電話が終わったころに本人に電話を」「#9110に相談できます」と添える。
+- **警察への相談は本人がボタンで**: 怪しいときは画面に「#9110 警察相談専用電話にかける」「お金を渡す・家に来ると言われた → 110番」のボタンと、
+  **相談用メモのコピー**(日時・気になった点・相手の発言)を出す。相談するときにそのまま伝えられる。
+- **警察へ自動で送る機能は入れていない。** 一般の人が通話内容を警察へ自動送信できる公式の窓口(API)は無く、
+  誤検知のまま自動で通報すると、無関係の相手を通報することになるため。通報・相談は本人(または家族)の判断で行う。
+
 ### 判定API(`POST /api/judge`)
 
 アプリから直接使える形。`Authorization: Bearer <SHIELD_APP_TOKEN>` が必要。
@@ -101,10 +110,12 @@ Twilio の番号を使わず、**いつもの電話(固定電話・携帯)にか
   "risk_score": 1, "trigger_alert": true, "risk_level": "HIGH",
   "detected_category": "TAX_REFUND", "suggested_action": "TRIGGER_STEALTH_AI_SWITCH",
   "natural_excuse_ja": "あ、ちょっと待って、メガネ落としちゃった。",
+  "family_notice": "sent",
   "reason_short": "還付金・払い戻し・ATM操作の誘導・…", "engine": "regex", "latency_ms": 0.3
 }
 ```
 
+- リクエストに `session_id`(見守り1回ごとのID)を付けると、「疑い:高」の最初の1回だけ家族に通知し、`family_notice` が `sent` になる(2回目以降は `already`、通知先が未設定なら `off`)。
 - `risk_score` は目安の数値(0〜1)で、**確率として較正したものではない**。画面に「詐欺の確率〇%」と出す用途には使わない(`fraud_probability` という名前にしなかった理由)。
 - `JEV_REALTIME=1` にすると発話ごとに Jev にも聞く。`JEV_REALTIME_TIMEOUT_MS`(既定 1500ms)で間に合わなければ正規表現の結果だけで返す。
 - Jev(`/v1/systemone`)は自由文のプロンプトではなく「選択肢(choice)」「段階評価(score)」の質問形式で使う。「JSONだけ返して」という指示文はJevには不要で、このAPIがアプリ向けのJSONに整えて返す。
@@ -190,6 +201,7 @@ npm install
 | `LINE_CHANNEL_ACCESS_TOKEN` / `SHIELD_LINE_USER_ID` | | 両方あれば疑い「高」を LINE に通知 |
 | `SHIELD_MAX_TURNS` / `SHIELD_MAX_CALL_SEC` | | 1通話の上限(既定 20往復 / 600秒) |
 | `TWILIO_VOICE` | | 読み上げ音声(既定 `Polly.Mizuki`) |
+| `SHIELD_FAMILY_LINE_IDS` | | 見守り中に「疑い:高」になったとき知らせる家族のLINEユーザーID(カンマ区切り)。`LINE_CHANNEL_ACCESS_TOKEN` も必要 |
 | `SHIELD_APP_TOKEN` | | スマホ連動(`/app`・`/api/*`)の合言葉。未設定なら `/api/*` は使えない |
 | `JEV_REALTIME` / `JEV_REALTIME_TIMEOUT_MS` | | `1` で発話ごとの判定にも Jev を使う / そのときの待ち時間(既定 1500ms) |
 | `PORT` | | 既定 3000 |

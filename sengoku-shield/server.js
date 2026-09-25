@@ -12,7 +12,7 @@ const { isValidSignature, say, gather, twiml, escapeXml } = require("./lib/twili
 const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
-const { notifyOwner } = require("./lib/notify");
+const { notifyOwner, notifyFamily, familyTargets } = require("./lib/notify");
 const jev = require("./lib/jev");
 const { judgeUtterance } = require("./lib/realtime");
 const { maskPhone } = require("./lib/mask");
@@ -174,12 +174,39 @@ function isAuthorizedApp(req) {
   return given.length === expected.length && crypto.timingSafeEqual(given, expected);
 }
 
+// 家族に知らせ済みの見守りセッション(1通話1回まで)。古いものは6時間で忘れる
+const familyNotified = new Map();
+const FAMILY_NOTIFY_TTL_MS = 6 * 60 * 60 * 1000;
+
+function markFamilyNotified(sessionId) {
+  const now = Date.now();
+  for (const [id, at] of familyNotified) if (now - at > FAMILY_NOTIFY_TTL_MS) familyNotified.delete(id);
+  if (familyNotified.has(sessionId)) return false;
+  familyNotified.set(sessionId, now);
+  return true;
+}
+
 // 発話1つを判定して、画面制御用のJSONを返す
+// 「疑い:高」になった最初の1回だけ、家族のLINEに知らせる(判定の応答は待たせない)
 async function apiJudge(body, res) {
   if (typeof body.utterance !== "string" || !body.utterance.trim()) {
     return sendJson(res, 400, { error: "utterance が必要です" });
   }
-  sendJson(res, 200, await judgeUtterance({ utterance: body.utterance, recent: body.recent }));
+  const result = await judgeUtterance({ utterance: body.utterance, recent: body.recent });
+  const sessionId = /^[A-Za-z0-9-]{8,64}$/.test(body.session_id || "") ? body.session_id : null;
+  let family_notice = "off";
+  if (familyTargets().length && sessionId) {
+    family_notice = "none";
+    if (result.risk_level === "HIGH") {
+      if (markFamilyNotified(sessionId)) {
+        family_notice = "sent";
+        notifyFamily(result, body.utterance).catch((err) => console.error("[notify]", err.message));
+      } else {
+        family_notice = "already";
+      }
+    }
+  }
+  sendJson(res, 200, { ...result, family_notice });
 }
 
 // 「AIに代わる」を押した後、相手の発話にAIが返事をする
