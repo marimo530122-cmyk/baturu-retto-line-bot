@@ -39,6 +39,23 @@ function categorize(matchIds) {
   return "NONE";
 }
 
+// 「AIに代わる」前に本人が相手に言う、つなぎの一言
+// - 特定の家族(子ども・孫など)や警察・役所を名乗る言い方はしない。誤検知で本物の家族や
+//   正当な相手だった場合にも角が立たず、AIが「代わりの者」として話し続けても話が食い違わないように。
+// - AIの返事と違って、決まった文から選ぶだけ(待ち時間ゼロ・変なことを言わせない)。
+const BRIDGE_EXCUSES = [
+  "ちょっと電話が遠いみたいなので、代わりの者がお話を伺いますね。",
+  "すみません、今手が離せないので、代わりの者に代わりますね。",
+  "耳が遠くてよく聞き取れないので、代わりの者が聞きますね。",
+  "少々お待ちください。代わりの者がお話を伺います。",
+];
+
+function pickBridgeExcuse(text) {
+  let h = 0;
+  for (const ch of text) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return BRIDGE_EXCUSES[h % BRIDGE_EXCUSES.length];
+}
+
 const LEVEL_TO_RISK = { high: "HIGH", medium: "MEDIUM", low: "SAFE", none: "SAFE" };
 const RISK_TO_ACTION = {
   HIGH: "TRIGGER_AI_SWITCH_BUTTON",
@@ -87,10 +104,11 @@ async function judgeUtterance(input, { useJev = process.env.JEV_REALTIME === "1"
     risk_level,
     detected_category: risk_level === "SAFE" ? "NONE" : categorize(detection.matches.map((m) => m.id)),
     suggested_action: RISK_TO_ACTION[risk_level],
+    bridge_excuse_ja: risk_level === "SAFE" ? "" : pickBridgeExcuse(text),
     reason_short,
     engine: verdict.by,
     latency_ms: Math.round(Number(process.hrtime.bigint() - started) / 1e4) / 100,
   };
 }
 
-module.exports = { judgeUtterance, categorize };
+module.exports = { judgeUtterance, categorize, BRIDGE_EXCUSES };

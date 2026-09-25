@@ -46,6 +46,9 @@
   .secondary { background: transparent; color: var(--fg); border: 2px solid var(--line); }
   .handoff { background: var(--danger); color: #fff; font-size: 24px; padding: 22px; }
   .hidden { display: none !important; }
+  .bridge { border: 2px solid var(--danger); }
+  .bridge-label { font-size: 15px; color: var(--muted); }
+  .bridge-text { font-size: 24px; font-weight: 700; margin: 6px 0 0; line-height: 1.5; }
   input[type="text"], input[type="password"] {
     font: inherit; width: 100%; padding: 12px; border-radius: 10px;
     border: 1px solid var(--line); background: var(--bg); color: var(--fg);
@@ -66,6 +69,10 @@
 
   <div id="status" class="status IDLE">停止中<small>「聞き取りを始める」を押してください</small></div>
 
+  <div id="bridgeCard" class="card bridge hidden">
+    <span class="bridge-label">AIに代わる前に、相手にこう言ってください</span>
+    <p id="bridgeText" class="bridge-text"></p>
+  </div>
   <button id="handoffBtn" class="handoff hidden" type="button">AIに応対を代わる</button>
   <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
 
@@ -113,6 +120,7 @@
   let speaking = false;
   let mode = "watch"; // watch: 自分が応対・裏で判定 / ai: AIが応対
   let lastRisk = "SAFE";
+  let bridge = "";     // つなぎの一言(通話中は最初に出たものを使い続ける)
   const recent = [];   // 判定用の直近の相手の発話
   const history = [];  // AI応対中の会話
 
@@ -178,7 +186,9 @@
     const level = RANK[r.risk_level] >= RANK[lastRisk] ? r.risk_level : lastRisk;
     if (RANK[level] > RANK[lastRisk]) alarm(level);
     lastRisk = level;
+    if (!bridge && r.bridge_excuse_ja) bridge = r.bridge_excuse_ja;
     if (mode === "ai") return;
+    showBridge(level !== "SAFE");
     if (level === "HIGH") {
       setStatus("HIGH", "【警告】詐欺の可能性が高い電話です", `${r.reason_short}。お金・カード・暗証番号の話には応じないでください。`);
       $("handoffBtn").classList.remove("hidden");
@@ -188,6 +198,11 @@
     } else {
       setStatus("SAFE", "聞き取り中", "今のところ怪しい言い回しはありません");
     }
+  }
+
+  function showBridge(show) {
+    $("bridgeText").textContent = bridge;
+    $("bridgeCard").classList.toggle("hidden", !show || !bridge);
   }
 
   function speak(text) {
@@ -265,6 +280,8 @@
     storage.set("shieldToken", $("token").value.trim());
     listening = true;
     lastRisk = "SAFE";
+    bridge = "";
+    showBridge(false);
     recent.length = 0;
     setStatus("SAFE", "聞き取り中", "電話をスピーカーにして、この端末をそばに置いてください");
     toggleButtons();
@@ -277,6 +294,7 @@
     try { recognizer && recognizer.stop(); } catch {}
     try { speechSynthesis.cancel(); } catch {}
     $("handoffBtn").classList.add("hidden");
+    showBridge(false);
     $("backBtn").classList.add("hidden");
     setStatus("IDLE", "停止中", "「聞き取りを始める」を押してください");
     toggleButtons();
@@ -286,9 +304,10 @@
     mode = "ai";
     history.length = 0;
     $("handoffBtn").classList.add("hidden");
+    showBridge(false);
     $("backBtn").classList.remove("hidden");
     setStatus("AI", "AIが応対しています", "端末を電話のそばに置いたままにしてください。あなたは話さなくて大丈夫です");
-    const opening = "はい、代わりました。もう一度、ご用件をゆっくりお願いできますか。";
+    const opening = "はい、代わりの者です。もう一度、ご用件をゆっくりお願いできますか。";
     history.push({ role: "shield", text: opening });
     addLog("AI", opening);
     speaking = true;
@@ -303,6 +322,7 @@
     try { speechSynthesis.cancel(); } catch {}
     $("backBtn").classList.add("hidden");
     $("handoffBtn").classList.toggle("hidden", lastRisk === "SAFE");
+    showBridge(lastRisk !== "SAFE");
     setStatus(lastRisk === "SAFE" ? "SAFE" : lastRisk, "自分の応対に戻しました", "判定は続けています");
   });
 
