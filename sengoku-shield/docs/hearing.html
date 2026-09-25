@@ -1,0 +1,187 @@
+<title>生活安全課ヒアリング</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@800&display=swap">
+<style>
+  :root {
+    --paper: #f3f5f8; --surface: #ffffff; --ink: #1b2231; --muted: #5b6475; --line: #d5dae3;
+    --accent: #2c3d6b; --accent-ink: #ffffff; --star: #9a5b00; --star-bg: #fdf0cf; --done: #1d6b45;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+      --accent: #b9c6ec; --accent-ink: #12151c; --star: #f3c66b; --star-bg: #33290f; --done: #86d4a9;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+    --accent: #b9c6ec; --accent-ink: #12151c; --star: #f3c66b; --star-bg: #33290f; --done: #86d4a9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 17px/1.75 "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    padding-inline: 16px; padding-block: 20px 56px;
+  }
+  main { max-width: 680px; margin: 0 auto; display: grid; gap: 22px; }
+  h1 { font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", serif; font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
+  h2 { font-size: 20px; margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  .lead { color: var(--muted); }
+  section { display: grid; gap: 10px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; }
+  .say { border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; }
+  .qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .q { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .q label { display: grid; grid-template-columns: 26px 3.2em 1fr; gap: 8px; align-items: start; cursor: pointer; }
+  .q input { width: 22px; height: 22px; margin: 3px 0 0; accent-color: var(--accent); }
+  .qno { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .why { grid-column: 3; font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .star { display: inline-block; font-size: 12px; font-weight: 700; color: var(--star); background: var(--star-bg); border-radius: 999px; padding: 0 8px; margin-right: 6px; vertical-align: 2px; }
+  .q.done { opacity: 0.55; }
+  .q.done .qtext { text-decoration: line-through; text-decoration-color: var(--done); }
+  .progress { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1; background: var(--paper); padding-block: 8px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .progress button { font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .steps { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; }
+  code { font: 15px ui-monospace, Menlo, monospace; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+  a { color: var(--accent); overflow-wrap: anywhere; }
+  .muted { color: var(--muted); font-size: 15px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<main>
+  <header style="display:grid;gap:6px">
+    <h1>生活安全課ヒアリング</h1>
+    <p class="lead">警察署の生活安全課(防犯担当)で、詐欺の手口を教えてもらうための質問リストです。聞けたらチェックを付けていきます(チェックはこのスマホにだけ残ります)。</p>
+  </header>
+
+  <section aria-labelledby="before">
+    <h2 id="before">行く前に</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>警察署に電話して「詐欺の防犯について相談したい」と伝え、生活安全課の時間を取ってもらう。</li>
+        <li>このページと、見せる用のデモページ(<a href="https://claude.ai/artifact/2GKELH7wQdgVEj2gocRSyt">戦国シールド 判定デモ</a>)を開いておく。</li>
+        <li>Claudeの会話を開いて一度何か送り、起こしておく(聞いた手口は <code>【警察】</code> を付けて送る)。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section aria-labelledby="open">
+    <h2 id="open">最初に伝えること(このまま読んでOK)</h2>
+    <div class="panel">
+      <p class="say">「以前、母が詐欺の被害にあいました。お年寄りを詐欺電話から守る仕組みを、自分でAIを使って作っています。最近どんな手口が多いのかを教えていただきたくて来ました。」</p>
+      <p class="say">「お話を、スマホのAIに文字でメモしながら伺ってもいいですか。個人の方の情報は書きません。」</p>
+      <p class="muted">断られたら、紙にメモして帰りに送れば大丈夫です。</p>
+    </div>
+  </section>
+
+  <div class="progress" aria-live="polite"><span id="progress">0 / 0 聞けた</span><button id="reset" type="button">チェックを消す</button></div>
+
+  <section aria-labelledby="g1">
+    <h2 id="g1">1. 最近の手口</h2>
+    <ul class="qs">
+      <li class="q" data-id="q1"><label><input type="checkbox"><span class="qno">Q1</span><span class="qtext"><span class="star">最優先</span>この地域で、今いちばん多い詐欺の手口は何ですか。</span><span class="why">ルールを作る順番を決めるため</span></label></li>
+      <li class="q" data-id="q2"><label><input type="checkbox"><span class="qno">Q2</span><span class="qtext"><span class="star">最優先</span>実際の電話で、犯人がよく使う決まり文句や言い回しを教えてください。</span><span class="why">そのまま検知の例文に使う(今の例文は作りもの)</span></label></li>
+      <li class="q" data-id="q3"><label><input type="checkbox"><span class="qno">Q3</span><span class="qtext">最近増えている新しい手口はありますか(警察官を名乗ってビデオ通話やSNSに誘う、国際電話からかけてくる、など)。</span></label></li>
+      <li class="q" data-id="q4"><label><input type="checkbox"><span class="qno">Q4</span><span class="qtext">電話がかかってくることが多い時間帯や、狙われやすい人(年代・一人暮らしなど)はありますか。</span></label></li>
+      <li class="q" data-id="q5"><label><input type="checkbox"><span class="qno">Q5</span><span class="qtext">1回目の電話のあと、何度もかけ直してくるのが普通ですか。最初の電話で何を聞き出そうとしますか。</span></label></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="g2">
+    <h2 id="g2">2. 普通の電話と見分けるために</h2>
+    <ul class="qs">
+      <li class="q" data-id="q6"><label><input type="checkbox"><span class="qno">Q6</span><span class="qtext"><span class="star">最優先</span>本物の警察や役所、銀行が電話でお金やカードの話をすることはありますか。絶対にしないことは何ですか。</span><span class="why">本物の連絡を詐欺扱いしないため</span></label></li>
+      <li class="q" data-id="q7"><label><input type="checkbox"><span class="qno">Q7</span><span class="qtext">本物の警察官が家に電話するのは、どんな用件のときですか。</span></label></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="g3">
+    <h2 id="g3">3. 受け子を捕まえるために</h2>
+    <ul class="qs">
+      <li class="q" data-id="q8"><label><input type="checkbox"><span class="qno">Q8</span><span class="qtext"><span class="star">最優先</span>(デモの「電話が終わったあとの画面」を見せて)この台本の内容で110番が来たら、動けますか。足りない情報はありますか。</span><span class="why">110番の台本を警察が使いやすい形に直すため</span></label></li>
+      <li class="q" data-id="q9"><label><input type="checkbox"><span class="qno">Q9</span><span class="qtext">相手が「会う日時と場所」を言ってきたとき、本人や家族は何をするのがいちばん良いですか。してはいけないことはありますか。</span></label></li>
+      <li class="q" data-id="q10"><label><input type="checkbox"><span class="qno">Q10</span><span class="qtext">AIが相手に話を合わせて、名前・口座・日時・場所を聞き出すことは、捜査の役に立ちますか。かえって邪魔になることはありますか。</span></label></li>
+      <li class="q" data-id="q11"><label><input type="checkbox"><span class="qno">Q11</span><span class="qtext">「だまされたふり作戦」に協力するとき、一般の人が気をつけることは何ですか。</span></label></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="g4">
+    <h2 id="g4">4. 口座と電話番号</h2>
+    <ul class="qs">
+      <li class="q" data-id="q12"><label><input type="checkbox"><span class="qno">Q12</span><span class="qtext"><span class="star">最優先</span>犯人が言った口座番号や電話番号は、どこに伝えれば止めてもらえますか。家族など、本人以外からの連絡でも大丈夫ですか。</span><span class="why">家族へのLINE・自動電話の案内文に使うため</span></label></li>
+      <li class="q" data-id="q13"><label><input type="checkbox"><span class="qno">Q13</span><span class="qtext">振り込んでしまったとき、銀行と警察のどちらに先に連絡するのが良いですか。</span></label></li>
+      <li class="q" data-id="q14"><label><input type="checkbox"><span class="qno">Q14</span><span class="qtext">(記録のメモを見せて)こういう記録(日時・相手の番号・口座・会話)があると役に立ちますか。ほかに残しておくべきことはありますか。</span></label></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="g5">
+    <h2 id="g5">5. お年寄りと家族への伝え方</h2>
+    <ul class="qs">
+      <li class="q" data-id="q15"><label><input type="checkbox"><span class="qno">Q15</span><span class="qtext">詐欺の電話中に動揺しているお年寄りには、どんな言葉をかけると落ち着いてもらえますか。</span></label></li>
+      <li class="q" data-id="q16"><label><input type="checkbox"><span class="qno">Q16</span><span class="qtext">知らせを受けた家族に、いちばんしてほしいことは何ですか(110番、本人への電話、#9110 など)。</span></label></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="g6">
+    <h2 id="g6">6. これから</h2>
+    <ul class="qs">
+      <li class="q" data-id="q17"><label><input type="checkbox"><span class="qno">Q17</span><span class="qtext">AIが自動で電話に出て記録を残すことについて、気をつけるべき点(録音や個人情報の扱いなど)はありますか。</span></label></li>
+      <li class="q" data-id="q18"><label><input type="checkbox"><span class="qno">Q18</span><span class="qtext">公開されている手口の例文や、防犯のチラシなどをいただけますか。</span></label></li>
+      <li class="q" data-id="q19"><label><input type="checkbox"><span class="qno">Q19</span><span class="qtext">市役所の防犯担当や地域包括支援センターなど、相談するとよい所はありますか。</span></label></li>
+      <li class="q" data-id="q20"><label><input type="checkbox"><span class="qno">Q20</span><span class="qtext">改良したら、また見ていただいてもいいですか。</span></label></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="after">
+    <h2 id="after">帰ったらClaudeに送るもの</h2>
+    <div class="panel">
+      <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
+        <li>聞いた手口の言い回しを、<code>【警察】Q2: 「〇〇」と言ってくる</code> のように、質問番号を付けて送る。</li>
+        <li>デモで警告が出なかった言い回しは、デモの「記録をコピー」で送る。</li>
+        <li>最後に「まとめて」と送ると、手口の一覧・今のシールドで見抜けた数・次に直すところを整理します。</li>
+      </ul>
+      <p class="muted">被害者の方の名前や住所など、個人が分かる話は送らないでください。</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const KEY = "hearingChecked";
+  let checked = {};
+  try { checked = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { checked = {}; }
+  const items = [...document.querySelectorAll(".q")];
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checked)); } catch {}
+  }
+
+  function render() {
+    let n = 0;
+    for (const li of items) {
+      const on = Boolean(checked[li.dataset.id]);
+      li.querySelector("input").checked = on;
+      li.classList.toggle("done", on);
+      if (on) n++;
+    }
+    document.getElementById("progress").textContent = `${n} / ${items.length} 聞けた`;
+  }
+
+  for (const li of items) {
+    li.querySelector("input").addEventListener("change", (e) => {
+      checked[li.dataset.id] = e.target.checked;
+      save();
+      render();
+    });
+  }
+  document.getElementById("reset").addEventListener("click", () => {
+    checked = {};
+    save();
+    render();
+  });
+  render();
+})();
+</script>
