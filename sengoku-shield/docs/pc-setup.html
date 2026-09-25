@@ -1,0 +1,197 @@
+<title>パソコンでやること</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@800&display=swap">
+<style>
+  :root {
+    --paper: #f3f5f8; --surface: #ffffff; --ink: #1b2231; --muted: #5b6475; --line: #d5dae3;
+    --accent: #2c3d6b; --accent-ink: #ffffff; --good: #1d6b45; --good-bg: #e2f1e8; --warn: #8a5a00; --warn-bg: #fdf0cf;
+    --code-bg: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+      --accent: #b9c6ec; --accent-ink: #12151c; --good: #86d4a9; --good-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+      --code-bg: #232937;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+    --accent: #b9c6ec; --accent-ink: #12151c; --good: #86d4a9; --good-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+    --code-bg: #232937;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 17px/1.75 "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    padding-inline: 16px; padding-block: 20px 56px;
+  }
+  main { max-width: 720px; margin: 0 auto; display: grid; gap: 24px; }
+  h1 { font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", serif; font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
+  h2 { font-size: 21px; margin: 0; text-wrap: balance; }
+  h3 { font-size: 18px; margin: 0; }
+  p { margin: 0; }
+  .lead { color: var(--muted); }
+  section { display: grid; gap: 10px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; }
+  .key { background: var(--good-bg); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
+  .key strong { color: var(--good); }
+  .note { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; }
+  .note strong { color: var(--warn); }
+  ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
+  ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td:first-child { width: 28%; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 700; font-size: 14px; }
+  pre { margin: 0; background: var(--code-bg); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font: 14px/1.6 ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  code { font: 14px ui-monospace, "SFMono-Regular", Menlo, monospace; background: var(--code-bg); border-radius: 6px; padding: 0 5px; overflow-wrap: anywhere; }
+  pre code { background: none; padding: 0; }
+  .prompt { white-space: pre-wrap; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 12px 16px; background: var(--accent); color: var(--accent-ink); cursor: pointer; justify-self: start; }
+  .muted { color: var(--muted); font-size: 15px; }
+  a { color: var(--accent); overflow-wrap: anywhere; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<main>
+  <header style="display:grid;gap:6px">
+    <h1>パソコンでやること</h1>
+    <p class="lead">戦国シールドを、試作品から「実際に動くもの」にするための、パソコンでの作業のまとめです。上から順にやれば動くように並べてあります。</p>
+  </header>
+
+  <div class="key">
+    <p><strong>Jevは「入れる」ものではありません</strong></p>
+    <p>Jev(TypeSafe)はインターネット越しに使うサービスです。TypeSafeで発行したキーを戦国シールドのサーバーの設定に書き込めば、それだけで使えます。スマホの見守り画面はサーバーの判定を使うので、<strong>サーバーにJevのキーを入れれば、スマホでも自動的にJevが使われます</strong>。スマホに何かを入れる必要はありません。</p>
+  </div>
+
+  <section aria-labelledby="order">
+    <h2 id="order">全体の順番</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li><strong>キーを集める</strong>(ブラウザだけでできる。30分〜1時間)</li>
+        <li><strong>パソコンで動かしてみる</strong>(パソコンを起動している間だけ動く「試運転」)</li>
+        <li><strong>スマホで見守り画面を開いて試す</strong></li>
+        <li><strong>24時間動かす</strong>(パソコンを切っても動くよう、インターネット上のサーバーに移す。これは後日でOK)</li>
+      </ol>
+      <p class="muted">2と3は、パソコンのClaude Codeに任せられます(下の「Claude Codeに渡す指示文」)。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="keys">
+    <h2 id="keys">1. キーを集める(ブラウザで)</h2>
+    <div class="panel">
+      <p>それぞれのサイトでアカウントを作り、キーを取り出します。キーは他人に見せないでください(チャットにも貼らない)。</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>何のため</th><th>どこで</th><th>取り出すもの → 設定の名前</th></tr></thead>
+          <tbody>
+            <tr><td>AIの返事(Claude)</td><td>console.anthropic.com</td><td>APIキー → <code>ANTHROPIC_API_KEY</code></td></tr>
+            <tr><td>詐欺の判定・相手の様子(Jev)</td><td>TypeSafe のサイト</td><td>APIキー → <code>TYPESAFE_API_KEY</code></td></tr>
+            <tr><td>家族へのLINE</td><td>LINE Developers(戦国シールド専用のMessaging APIチャネルを新しく作る)</td><td>チャネルシークレット → <code>LINE_CHANNEL_SECRET</code><br>チャネルアクセストークン(長期) → <code>LINE_CHANNEL_ACCESS_TOKEN</code><br>友だち追加URL → <code>SHIELD_LINE_ADD_URL</code></td></tr>
+            <tr><td>電話(AIの応答・家族への自動電話)</td><td>Twilio(日本の電話番号を1つ取る。住所確認の書類が必要)</td><td>Account SID → <code>TWILIO_ACCOUNT_SID</code><br>Auth Token → <code>TWILIO_AUTH_TOKEN</code><br>取った番号(+81〜) → <code>SHIELD_CALLER_ID</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">LINEは、バツルーレットの配信で使っているチャネルとは別に作ってください。Twilioの日本の番号は、審査に数日かかることがあります。全部そろっていなくても、あるものから試せます(ないものは「未設定」として動きます)。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="pc">
+    <h2 id="pc">2. パソコンで動かしてみる</h2>
+    <div class="panel">
+      <h3>最初に入れるもの</h3>
+      <ul>
+        <li><strong>Node.js</strong> 22 以降(nodejs.org の「LTS」版)</li>
+        <li><strong>Git</strong></li>
+        <li><strong>cloudflared</strong>(パソコンで動かしたサーバーに、外(Twilio・LINE・スマホ)から届くURLを付けるための道具。Cloudflareの公式サイトから無料で入れられます)</li>
+        <li><strong>Claude Code</strong>(作業を任せるなら。入れ方は code.claude.com の公式案内に従ってください)</li>
+      </ul>
+      <h3>ダウンロードとテスト</h3>
+      <pre><code>git clone -b claude/main-2thn7e https://github.com/marimo530122-cmyk/baturu-retto-line-bot.git
+cd baturu-retto-line-bot/sengoku-shield
+npm install
+npm test</code></pre>
+      <p class="muted">戦国シールドはまだ <code>claude/main-2thn7e</code> ブランチにあります(main には入っていません)。リポジトリが非公開なら、GitHubへのログインを求められます。<code>npm test</code> で全部のテストが通れば準備OKです。</p>
+      <h3>キーを書き込む</h3>
+      <pre><code>cp .env.example .env</code></pre>
+      <p>できた <code>.env</code> をメモ帳などで開き、1で集めたキーを「=」の右に書き込みます。<code>.env</code> はGitHubには上がりません。</p>
+      <h3>起動して、外から届くURLを付ける</h3>
+      <pre><code># 1つ目の画面(ターミナル)で: 外から届くURLを取る
+cloudflared tunnel --url http://localhost:3000
+#   → https://〜.trycloudflare.com のようなURLが出るので、.env の SHIELD_PUBLIC_URL に書く
+
+# 2つ目の画面で: サーバーを起動
+npm run start:env
+
+# 3つ目の画面で: 全部につながるか確かめる
+npm run check</code></pre>
+      <p><code>npm run check</code> は、Claude・Jev・LINE・Twilio・公開URLにつながるかを1行ずつ ○ × で出します。見守り画面の合言葉(<code>SHIELD_APP_TOKEN</code>)が空なら、使える候補も出します。LINEとTwilioに設定するWebhookのURLも教えてくれます。</p>
+      <p class="muted">試運転のURLは、cloudflaredを起動し直すたびに変わります。変わったら .env と LINE・Twilio の設定も書き換えてください(24時間動かす段階で固定のURLにします)。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="phone">
+    <h2 id="phone">3. スマホで試す</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>スマホのブラウザ(Chrome か Safari)で <code>https://〜.trycloudflare.com/app</code> を開き、画面下に合言葉を入れる。</li>
+        <li>「見守り家族」で「家族を登録する」を押し、出た6桁の番号を、自分のスマホから戦国シールドのLINEに送る(電話番号も送る)。</li>
+        <li>「文字で試す」に「市役所です。還付金があるので今日中にATMに行ってください」と入れ、警告が出ることを確かめる。</li>
+        <li>「AIに代わってもらう」を押してから、「みずほ銀行新宿支店、口座番号は1234567です」と入れる → AIが聞き返し、自分のLINEに口座が届き、自動電話が鳴ることを確かめる。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section aria-labelledby="always">
+    <h2 id="always">4. 24時間動かす(後日)</h2>
+    <div class="panel">
+      <p>パソコンを切ると戦国シールドも止まるので、本番ではインターネット上のサーバー(クラウド)に移します。Node.js が動いて、<strong>ファイルを保存しておける場所(家族の名簿を置くため)</strong>があるサービスなら使えます。どこにするかは、試運転がうまくいってから、Claude Codeと一緒に決めましょう。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="prompt">
+    <h2 id="prompt">Claude Codeに渡す指示文</h2>
+    <div class="panel">
+      <p>パソコンでClaude Codeを起動し(<code>baturu-retto-line-bot</code> フォルダで)、下の文をそのまま貼り付けてください。</p>
+      <pre><code class="prompt" id="promptText">このリポジトリの sengoku-shield(戦国シールド)を、このパソコンで動かすのを手伝ってください。ブランチは claude/main-2thn7e です。急いで、でも確実に進めてください。
+
+1. Node.js(22以降)・git・cloudflared が入っているか確認し、足りないものは入れ方を教えてください。
+2. sengoku-shield で npm install と npm test を実行し、全部通ることを確認してください。
+3. .env.example を .env にコピーしてください。キーは私が自分で .env に書き込みます(チャットには貼りません)。どの行に何を書くかだけ教えてください。
+4. cloudflared tunnel --url http://localhost:3000 で公開URLを取り、.env の SHIELD_PUBLIC_URL に入れて、npm run start:env でサーバーを起動してください。
+5. npm run check を実行し、× があれば原因を調べて直してください。
+   Jev(TypeSafe)の応答の形が想定と違うと出たら、TypeSafe の公式ドキュメントと実際の応答に合わせて lib/jev.js と check.js の読み取り方を直し、テストも直して npm test を通してください。
+6. LINE Developers と Twilio に設定する Webhook の URL を教えてください。
+7. 最後に、スマホで見守り画面(/app)を開いて、警告・AIへの交代・家族へのLINEと自動電話を試す手順を教えてください。
+
+CLAUDE.md と sengoku-shield/README.md の方針は必ず守ってください(AIは振り込む・渡す等の約束をしない、声のクローンは入れない、AIが自分で110番しない、警察への自動送信はしない、など)。</code></pre>
+      <button id="copyPrompt" type="button">指示文をコピー</button>
+      <p class="muted" id="copyNote">コピーできないときは、上の文を長押しして選んでください。</p>
+    </div>
+  </section>
+
+  <div class="note">
+    <p><strong>キーの扱い</strong>: キーはお金がかかるサービスの合言葉です。<code>.env</code> に書くだけにして、チャット・LINE・スクリーンショットで人に見せないでください。うっかり見せてしまったら、そのサイトでキーを作り直してください。</p>
+  </div>
+</main>
+
+<script>
+document.getElementById("copyPrompt").addEventListener("click", async () => {
+  const note = document.getElementById("copyNote");
+  try {
+    await navigator.clipboard.writeText(document.getElementById("promptText").textContent);
+    note.textContent = "コピーしました。Claude Codeに貼り付けてください。";
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(document.getElementById("promptText"));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    note.textContent = "自動でコピーできなかったので、文を選んでおきました。コピーしてください。";
+  }
+});
+</script>

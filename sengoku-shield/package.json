@@ -9,10 +9,12 @@
     "report": "node report.js",
     "draft": "node sns-draft.js",
     "benchmark": "node benchmark.js",
-    "audit": "node audit.js verify"
+    "audit": "node audit.js verify",
+    "start:env": "node --env-file=.env server.js",
+    "check": "node --env-file-if-exists=.env check.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0"

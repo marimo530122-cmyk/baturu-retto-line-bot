@@ -305,9 +305,14 @@ node audit.js head     # 最新のハッシュ(LINEのメモ等、別の場所�
 
 ## セットアップ
 
+パソコンでの試運転の手順(キー集め → 起動 → スマホで確認)と、Claude Codeに渡す指示文は `docs/pc-setup.html` にまとめてある。
+
 ```bash
 cd sengoku-shield
 npm install
+cp .env.example .env   # 鍵を書き込む(.env は Git に入らない)
+npm run start:env      # .env を読んで起動
+npm run check          # Claude・Jev・LINE・Twilio・公開URLにつながるかを ○× で確認
 ```
 
 ### 環境変数
@@ -376,6 +381,9 @@ npm run audit               # 監査ログの検証
 - `evolve.js` — 検知ルールの提案・承認
 - `patterns.custom.json` — 人間が承認した追加ルール(最初は空)
 - `benign-samples.json` — 普通の電話の例文集(誤検知チェック用。増やすほど安全。追加するときは `"split": "dev"`)
+- `check.js` — 接続チェック(`npm run check`)。鍵は表示せず、お金のかかる操作はしない
+- `.env.example` — 設定ファイルのひな形
+- `docs/` — 固定電話の設定手順(`landline.html`)、警察署でのヒアリング(`hearing.html`)、パソコンでやること(`pc-setup.html`)
 - `demo/` — 判定デモ(`template.html` から `build.js` で `index.html` を作る)
 - `lib/family.js` / `lib/line.js` — 見守り家族の名簿と、LINE公式アカウントでの登録受付(招待番号)
 - `lib/elicit.js` — 聞き出しの作戦(足りない手がかりを聞く・怪しまれたらなだめる・繰り返さない)
