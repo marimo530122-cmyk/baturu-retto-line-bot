@@ -1,0 +1,263 @@
+{
+  "passed": true,
+  "failures": [],
+  "ranAt": "2026-09-25T00:17:10.436Z",
+  "inputs": {
+    "benign": {
+      "file": "benign-samples.json",
+      "count": 70,
+      "sha256": "016355e175887a225b4bbaee07417629a54543e0ec9aacb4de6e459ad0b53bb9"
+    },
+    "scam": {
+      "file": "scam-samples.json",
+      "count": 35,
+      "sha256": "df29b6d39995f390f7716e3943a6dd2e347df85e4c1880e7a1406c427b09517d"
+    },
+    "rules": [
+      {
+        "id": "refund",
+        "source": "還付|払い?戻し|返金"
+      },
+      {
+        "id": "atm",
+        "source": "ATM|エーティーエム|現金自動|振込機"
+      },
+      {
+        "id": "card_pin",
+        "source": "暗証番号|キャッシュカード|カードを?(預か|回収|交換|封筒)"
+      },
+      {
+        "id": "gift_card",
+        "source": "電子マネー|ギフト(カード|券)|プリペイド|(アマゾン|Amazon|アップル|Apple|グーグル|Google|iTunes).{0,6}(カード|券)|コンビニで.{0,10}(買|購入)"
+      },
+      {
+        "id": "unpaid_legal",
+        "source": "未納|滞納|未払い|訴訟|裁判|差し?押さえ|法的(措置|手続)|債権"
+      },
+      {
+        "id": "account_frozen",
+        "source": "口座.{0,6}(凍結|停止|止め|使えなく)|不正(利用|使用|アクセス)|犯罪に(使|利用)"
+      },
+      {
+        "id": "authority",
+        "source": "警察|警視庁|刑事|金融庁|財務局|検察|裁判所|市役所|区役所|年金(事務所|機構)|税務署|総務省|消費者(センター|庁)|銀行協会"
+      },
+      {
+        "id": "urgency",
+        "source": "至急|今日中|本日中|今すぐ|すぐに|期限が?(今日|本日)|あと\\d+(分|時間)"
+      },
+      {
+        "id": "secrecy",
+        "source": "(誰|だれ)にも(言わ|話さ|相談し)|内緒|秘密に|家族に(は)?(言わ|話さ)"
+      },
+      {
+        "id": "personal_info",
+        "source": "口座番号|預金(残高|額)|貯金(は|が)?いくら|(生年月日|マイナンバー)を?(教え|確認)|タンス預金|家に(現金|お金)"
+      },
+      {
+        "id": "investment",
+        "source": "必ず(儲か|もうか)|元本保証|高配当|未公開株|名義(を)?貸|当選(しました|金)"
+      },
+      {
+        "id": "cash_demand",
+        "source": "示談金|(お金|現金)が?.{0,4}(必要|要る|いる)|(お金|現金)を?.{0,4}用意|\\d+万円?.{0,6}(用意|必要|振り?込)"
+      },
+      {
+        "id": "advance_fee",
+        "source": "(保証金|手数料).{0,12}(先に|事前に|前もって)|(先に|事前に|前もって).{0,12}(保証金|手数料)|保証金.{0,10}(振り?込|払)"
+      }
+    ],
+    "rulesSha256": "1b0ae6a844b67350af9d3096d69928d679d6b2f1570e2d3bf9a0290d033b963d"
+  },
+  "summary": {
+    "benignTotal": 70,
+    "falsePositives": 0,
+    "benignTouched": 6,
+    "scamTotal": 35,
+    "dev": {
+      "total": 25,
+      "detected": 25,
+      "rate": 1
+    },
+    "holdout": {
+      "total": 10,
+      "detected": 3,
+      "rate": 0.3
+    },
+    "detectionRate": 1,
+    "minDetectionRate": 0.8,
+    "byCategory": {
+      "還付金詐欺": {
+        "total": 4,
+        "detected": 4
+      },
+      "キャッシュカード詐欺盗・預貯金詐欺": {
+        "total": 5,
+        "detected": 5
+      },
+      "架空料金請求詐欺": {
+        "total": 5,
+        "detected": 5
+      },
+      "オレオレ詐欺(お金の要求部分)": {
+        "total": 4,
+        "detected": 4
+      },
+      "融資保証金・金融商品詐欺": {
+        "total": 4,
+        "detected": 4
+      },
+      "その他(家の現金・個人情報)": {
+        "total": 3,
+        "detected": 3
+      }
+    }
+  },
+  "falsePositives": [],
+  "benignTouched": [
+    {
+      "id": "b018",
+      "split": "dev",
+      "category": "公的機関(本物の正当な連絡)",
+      "text": "警察署の生活安全課です。先日届け出いただいた自転車が見つかりましたので、ご連絡しました。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b019",
+      "split": "dev",
+      "category": "公的機関(本物の正当な連絡)",
+      "text": "市役所の保育課です。入園申請の書類に記入漏れがありましたので、窓口で確認をお願いします。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b020",
+      "split": "dev",
+      "category": "公的機関(本物の正当な連絡)",
+      "text": "区役所の住民課です。先日のご相談の件で、必要な書類をご案内します。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b022",
+      "split": "dev",
+      "category": "公的機関(本物の正当な連絡)",
+      "text": "税務署です。確定申告の書類について、窓口にお越しいただいた際の控えをお渡しし忘れておりました。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b023",
+      "split": "dev",
+      "category": "公的機関(本物の正当な連絡)",
+      "text": "年金事務所です。ご予約いただいた相談の日時の確認です。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b062",
+      "split": "holdout",
+      "category": "公的機関(本物の正当な連絡)",
+      "text": "市役所の防災課です。ハザードマップの改訂版を各家庭に配布しています。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    }
+  ],
+  "missed": [
+    {
+      "id": "s026",
+      "split": "holdout",
+      "category": "還付金詐欺",
+      "utterances": [
+        "社会保険事務所の者です。以前の保険料が戻ってくるんですが、書類を返送されていませんよね。",
+        "手続きは携帯電話で機械を操作すればすぐ済みますので。"
+      ],
+      "level": "none",
+      "matched": []
+    },
+    {
+      "id": "s027",
+      "split": "holdout",
+      "category": "キャッシュカード詐欺盗・預貯金詐欺",
+      "utterances": [
+        "デパートの者です。お客様名義のクレジットカードで高額な買い物をしようとしている方が来ています。",
+        "銀行の方から連絡が行きますので、指示に従ってください。"
+      ],
+      "level": "none",
+      "matched": []
+    },
+    {
+      "id": "s029",
+      "split": "holdout",
+      "category": "オレオレ詐欺(お金の要求部分)",
+      "utterances": [
+        "俺だよ俺。携帯を落として番号が変わったんだ。",
+        "実は大事な書類をなくして、取引先に損害を出しちゃって。なんとかならないかな。"
+      ],
+      "level": "none",
+      "matched": []
+    },
+    {
+      "id": "s030",
+      "split": "holdout",
+      "category": "オレオレ詐欺(お金の要求部分)",
+      "utterances": [
+        "上司の者ですが、息子さんの横領が発覚しまして。",
+        "今日中に穴埋めすれば警察沙汰にはしません。"
+      ],
+      "level": "low",
+      "matched": [
+        "authority",
+        "urgency"
+      ]
+    },
+    {
+      "id": "s031",
+      "split": "holdout",
+      "category": "融資保証金・金融商品詐欺",
+      "utterances": [
+        "仮想通貨の投資で、月に2割のリターンが確実です。",
+        "今なら特別枠でご案内できます。"
+      ],
+      "level": "none",
+      "matched": []
+    },
+    {
+      "id": "s033",
+      "split": "holdout",
+      "category": "その他(家の現金・個人情報)",
+      "utterances": [
+        "警察の者です。近所で空き巣が続いています。",
+        "ご自宅に置いてある現金と、預金の額を教えてもらえますか。"
+      ],
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "s034",
+      "split": "holdout",
+      "category": "還付金詐欺",
+      "utterances": [
+        "介護保険の過払い分をお返しする手続きのご案内です。",
+        "最寄りの無人の機械のところまで行ってもらえますか。"
+      ],
+      "level": "none",
+      "matched": []
+    }
+  ]
+}

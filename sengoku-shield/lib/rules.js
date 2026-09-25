@@ -7,9 +7,10 @@ const fs = require("fs");
 const path = require("path");
 const { BUILTIN_PATTERNS } = require("./detector");
 
+// AIの提案ルールは、普通の電話の例文に1件でも当たったら却下する(組み込みルールより厳しい基準)
 const BENIGN_SAMPLES = JSON.parse(
   fs.readFileSync(path.join(__dirname, "..", "benign-samples.json"), "utf-8")
-);
+).map((s) => s.text);
 
 const MAX_SOURCE_LENGTH = 200;
 const MAX_MATCH_MS = 50;

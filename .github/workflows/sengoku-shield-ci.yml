@@ -1,0 +1,54 @@
+name: 戦国シールド CI(テスト・誤検知ベンチマーク・監査ログ検証)
+
+on:
+  push:
+    paths:
+      - "sengoku-shield/**"
+      - ".github/workflows/sengoku-shield-ci.yml"
+  pull_request:
+    paths:
+      - "sengoku-shield/**"
+      - ".github/workflows/sengoku-shield-ci.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sengoku-shield
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 依存パッケージのインストール
+        run: npm ci
+
+      - name: テスト
+        run: npm test
+
+      - name: 誤検知ベンチマーク(誤検知が1件でもあれば失敗)
+        run: node benchmark.js --check --out "$RUNNER_TEMP/evidence"
+
+      - name: 監査ログの検証(過去の記録の書き換え・削除がないか)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          LOG=sengoku-shield/audit/audit-log.jsonl
+          if [ -n "$BASE_SHA" ] && git cat-file -e "$BASE_SHA:$LOG" 2>/dev/null; then
+            git show "$BASE_SHA:$LOG" > "$RUNNER_TEMP/base-audit-log.jsonl"
+            node audit.js verify --base "$RUNNER_TEMP/base-audit-log.jsonl"
+          else
+            node audit.js verify
+          fi
+
+      - name: ベンチマーク結果をエビデンスとして保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sengoku-shield-evidence
+          path: ${{ runner.temp }}/evidence/

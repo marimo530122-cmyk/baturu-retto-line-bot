@@ -3,16 +3,20 @@
 //   node evolve.js propose        … 通話ログを分析して新ルールを提案(data/proposals/ に保存。反映はしない)
 //   node evolve.js list           … 未承認の提案を一覧表示
 //   node evolve.js approve <id>   … 提案を patterns.custom.json に反映(人間の承認)
-//   node evolve.js reject <id>    … 提案を捨てる
+//   node evolve.js reject <id> [理由] … 提案を捨てる
 //
-// 反映後は `npm test` を通してからサーバーを再起動し、patterns.custom.json をコミットすること。
+// 提案・機械チェックの結果・承認・却下は、すべて監査ログ(audit/audit-log.jsonl)に記録される。
+// 承認時には「そのルールを足した状態」でベンチマークを回し、誤検知が出る・検知率が下がる場合は反映しない。
+// 反映後は `npm test` を通してからサーバーを再起動し、patterns.custom.json・audit/・evidence/ をコミットすること。
 
 const fs = require("fs");
 const path = require("path");
 const store = require("./lib/store");
 const { maskText } = require("./lib/mask");
 const { validateProposal, builtinIds } = require("./lib/rules");
-const { BUILTIN_PATTERNS, CUSTOM_PATTERNS_PATH } = require("./lib/detector");
+const { BUILTIN_PATTERNS, CUSTOM_PATTERNS_PATH, createDetector, compileRules } = require("./lib/detector");
+const benchmark = require("./lib/benchmark");
+const audit = require("./lib/audit");
 
 const AI_MODEL = process.env.SHIELD_AI_MODEL || "claude-opus-5";
 const PROPOSALS_PATH = path.join(store.DATA_DIR, "proposals", "pending.json");
@@ -132,6 +136,14 @@ async function propose() {
   let accepted = 0;
   for (const p of proposals) {
     const result = validateProposal(p, takenIds);
+    audit.append(result.ok ? "rule.proposed" : "rule.auto_rejected", {
+      id: p.id,
+      label: p.label,
+      weight: p.weight,
+      source: p.source,
+      model: response.model,
+      ...(result.ok ? {} : { reasons: result.reasons }),
+    });
     if (!result.ok) {
       console.log(`✗ 却下(自動チェック): ${p.id} ${p.label}`);
       for (const r of result.reasons) console.log(`    - ${r}`);
@@ -168,28 +180,66 @@ function approve(id) {
   const custom = readJson(CUSTOM_PATTERNS_PATH, []);
   const result = validateProposal(p, [...builtinIds(), ...custom.map((c) => c.id)]);
   if (!result.ok) {
+    audit.append("rule.approve_blocked", { id, source: p.source, stage: "validation", reasons: result.reasons });
     console.error(`承認前の再チェックで不合格:\n${result.reasons.map((r) => `  - ${r}`).join("\n")}`);
     process.exit(1);
   }
+
+  // このルールを足した状態でベンチマークを回し、今より悪くなるなら反映しない
+  const before = benchmark.run(createDetector([...BUILTIN_PATTERNS, ...compileRules(custom)]));
+  const after = benchmark.run(createDetector([...BUILTIN_PATTERNS, ...compileRules([...custom, result.rule])]));
+  const worse = [];
+  if (!after.passed) worse.push(...after.failures);
+  if (after.summary.falsePositives > before.summary.falsePositives) worse.push("誤検知が増える");
+  if (after.summary.dev.detected < before.summary.dev.detected) worse.push("dev の検知数が減る");
+  if (worse.length) {
+    audit.append("rule.approve_blocked", {
+      id,
+      source: p.source,
+      stage: "benchmark",
+      reasons: worse,
+      benchmark: benchmark.auditSummary(after),
+    });
+    console.error(`ベンチマークで不合格のため反映しません:\n${worse.map((r) => `  - ${r}`).join("\n")}`);
+    process.exit(1);
+  }
+
   custom.push({ ...result.rule, approvedAt: new Date().toISOString() });
   writeJson(CUSTOM_PATTERNS_PATH, custom);
   writeJson(PROPOSALS_PATH, pending.filter((x) => x.id !== id));
-  console.log(`反映しました: ${id}(${CUSTOM_PATTERNS_PATH})`);
-  console.log("npm test を通してからサーバーを再起動し、patterns.custom.json をコミットしてください。");
+  const entry = audit.append("rule.approved", {
+    id,
+    label: result.rule.label,
+    weight: result.rule.weight,
+    source: result.rule.source,
+    benchmarkBefore: benchmark.auditSummary(before),
+    benchmarkAfter: benchmark.auditSummary(after),
+  });
+  const evidenceDir = process.env.SHIELD_EVIDENCE_DIR || path.join(__dirname, "evidence");
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(path.join(evidenceDir, "benchmark-latest.json"), JSON.stringify(after, null, 2) + "\n");
+  fs.writeFileSync(path.join(evidenceDir, "benchmark-latest.md"), benchmark.toMarkdown(after));
+  console.log(`反映しました: ${id}(監査ログ #${entry.seq})`);
+  console.log(
+    `ベンチマーク: 誤検知 ${after.summary.falsePositives}件 / dev ${before.summary.dev.detected}→${after.summary.dev.detected}件 / holdout ${before.summary.holdout.detected}→${after.summary.holdout.detected}件`
+  );
+  console.log("npm test を通してからサーバーを再起動し、patterns.custom.json・audit/・evidence/ をコミットしてください。");
 }
 
-function reject(id) {
+function reject(id, reason = "") {
   const pending = readJson(PROPOSALS_PATH, []);
-  if (!pending.some((x) => x.id === id)) {
+  const p = pending.find((x) => x.id === id);
+  if (!p) {
     console.error(`提案が見つかりません: ${id}`);
     process.exit(1);
   }
   writeJson(PROPOSALS_PATH, pending.filter((x) => x.id !== id));
+  audit.append("rule.rejected", { id, source: p.source, reason });
   console.log(`捨てました: ${id}`);
 }
 
-const [cmd, arg] = process.argv.slice(2);
-const commands = { propose, list, approve: () => approve(arg), reject: () => reject(arg) };
+const [cmd, arg, ...rest] = process.argv.slice(2);
+const commands = { propose, list, approve: () => approve(arg), reject: () => reject(arg, rest.join(" ")) };
 if (!commands[cmd] || (["approve", "reject"].includes(cmd) && !arg)) {
   console.error("使い方: node evolve.js propose | list | approve <id> | reject <id>");
   process.exit(1);

@@ -7,7 +7,9 @@
     "start": "node server.js",
     "test": "node --test",
     "report": "node report.js",
-    "draft": "node sns-draft.js"
+    "draft": "node sns-draft.js",
+    "benchmark": "node benchmark.js",
+    "audit": "node audit.js verify"
   },
   "engines": {
     "node": ">=20"

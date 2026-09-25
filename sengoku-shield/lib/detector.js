@@ -13,7 +13,7 @@ const BUILTIN_PATTERNS = [
     id: "refund",
     label: "還付金・払い戻し",
     weight: 3,
-    regex: /還付|払い?戻し|返金(が|を)?(あり|でき|受け)/,
+    regex: /還付|払い?戻し|返金/,
   },
   {
     id: "atm",
@@ -43,13 +43,13 @@ const BUILTIN_PATTERNS = [
     id: "account_frozen",
     label: "口座凍結・不正利用",
     weight: 3,
-    regex: /口座.{0,6}(凍結|停止|使えなく)|不正(利用|使用|アクセス)|犯罪に(使|利用)/,
+    regex: /口座.{0,6}(凍結|停止|止め|使えなく)|不正(利用|使用|アクセス)|犯罪に(使|利用)/,
   },
   {
     id: "authority",
     label: "公的機関・警察を名乗る",
     weight: 2,
-    regex: /警察|警視庁|刑事|金融庁|財務局|検察|裁判所|市役所|区役所|年金(事務所|機構)|税務署|総務省|消費者(センター|庁)|全国銀行協会/,
+    regex: /警察|警視庁|刑事|金融庁|財務局|検察|裁判所|市役所|区役所|年金(事務所|機構)|税務署|総務省|消費者(センター|庁)|銀行協会/,
   },
   {
     id: "urgency",
@@ -72,8 +72,20 @@ const BUILTIN_PATTERNS = [
   {
     id: "investment",
     label: "もうけ話・投資",
-    weight: 2,
+    weight: 3,
     regex: /必ず(儲か|もうか)|元本保証|高配当|未公開株|名義(を)?貸|当選(しました|金)/,
+  },
+  {
+    id: "cash_demand",
+    label: "現金・示談金の要求",
+    weight: 3,
+    regex: /示談金|(お金|現金)が?.{0,4}(必要|要る|いる)|(お金|現金)を?.{0,4}用意|\d+万円?.{0,6}(用意|必要|振り?込)/,
+  },
+  {
+    id: "advance_fee",
+    label: "保証金・手数料の先払い",
+    weight: 4,
+    regex: /(保証金|手数料).{0,12}(先に|事前に|前もって)|(先に|事前に|前もって).{0,12}(保証金|手数料)|保証金.{0,10}(振り?込|払)/,
   },
 ];
 
@@ -88,7 +100,7 @@ function loadCustomPatterns() {
   } catch {
     return [];
   }
-  return raw.map((p) => ({ ...p, regex: new RegExp(p.source, p.flags || "") }));
+  return compileRules(raw);
 }
 
 const PATTERNS = [...BUILTIN_PATTERNS, ...loadCustomPatterns()];
@@ -100,28 +112,48 @@ const LEVELS = [
   { min: 0, level: "none", label: "該当なし" },
 ];
 
-// テキストに含まれる詐欺パターンを返す(同じパターンは1回だけ数える)
-function detect(text) {
-  const matches = [];
-  for (const p of PATTERNS) {
-    const m = String(text || "").match(p.regex);
-    if (m) matches.push({ id: p.id, label: p.label, weight: p.weight, hit: m[0] });
-  }
-  return matches;
-}
-
-// 通話全体(相手の発話すべて)からスコアとレベルを出す
-function score(utterances) {
-  const seen = new Map();
-  for (const u of utterances) {
-    for (const m of detect(u)) {
-      if (!seen.has(m.id)) seen.set(m.id, m);
+// 任意のルール一式から検知器を作る(ベンチマークで「このルールを足したらどうなるか」を試すのに使う)
+function createDetector(patterns) {
+  // テキストに含まれる詐欺パターンを返す(同じパターンは1回だけ数える)
+  function detect(text) {
+    const matches = [];
+    for (const p of patterns) {
+      const m = String(text || "").match(p.regex);
+      if (m) matches.push({ id: p.id, label: p.label, weight: p.weight, hit: m[0] });
     }
+    return matches;
   }
-  const matches = [...seen.values()];
-  const total = matches.reduce((sum, m) => sum + m.weight, 0);
-  const { level, label } = LEVELS.find((l) => total >= l.min);
-  return { score: total, level, label, matches };
+
+  // 通話全体(相手の発話すべて)からスコアとレベルを出す
+  function score(utterances) {
+    const seen = new Map();
+    for (const u of utterances) {
+      for (const m of detect(u)) {
+        if (!seen.has(m.id)) seen.set(m.id, m);
+      }
+    }
+    const matches = [...seen.values()];
+    const total = matches.reduce((sum, m) => sum + m.weight, 0);
+    const { level, label } = LEVELS.find((l) => total >= l.min);
+    return { score: total, level, label, matches };
+  }
+
+  return { PATTERNS: patterns, detect, score };
 }
 
-module.exports = { PATTERNS, BUILTIN_PATTERNS, CUSTOM_PATTERNS_PATH, detect, score };
+// 承認済みルール(patterns.custom.json 形式)を検知器用の形に変換する
+function compileRules(rules) {
+  return rules.map((p) => ({ ...p, regex: new RegExp(p.source, p.flags || "") }));
+}
+
+const { detect, score } = createDetector(PATTERNS);
+
+module.exports = {
+  PATTERNS,
+  BUILTIN_PATTERNS,
+  CUSTOM_PATTERNS_PATH,
+  detect,
+  score,
+  createDetector,
+  compileRules,
+};

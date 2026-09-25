@@ -43,8 +43,8 @@ Twilio の電話番号にかかってきた電話に AI が「のんびりした
 node evolve.js propose        # 疑い「中」以上の通話ログをAIが分析し、新ルールを提案(反映はしない)
 node evolve.js list           # 提案を確認(正規表現・当たる例・当たらない例・根拠)
 node evolve.js approve <id>   # 良いものだけ patterns.custom.json に反映
-node evolve.js reject <id>    # いらないものは捨てる
-npm test                      # 反映後は必ずテスト → サーバー再起動 → patterns.custom.json をコミット
+node evolve.js reject <id> [理由]  # いらないものは捨てる(理由は監査ログに残る)
+npm test                      # 反映後は必ずテスト → サーバー再起動 → patterns.custom.json・audit/・evidence/ をコミット
 ```
 
 機械チェック(`lib/rules.js`)で自動的に落とすもの:
@@ -64,6 +64,49 @@ AIに渡すのは相手側の発話だけで、電話番号・長い数字は伏
 | LangGraph / Mastra(マルチエージェント) | 「人間が承認してから反映」の考え方だけ採用。電話は1往復15秒以内に返事が必要で、複数AIの会話を挟むと間に合わない。規模的にもフレームワークを入れる必要がない |
 | Browser Use(AIがブラウザを操作して業者を調べる) | 不採用。詐欺業者が教えるURLはフィッシング・マルウェアの入口であることが多く、自動で踏みに行くのは危ない。電話ではURLが出てくること自体も少ない |
 | Dify / Flowise(画面でつなぐAIワークフロー) | 不採用。すでにコードで動いているものを、別のサーバー(Difyなど)を立てて作り直すことになり、管理する物が増えるだけ |
+
+## 信頼性のエビデンス(ベンチマーク・監査ログ・CI)
+
+「誤検知しないこと」「誰が何を決めたか」を、後から第三者が確かめられる形で残す仕組み。
+
+### ベンチマーク(`node benchmark.js`)
+
+| 例文集 | 件数 | 合格基準 |
+|---|---|---|
+| `benign-samples.json` 普通の電話(宅配・病院・学校・本物の警察/役所・仕入れ先・家族・営業など) | 70件 | 1件でも「疑い:中」以上になったら不合格(**誤検知ゼロ**) |
+| `scam-samples.json` 詐欺電話(警察庁の手口分類に沿った模擬例文) | 35件 | dev の検知率が80%未満なら不合格(退行防止) |
+
+例文は **dev**(ルール作りに使ってよい)と **holdout**(答え合わせ専用。これに合わせてルールを直さない)に分けてある。
+結果は `evidence/benchmark-latest.md` に、入力データとルール一式の SHA-256 指紋つきで保存される。
+
+**現時点の結果**: 誤検知 0/70件、詐欺電話 dev 25/25件、**holdout 3/10件(30%)**。
+正規表現は決まった言い回ししか拾えず、言い換えられた詐欺には弱い、というのが正直な実力。
+ここを埋めるのが Jev(会話の流れで判定)と、検知ルールの自己進化の役目。
+※ 例文はすべて開発時に作った模擬データで、実際の通話での精度を保証するものではない。
+
+### 監査ログ(`audit/audit-log.jsonl`)
+
+AIの提案・機械チェックでの却下・人間の承認/却下(理由つき)・ベンチマーク結果を、**いつ・誰が・何をしたか**とともに1行ずつ追記する。
+各行に「前の行のハッシュ」を入れてつないであるので、途中の書き換え・削除は `node audit.js verify` で検知できる。
+
+```bash
+node audit.js verify   # 改ざん・削除がないか検証
+node audit.js show     # 最近の記録
+node audit.js head     # 最新のハッシュ(LINEのメモ等、別の場所に控えておくとファイルごとの作り直しにも気づける)
+```
+
+- 操作した人の名前は `SHIELD_OPERATOR`(無ければ git の user.name)で記録する。
+- 承認時は「そのルールを足した状態」でベンチマークを回し、誤検知が増える・検知数が減る場合は反映せず、止めた記録を残す。
+- 「改ざん不可能」ではなく「改ざんされたら分かる」仕組み。ファイルごと作り直されるのを防ぐため、Git にコミットして履歴を残し、CI でも過去の記録が書き換わっていないかを確認する。
+
+### CI(`.github/workflows/sengoku-shield-ci.yml`)
+
+`sengoku-shield/` を変更して push / プルリクエストすると、GitHub Actions が自動で次を行う:
+
+1. テスト(`npm test`)
+2. 誤検知ベンチマーク(誤検知が1件でもあれば失敗)
+3. 監査ログの検証(前の版の後ろに追記しただけか。過去の記録の書き換え・削除があれば失敗)
+4. ベンチマーク結果をエビデンスとして保存(Actions の成果物からダウンロードできる)
 
 ## あえてやらないこと(と理由)
 
@@ -118,6 +161,8 @@ npm run report              # 通話ログ一覧
 node report.js <CallSid>    # 1件の会話全文と検知結果
 node sns-draft.js <CallSid> # 注意喚起SNS投稿の下書き(data/drafts/ に保存。投稿は手動)
 npm test                    # テスト(APIキー・Twilio不要)
+npm run benchmark           # 誤検知・検知率ベンチマーク(evidence/ を更新)
+npm run audit               # 監査ログの検証
 ```
 
 通話ログは `data/calls/<CallSid>.json` に保存される(`data/` は Git に入れない)。
@@ -128,10 +173,15 @@ npm test                    # テスト(APIキー・Twilio不要)
 - `lib/detector.js` — 詐欺パターン検知(正規表現+重み付けスコア)
 - `lib/decoy.js` — AIおとり応答(Claude API、失敗時は固定フレーズ)
 - `lib/jev.js` — Jev(TypeSafe)による2段目の判定と、正規表現の判定との組み合わせ
+- `lib/benchmark.js` / `benchmark.js` — 誤検知・検知率ベンチマークとエビデンス出力
+- `lib/audit.js` / `audit.js` — ハッシュでつないだ監査ログ
+- `scam-samples.json` — 詐欺電話の模擬例文集(dev / holdout)
+- `evidence/` — 最新のベンチマーク結果(ルールや例文を変えたら `node benchmark.js` で更新。古いとテストが落ちる)
+- `audit/audit-log.jsonl` — 監査ログ(追記のみ。手で編集しない)
 - `lib/rules.js` — AIが提案した検知ルールの機械チェック
 - `evolve.js` — 検知ルールの提案・承認
 - `patterns.custom.json` — 人間が承認した追加ルール(最初は空)
-- `benign-samples.json` — 普通の電話の例文集(誤検知チェック用。増やすほど安全)
+- `benign-samples.json` — 普通の電話の例文集(誤検知チェック用。増やすほど安全。追加するときは `"split": "dev"`)
 - `lib/twilio.js` — 署名検証・TwiML生成
 - `lib/store.js` — 通話ログの保存
 - `lib/notify.js` — LINE 通知

@@ -5,7 +5,7 @@ const os = require("os");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { validateProposal, BENIGN_SAMPLES } = require("../lib/rules");
-const { detect, CUSTOM_PATTERNS_PATH } = require("../lib/detector");
+const { score, CUSTOM_PATTERNS_PATH } = require("../lib/detector");
 
 const good = {
   id: "fake_delivery_fee",
@@ -31,8 +31,8 @@ test("例文に当たらない・普通の電話に当たる・危ない正規�
   assert.strictEqual(validateProposal(good, ["fake_delivery_fee"]).ok, false);
 });
 
-test("組み込みルールは普通の電話の例に当たらない", () => {
-  for (const b of BENIGN_SAMPLES) assert.deepStrictEqual(detect(b), [], b);
+test("組み込みルールだけで、普通の電話の例文が「疑い:中」以上にならない", () => {
+  for (const b of BENIGN_SAMPLES) assert.ok(["none", "low"].includes(score([b]).level), b);
 });
 
 test("承認済みの追加ルール(patterns.custom.json)はすべて検証に通る", () => {
@@ -49,7 +49,15 @@ test("evolve.js: 提案は approve するまで反映されない", () => {
   fs.writeFileSync(customPath, "[]");
   fs.mkdirSync(path.join(dir, "proposals"));
   fs.writeFileSync(path.join(dir, "proposals", "pending.json"), JSON.stringify([good, { ...good, id: "other_rule" }]));
-  const env = { ...process.env, SHIELD_DATA_DIR: dir, SHIELD_CUSTOM_PATTERNS: customPath };
+  const auditPath = path.join(dir, "audit-log.jsonl");
+  const env = {
+    ...process.env,
+    SHIELD_DATA_DIR: dir,
+    SHIELD_CUSTOM_PATTERNS: customPath,
+    SHIELD_AUDIT_LOG: auditPath,
+    SHIELD_EVIDENCE_DIR: path.join(dir, "evidence"),
+    SHIELD_OPERATOR: "テスト担当",
+  };
   const run = (...args) => execFileSync("node", [path.join(__dirname, "..", "evolve.js"), ...args], { env }).toString();
 
   assert.match(run("list"), /fake_delivery_fee/);
@@ -61,6 +69,13 @@ test("evolve.js: 提案は approve するまで反映されない", () => {
   assert.deepStrictEqual(custom.map((c) => c.id), ["fake_delivery_fee"]);
   assert.match(run("list"), /未承認の提案はありません/);
 
+  // 承認・却下が監査ログに残り、ハッシュのつながりも正しい
+  const entries = fs.readFileSync(auditPath, "utf-8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepStrictEqual(entries.map((e) => e.action), ["rule.approved", "rule.rejected"]);
+  assert.strictEqual(entries[0].actor, "テスト担当");
+  assert.strictEqual(entries[0].data.benchmarkAfter.falsePositives, 0);
+  assert.ok(fs.existsSync(path.join(dir, "evidence", "benchmark-latest.md")));
+
   const detected = execFileSync(
     "node",
     ["-e", 'console.log(JSON.stringify(require("./lib/detector").detect("荷物の関税を払ってください").map(m=>m.id)))'],
@@ -68,3 +83,4 @@ test("evolve.js: 提案は approve するまで反映されない", () => {
   ).toString();
   assert.deepStrictEqual(JSON.parse(detected), ["fake_delivery_fee"]);
 });
+
