@@ -70,7 +70,7 @@
   <div id="status" class="status IDLE">停止中<small>「聞き取りを始める」を押してください</small></div>
 
   <div id="bridgeCard" class="card bridge hidden">
-    <span class="bridge-label">AIに代わる前に、相手にこう言ってください</span>
+    <span class="bridge-label">まず相手にこう言って、時間をかせいでください</span>
     <p id="bridgeText" class="bridge-text"></p>
   </div>
   <button id="handoffBtn" class="handoff hidden" type="button">AIに応対を代わる</button>
@@ -120,7 +120,7 @@
   let speaking = false;
   let mode = "watch"; // watch: 自分が応対・裏で判定 / ai: AIが応対
   let lastRisk = "SAFE";
-  let bridge = "";     // つなぎの一言(通話中は最初に出たものを使い続ける)
+  let bridge = "";     // 時間稼ぎの一言(通話中は最初に出たものを使い続ける)
   const recent = [];   // 判定用の直近の相手の発話
   const history = [];  // AI応対中の会話
 
@@ -186,7 +186,7 @@
     const level = RANK[r.risk_level] >= RANK[lastRisk] ? r.risk_level : lastRisk;
     if (RANK[level] > RANK[lastRisk]) alarm(level);
     lastRisk = level;
-    if (!bridge && r.bridge_excuse_ja) bridge = r.bridge_excuse_ja;
+    if (!bridge && r.natural_excuse_ja) bridge = r.natural_excuse_ja;
     if (mode === "ai") return;
     showBridge(level !== "SAFE");
     if (level === "HIGH") {
@@ -306,8 +306,8 @@
     $("handoffBtn").classList.add("hidden");
     showBridge(false);
     $("backBtn").classList.remove("hidden");
-    setStatus("AI", "AIが応対しています", "端末を電話のそばに置いたままにしてください。あなたは話さなくて大丈夫です");
-    const opening = "はい、代わりの者です。もう一度、ご用件をゆっくりお願いできますか。";
+    setStatus("AI", "AIが応対しています", "端末を電話のそばに置いたままにしてください。あなたは話さなくて大丈夫です。AIは約束ごと(予約・支払い・同意)はしません");
+    const opening = "お待たせしました。えーと、何のお話でしたっけ。もう一度ゆっくりお願いできますか。";
     history.push({ role: "shield", text: opening });
     addLog("AI", opening);
     speaking = true;

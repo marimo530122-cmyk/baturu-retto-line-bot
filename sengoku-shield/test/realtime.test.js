@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 delete process.env.TYPESAFE_API_KEY;
 process.env.JEV_REALTIME_TIMEOUT_MS = "200";
-const { judgeUtterance, categorize, BRIDGE_EXCUSES } = require("../lib/realtime");
+const { judgeUtterance, categorize, NATURAL_EXCUSES } = require("../lib/realtime");
 const benign = require("../benign-samples.json");
 
 test("還付金+ATMは HIGH で「AIに代わる」ボタンを出す", async () => {
@@ -13,7 +13,7 @@ test("還付金+ATMは HIGH で「AIに代わる」ボタンを出す", async ()
   assert.strictEqual(r.risk_level, "HIGH");
   assert.strictEqual(r.trigger_alert, true);
   assert.strictEqual(r.detected_category, "TAX_REFUND");
-  assert.strictEqual(r.suggested_action, "TRIGGER_AI_SWITCH_BUTTON");
+  assert.strictEqual(r.suggested_action, "TRIGGER_STEALTH_AI_SWITCH");
   assert.ok(r.reason_short.includes("ATM"));
 });
 
@@ -60,16 +60,16 @@ test("空の発話はエラー", async () => {
   await assert.rejects(judgeUtterance({ utterance: "  " }));
 });
 
-test("怪しいときだけ、AIに代わる前のつなぎの一言を返す", async () => {
+test("怪しいときだけ、時間稼ぎの一言を返す", async () => {
   const high = await judgeUtterance({ utterance: "還付金があるので今日中にATMへ行ってください" });
-  assert.ok(BRIDGE_EXCUSES.includes(high.bridge_excuse_ja));
+  assert.ok(NATURAL_EXCUSES.includes(high.natural_excuse_ja));
   const safe = await judgeUtterance({ utterance: "宅配便です。お届け日時の確認です" });
-  assert.strictEqual(safe.bridge_excuse_ja, "");
+  assert.strictEqual(safe.natural_excuse_ja, "");
 });
 
-test("つなぎの一言は、特定の家族や公的機関を名乗らない", () => {
-  for (const b of BRIDGE_EXCUSES) {
-    assert.doesNotMatch(b, /子供|子ども|息子|娘|孫|夫|妻|主人|家族|警察|役所|銀行/, b);
+test("時間稼ぎの一言は、特定の家族や公的機関を名乗らない", () => {
+  for (const b of NATURAL_EXCUSES) {
+    assert.doesNotMatch(b, /子供|子ども|息子|娘|孫|夫|妻|主人|家族|警察|役所|銀行|代わ/, b);
     assert.ok(b.length <= 40, b);
   }
 });

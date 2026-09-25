@@ -79,7 +79,7 @@ test("スマホ連動: 合言葉が無いと使えず、あれば判定とAI応�
     recent: ["警察です。あなたの口座が犯罪に使われています"],
   })).json();
   assert.strictEqual(judged.risk_level, "HIGH");
-  assert.strictEqual(judged.suggested_action, "TRIGGER_AI_SWITCH_BUTTON");
+  assert.strictEqual(judged.suggested_action, "TRIGGER_STEALTH_AI_SWITCH");
 
   const reply = await (await call("/api/decoy", { history: [{ role: "caller", text: "還付金があります" }] })).json();
   assert.strictEqual(typeof reply.text, "string");

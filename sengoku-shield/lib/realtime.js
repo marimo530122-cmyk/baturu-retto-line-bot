@@ -5,7 +5,8 @@
 // - JEV_REALTIME=1 かつ TYPESAFE_API_KEY があれば、Jev にも短いタイムアウトで聞いて合わせる。
 //   間に合わなければ正規表現の結果だけで返す(画面の反応を遅らせない)。
 // - 「警告を出す」「ボタンを出す」までが仕事。通話を切る・AIに勝手に切り替えることはしない
-//   (最終決定はいつも本人)。
+//   (最終決定はいつも本人)。suggested_action の TRIGGER_STEALTH_AI_SWITCH も「代わる準備ができた」
+//   という提案で、実際に代わるのは本人がボタンを押したとき。
 
 const { score } = require("./detector");
 const jev = require("./jev");
@@ -39,26 +40,27 @@ function categorize(matchIds) {
   return "NONE";
 }
 
-// 「AIに代わる」前に本人が相手に言う、つなぎの一言
-// - 特定の家族(子ども・孫など)や警察・役所を名乗る言い方はしない。誤検知で本物の家族や
-//   正当な相手だった場合にも角が立たず、AIが「代わりの者」として話し続けても話が食い違わないように。
-// - AIの返事と違って、決まった文から選ぶだけ(待ち時間ゼロ・変なことを言わせない)。
-const BRIDGE_EXCUSES = [
-  "ちょっと電話が遠いみたいなので、代わりの者がお話を伺いますね。",
-  "すみません、今手が離せないので、代わりの者に代わりますね。",
-  "耳が遠くてよく聞き取れないので、代わりの者が聞きますね。",
-  "少々お待ちください。代わりの者がお話を伺います。",
+// AIに代わる前に本人が相手に言う「時間稼ぎの一言」(メガネ・電波・メモなど、日常のちょっとした言い訳)
+// - 誰かを名乗る言い方(家族・警察・役所など)は入れない。誤検知で相手が本物の家族や
+//   正当な相手だったときも、ただの「ちょっと待って」で済むように。
+// - 決まった文から選ぶだけ(待ち時間ゼロ・変なことを言わせない)。
+const NATURAL_EXCUSES = [
+  "あ、ちょっと待って、メガネ落としちゃった。",
+  "あれ、なんか電波の調子悪いな、ちょっと待ってね。",
+  "ちょっとメモ用紙取ってくるから待って。",
+  "ごめんなさい、お鍋に火をかけてるから、ちょっと待っててね。",
+  "あら、玄関に誰か来たみたい。ちょっと待っててください。",
 ];
 
-function pickBridgeExcuse(text) {
+function pickExcuse(text) {
   let h = 0;
   for (const ch of text) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  return BRIDGE_EXCUSES[h % BRIDGE_EXCUSES.length];
+  return NATURAL_EXCUSES[h % NATURAL_EXCUSES.length];
 }
 
 const LEVEL_TO_RISK = { high: "HIGH", medium: "MEDIUM", low: "SAFE", none: "SAFE" };
 const RISK_TO_ACTION = {
-  HIGH: "TRIGGER_AI_SWITCH_BUTTON",
+  HIGH: "TRIGGER_STEALTH_AI_SWITCH",
   MEDIUM: "SHOW_WARNING_BANNER",
   SAFE: "CONTINUE",
 };
@@ -104,11 +106,11 @@ async function judgeUtterance(input, { useJev = process.env.JEV_REALTIME === "1"
     risk_level,
     detected_category: risk_level === "SAFE" ? "NONE" : categorize(detection.matches.map((m) => m.id)),
     suggested_action: RISK_TO_ACTION[risk_level],
-    bridge_excuse_ja: risk_level === "SAFE" ? "" : pickBridgeExcuse(text),
+    natural_excuse_ja: risk_level === "SAFE" ? "" : pickExcuse(text),
     reason_short,
     engine: verdict.by,
     latency_ms: Math.round(Number(process.hrtime.bigint() - started) / 1e4) / 100,
   };
 }
 
-module.exports = { judgeUtterance, categorize, BRIDGE_EXCUSES };
+module.exports = { judgeUtterance, categorize, NATURAL_EXCUSES };
