@@ -1,0 +1,386 @@
+<title>戦国シールド 判定デモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
+<style>
+  :root {
+    --paper: #f3f5f8;
+    --surface: #ffffff;
+    --ink: #1b2231;
+    --muted: #5b6475;
+    --line: #d5dae3;
+    --accent: #2c3d6b;
+    --accent-ink: #ffffff;
+    --safe: #1d6b45; --safe-bg: #e2f1e8;
+    --warn: #8a5a00; --warn-bg: #fdf0cf;
+    --danger: #a3261c; --danger-bg: #fbe2df;
+    --mark: #ffe08a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+      --accent: #b9c6ec; --accent-ink: #12151c;
+      --safe: #86d4a9; --safe-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+      --danger: #ff9d92; --danger-bg: #3a1714; --mark: #6b5516;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+    --accent: #b9c6ec; --accent-ink: #12151c;
+    --safe: #86d4a9; --safe-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+    --danger: #ff9d92; --danger-bg: #3a1714; --mark: #6b5516;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 17px/1.7 "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    padding-inline: 16px; padding-block: 20px 48px;
+  }
+  main { max-width: 640px; margin: 0 auto; display: grid; gap: 18px; }
+  header { display: grid; gap: 4px; }
+  .name {
+    font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", serif; font-weight: 800;
+    font-size: 30px; line-height: 1.2; margin: 0; letter-spacing: 0.04em; text-wrap: balance;
+  }
+  .sub { margin: 0; color: var(--muted); font-size: 15px; }
+  .chip {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; color: var(--muted); margin-left: 8px;
+    vertical-align: middle;
+  }
+  section { display: grid; gap: 10px; }
+  h2 { font-size: 15px; letter-spacing: 0.06em; color: var(--muted); margin: 0; font-weight: 700; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+  textarea {
+    font: inherit; width: 100%; min-height: 96px; resize: vertical; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  }
+  textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .hint { font-size: 14px; color: var(--muted); margin: 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; border-radius: 10px; padding: 12px 18px; cursor: pointer;
+    border: 2px solid transparent;
+  }
+  .primary { background: var(--accent); color: var(--accent-ink); flex: 1 1 160px; }
+  .ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ex {
+    font-size: 14px; font-weight: 400; text-align: left; padding: 8px 12px; border-radius: 10px;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  }
+  .ex b { font-size: 12px; letter-spacing: 0.06em; margin-right: 6px; }
+  .ex.scam b { color: var(--danger); }
+  .ex.benign b { color: var(--safe); }
+
+  .status { border-radius: 14px; padding: 18px 16px; display: grid; gap: 4px; }
+  .status .level { font-size: 24px; font-weight: 700; line-height: 1.35; text-wrap: balance; }
+  .status .why { font-size: 15px; }
+  .SAFE { background: var(--safe-bg); color: var(--safe); }
+  .MEDIUM { background: var(--warn-bg); color: var(--warn); }
+  .HIGH { background: var(--danger-bg); color: var(--danger); }
+  .IDLE { background: var(--surface); color: var(--muted); border: 1px dashed var(--line); }
+
+  .excuse { border: 2px solid var(--danger); border-radius: 14px; padding: 14px 16px; background: var(--surface); }
+  .excuse p { margin: 4px 0 0; font-size: 21px; font-weight: 700; line-height: 1.5; }
+  .excuse span { font-size: 14px; color: var(--muted); }
+
+  .log { list-style: none; margin: 0; padding: 0; display: grid; }
+  .log li { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 4px; overflow-wrap: anywhere; }
+  .log li:last-child { border-bottom: 0; }
+  .log .meta { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 0 8px; }
+  .pill.SAFE { background: var(--safe-bg); color: var(--safe); }
+  .pill.MEDIUM { background: var(--warn-bg); color: var(--warn); }
+  .pill.HIGH { background: var(--danger-bg); color: var(--danger); }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 2px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 1px 8px; color: var(--ink); }
+  .tag i { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
+
+  .facts { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px; display: grid; }
+  .fact { display: grid; grid-template-columns: 5.5em 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .fact:last-child { border-bottom: 0; }
+  .fact strong { font-size: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fact span { font-size: 14px; color: var(--muted); }
+  .notes { font-size: 14px; color: var(--muted); margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+  .num { font-weight: 700; color: var(--ink); user-select: all; }
+  #copyNote { font-size: 14px; color: var(--muted); margin: 0; }
+  #copyFallback { width: 100%; min-height: 120px; font: 13px/1.5 ui-monospace, monospace; }
+  @media (prefers-reduced-motion: no-preference) {
+    .status { transition: background-color .25s ease, color .25s ease; }
+  }
+</style>
+
+<main>
+  <header>
+    <h1 class="name">戦国シールド<span class="chip">試作品</span></h1>
+    <p class="sub">電話の相手の言葉を入れると、詐欺によくある言い回しかどうかをその場で判定します。</p>
+  </header>
+
+  <section aria-labelledby="inputHead">
+    <h2 id="inputHead">相手の言葉を入れる</h2>
+    <div class="panel">
+      <label for="utter" class="hint">キーボードのマイクボタンを押すと、話した言葉をそのまま文字にできます。</label>
+      <textarea id="utter" placeholder="例: 市役所の保険課です。医療費の還付金があります。"></textarea>
+      <div class="actions">
+        <button id="judgeBtn" class="primary" type="button">判定する</button>
+        <button id="resetBtn" class="ghost" type="button">新しい電話として試す</button>
+      </div>
+      <p class="hint">同じ電話の続きとして何回か入れると、会話全体で判定します。</p>
+    </div>
+    <div class="examples" aria-label="例文">
+      <button class="ex scam" type="button" data-text="市役所の保険課です。医療費の還付金があります。"><b>詐欺の例</b>市役所の保険課です。医療費の還付金があります。</button>
+      <button class="ex scam" type="button" data-text="期限が今日までなので、お近くのATMに行ってください。"><b>詐欺の例</b>期限が今日までなので、お近くのATMに行ってください。</button>
+      <button class="ex scam" type="button" data-text="キャッシュカードを封筒に入れて、係の者が回収に伺います。誰にも言わないでください。"><b>詐欺の例</b>キャッシュカードを封筒に入れて…誰にも言わないで</button>
+      <button class="ex benign" type="button" data-text="警察署の生活安全課です。届け出いただいた自転車が見つかりましたので、ご連絡しました。"><b>普通の例</b>警察署です。自転車が見つかりました。</button>
+      <button class="ex benign" type="button" data-text="宅配便です。お荷物のお届け日時の確認でお電話しました。"><b>普通の例</b>宅配便です。お届け日時の確認です。</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="resultHead">
+    <h2 id="resultHead">判定</h2>
+    <div id="status" class="status IDLE" role="status" aria-live="polite">
+      <div class="level">まだ何も入っていません</div>
+      <div class="why">上の欄に相手の言葉を入れるか、例文を押してください。</div>
+    </div>
+    <div id="excuse" class="excuse" hidden>
+      <span>まず相手にこう言って、時間をかせぎます</span>
+      <p id="excuseText"></p>
+    </div>
+    <div id="tags" class="tags" hidden></div>
+  </section>
+
+  <section aria-labelledby="logHead">
+    <h2 id="logHead">この電話の記録</h2>
+    <div class="panel">
+      <ul id="log" class="log"><li class="hint">まだありません。</li></ul>
+      <div class="actions">
+        <button id="copyBtn" class="ghost" type="button">記録をコピー(あとでClaudeに送る用)</button>
+      </div>
+      <p id="copyNote">警告が出なかった言い回しは、シールドがまだ知らない手口です。記録をコピーして送ってもらえれば、次の改良に使います。</p>
+      <textarea id="copyFallback" hidden readonly aria-label="コピー用の記録"></textarea>
+    </div>
+  </section>
+
+  <section aria-labelledby="aboutHead">
+    <h2 id="aboutHead">この試作品について</h2>
+    <div class="facts">
+      <div class="fact"><strong>0 / 70</strong><span>普通の電話の例文で、誤って警告した件数</span></div>
+      <div class="fact"><strong>25 / 25</strong><span>ルール作りに使った詐欺の例文で、警告できた件数</span></div>
+      <div class="fact"><strong>3 / 10</strong><span>ルール作りに使っていない詐欺の例文で、警告できた件数</span></div>
+    </div>
+    <ul class="notes">
+      <li>判定はこの端末の中だけで行い、入れた言葉はどこにも送りません。</li>
+      <li>例文はすべて開発時に作った模擬データです。言い換えられた詐欺はまだ見逃しやすく、本物の手口の言い回しを集めて改良していきます。</li>
+      <li>本番では、怪しいときに「AIに応対を代わる」ボタンと、家族へのLINE通知が出ます(AIは本人の声を真似しません)。</li>
+      <li>不審な電話の相談は 警察相談専用電話 <span class="num">#9110</span>、お金を渡す・家に来ると言われたときは <span class="num">110</span> 番へ。</li>
+    </ul>
+  </section>
+</main>
+
+<script id="patterns" type="application/json">[{"id":"refund","label":"還付金・払い戻し","weight":3,"source":"還付|払い?戻し|返金","flags":""},{"id":"atm","label":"ATM操作の誘導","weight":4,"source":"ATM|エーティーエム|現金自動|振込機","flags":"i"},{"id":"card_pin","label":"キャッシュカード・暗証番号","weight":4,"source":"暗証番号|キャッシュカード|カードを?(預か|回収|交換|封筒)","flags":""},{"id":"gift_card","label":"電子マネー・ギフトカード払い","weight":4,"source":"電子マネー|ギフト(カード|券)|プリペイド|(アマゾン|Amazon|アップル|Apple|グーグル|Google|iTunes).{0,6}(カード|券)|コンビニで.{0,10}(買|購入)","flags":"i"},{"id":"unpaid_legal","label":"未納料金・訴訟の脅し","weight":3,"source":"未納|滞納|未払い|訴訟|裁判|差し?押さえ|法的(措置|手続)|債権","flags":""},{"id":"account_frozen","label":"口座凍結・不正利用","weight":3,"source":"口座.{0,6}(凍結|停止|止め|使えなく)|不正(利用|使用|アクセス)|犯罪に(使|利用)","flags":""},{"id":"authority","label":"公的機関・警察を名乗る","weight":2,"source":"警察|警視庁|刑事|金融庁|財務局|検察|裁判所|市役所|区役所|年金(事務所|機構)|税務署|総務省|消費者(センター|庁)|銀行協会","flags":""},{"id":"urgency","label":"急がせる・今日中","weight":1,"source":"至急|今日中|本日中|今すぐ|すぐに|期限が?(今日|本日)|あと\\d+(分|時間)","flags":""},{"id":"secrecy","label":"口止め","weight":2,"source":"(誰|だれ)にも(言わ|話さ|相談し)|内緒|秘密に|家族に(は)?(言わ|話さ)","flags":""},{"id":"personal_info","label":"個人情報・資産の聞き出し","weight":2,"source":"口座番号|預金(残高|額)|貯金(は|が)?いくら|(生年月日|マイナンバー)を?(教え|確認)|タンス預金|家に(現金|お金)","flags":""},{"id":"investment","label":"もうけ話・投資","weight":3,"source":"必ず(儲か|もうか)|元本保証|高配当|未公開株|名義(を)?貸|当選(しました|金)","flags":""},{"id":"cash_demand","label":"現金・示談金の要求","weight":3,"source":"示談金|(お金|現金)が?.{0,4}(必要|要る|いる)|(お金|現金)を?.{0,4}用意|\\d+万円?.{0,6}(用意|必要|振り?込)","flags":""},{"id":"advance_fee","label":"保証金・手数料の先払い","weight":4,"source":"(保証金|手数料).{0,12}(先に|事前に|前もって)|(先に|事前に|前もって).{0,12}(保証金|手数料)|保証金.{0,10}(振り?込|払)","flags":""}]</script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  // 検知ルールは sengoku-shield/lib/detector.js と同じもの(テストで一致を確認している)
+  const PATTERNS = JSON.parse($("patterns").textContent).map((p) => ({
+    ...p,
+    regex: new RegExp(p.source, p.flags),
+    global: new RegExp(p.source, p.flags + "g"),
+  }));
+  const LEVELS = [
+    { min: 8, level: "HIGH", title: "【警告】詐欺の可能性が高い電話です", advice: "お金・カード・暗証番号の話には応じないでください。" },
+    { min: 4, level: "MEDIUM", title: "注意: 怪しい点があります", advice: "いったん切って、家族に相談しても大丈夫です。" },
+    { min: 0, level: "SAFE", title: "今のところ怪しい言い回しはありません", advice: "普通の電話では、シールドは何もしません。" },
+  ];
+  const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
+  const EXCUSES = [
+    "あ、ちょっと待って、メガネ落としちゃった。",
+    "あれ、なんか電波の調子悪いな、ちょっと待ってね。",
+    "ちょっとメモ用紙取ってくるから待って。",
+    "ごめんなさい、お鍋に火をかけてるから、ちょっと待っててね。",
+    "あ、玄関に誰か来たみたい。ちょっと待っててください。",
+  ];
+
+  let utterances = [];
+  let lastLevel = "SAFE";
+  let excuse = "";
+
+  function detect(text) {
+    return PATTERNS.filter((p) => p.regex.test(text));
+  }
+
+  function scoreCall(list) {
+    const seen = new Map();
+    for (const u of list) for (const p of detect(u)) seen.set(p.id, p);
+    const matches = [...seen.values()];
+    const total = matches.reduce((s, m) => s + m.weight, 0);
+    return { total, matches, ...LEVELS.find((l) => total >= l.min) };
+  }
+
+  function pickExcuse(text) {
+    let h = 0;
+    for (const ch of text) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    return EXCUSES[h % EXCUSES.length];
+  }
+
+  // 当たった言い回しに印を付けて表示する(テキストノードで組み立てる)
+  function highlighted(text) {
+    const ranges = [];
+    for (const p of PATTERNS) {
+      p.global.lastIndex = 0;
+      let m;
+      while ((m = p.global.exec(text))) {
+        if (!m[0]) { p.global.lastIndex++; continue; }
+        ranges.push([m.index, m.index + m[0].length]);
+      }
+    }
+    ranges.sort((a, b) => a[0] - b[0]);
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    for (const [s, e] of ranges) {
+      if (e <= pos) continue;
+      const start = Math.max(s, pos);
+      if (start > pos) frag.append(text.slice(pos, start));
+      const mark = document.createElement("mark");
+      mark.textContent = text.slice(start, e);
+      frag.append(mark);
+      pos = e;
+    }
+    frag.append(text.slice(pos));
+    return frag;
+  }
+
+  function render(result) {
+    // 一度上がった警告は、同じ電話の途中では下げない
+    const level = RANK[result.level] >= RANK[lastLevel] ? result.level : lastLevel;
+    lastLevel = level;
+    const info = LEVELS.find((l) => l.level === level);
+    const st = $("status");
+    st.className = `status ${level}`;
+    st.replaceChildren();
+    const lv = document.createElement("div");
+    lv.className = "level";
+    lv.textContent = info.title;
+    const why = document.createElement("div");
+    why.className = "why";
+    why.textContent = result.matches.length
+      ? `${result.matches.map((m) => m.label).join("・")}。${info.advice}`
+      : info.advice;
+    st.append(lv, why);
+
+    if (level !== "SAFE" && !excuse) excuse = pickExcuse(utterances[utterances.length - 1]);
+    $("excuse").hidden = level === "SAFE";
+    $("excuseText").textContent = excuse;
+
+    const tags = $("tags");
+    tags.replaceChildren();
+    for (const m of result.matches) {
+      const t = document.createElement("span");
+      t.className = "tag";
+      t.textContent = m.label;
+      const w = document.createElement("i");
+      w.textContent = `+${m.weight}`;
+      t.append(w);
+      tags.append(t);
+    }
+    tags.hidden = result.matches.length === 0;
+  }
+
+  function renderLog() {
+    const log = $("log");
+    log.replaceChildren();
+    if (!utterances.length) {
+      const li = document.createElement("li");
+      li.className = "hint";
+      li.textContent = "まだありません。";
+      log.append(li);
+      return;
+    }
+    utterances.forEach((u, i) => {
+      const own = scoreCall([u]);
+      const li = document.createElement("li");
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const pill = document.createElement("span");
+      pill.className = `pill ${own.level}`;
+      pill.textContent = own.level === "SAFE" ? (own.matches.length ? "単独では弱い" : "該当なし") : own.level === "HIGH" ? "高" : "中";
+      meta.append(`${i + 1}回目`, pill);
+      const body = document.createElement("div");
+      body.append(highlighted(u));
+      li.append(meta, body);
+      log.append(li);
+    });
+  }
+
+  function judge(text) {
+    const t = text.trim().slice(0, 500);
+    if (!t) return;
+    utterances.push(t);
+    render(scoreCall(utterances));
+    renderLog();
+  }
+
+  $("judgeBtn").addEventListener("click", () => {
+    judge($("utter").value);
+    $("utter").value = "";
+    $("utter").focus();
+  });
+  $("utter").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("judgeBtn").click();
+  });
+  for (const b of document.querySelectorAll(".ex")) {
+    b.addEventListener("click", () => judge(b.dataset.text));
+  }
+  $("resetBtn").addEventListener("click", () => {
+    utterances = [];
+    lastLevel = "SAFE";
+    excuse = "";
+    const st = $("status");
+    st.className = "status IDLE";
+    st.replaceChildren();
+    const lv = document.createElement("div");
+    lv.className = "level";
+    lv.textContent = "新しい電話です";
+    const why = document.createElement("div");
+    why.className = "why";
+    why.textContent = "相手の言葉を入れてください。";
+    st.append(lv, why);
+    $("excuse").hidden = true;
+    $("tags").hidden = true;
+    $("copyFallback").hidden = true;
+    renderLog();
+  });
+
+  $("copyBtn").addEventListener("click", async () => {
+    if (!utterances.length) {
+      $("copyNote").textContent = "まだ記録がありません。";
+      return;
+    }
+    const whole = scoreCall(utterances);
+    const text = [
+      "【戦国シールド デモの記録】",
+      `判定(会話全体): ${LEVELS.find((l) => l.level === lastLevel).title}`,
+      `当たった手口: ${whole.matches.map((m) => m.label).join("、") || "なし"}`,
+      "入れた言葉:",
+      ...utterances.map((u) => {
+        const own = scoreCall([u]);
+        return `・${u}(${own.matches.length ? own.matches.map((m) => m.label).join("、") : "該当なし=見逃し候補"})`;
+      }),
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      $("copyNote").textContent = "コピーしました。Claudeのチャットに貼り付けて送ってください。";
+      $("copyFallback").hidden = true;
+    } catch {
+      $("copyFallback").value = text;
+      $("copyFallback").hidden = false;
+      $("copyFallback").select();
+      $("copyNote").textContent = "自動でコピーできなかったので、下の欄を長押ししてコピーしてください。";
+    }
+  });
+})();
+</script>
