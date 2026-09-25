@@ -45,6 +45,7 @@
   .primary { background: var(--accent); color: var(--accent-fg); }
   .secondary { background: transparent; color: var(--fg); border: 2px solid var(--line); }
   .handoff { background: var(--danger); color: #fff; font-size: 24px; padding: 22px; }
+  .handoff small { display: block; font-size: 15px; font-weight: 400; margin-top: 4px; }
   .hidden { display: none !important; }
   .bridge { border: 2px solid var(--danger); }
   .bridge-label { font-size: 15px; color: var(--muted); }
@@ -81,10 +82,10 @@
   <div id="status" class="status IDLE">停止中<small>「聞き取りを始める」を押してください</small></div>
 
   <div id="bridgeCard" class="card bridge hidden">
-    <span class="bridge-label">まず相手にこう言って、時間をかせいでください</span>
+    <span class="bridge-label">あわてなくて大丈夫。まず相手に、こう言ってみてください</span>
     <p id="bridgeText" class="bridge-text"></p>
   </div>
-  <button id="handoffBtn" class="handoff hidden" type="button">AIに応対を代わる</button>
+  <button id="handoffBtn" class="handoff hidden" type="button">AIに代わってもらう<small>押したら、あとはAIが話します</small></button>
   <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
   <p id="familyNote" class="family-note hidden">ご家族のLINEに知らせました</p>
 
@@ -253,18 +254,10 @@
   }
 
   // 危険度が上がったときだけ、音と振動で知らせる
+  // 危険度が上がったときだけ、やさしく振動で知らせる。
+  // 音は鳴らさない(電話がスピーカーなので相手に聞こえる。大きな警告音はお年寄りを慌てさせる)。
   function alarm(level) {
-    try { navigator.vibrate && navigator.vibrate(level === "HIGH" ? [400, 150, 400, 150, 400] : [250]); } catch {}
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = level === "HIGH" ? 880 : 660;
-      gain.gain.value = 0.15;
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + (level === "HIGH" ? 0.8 : 0.3));
-    } catch {}
+    try { navigator.vibrate && navigator.vibrate(level === "HIGH" ? [200, 300, 200] : [150]); } catch {}
   }
 
   const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
@@ -285,15 +278,25 @@
     $("helpCard").classList.toggle("hidden", level === "SAFE");
     if (mode === "ai") return;
     showBridge(level !== "SAFE");
+    // 画面の言葉は、怖がらせず落ち着いてもらうことを一番にする(画面だけ。声には出さない)。
+    // 事実でないこと(「警察に中継しています」等)は書かない。
     if (level === "HIGH") {
-      setStatus("HIGH", "【警告】詐欺の可能性が高い電話です", `${r.reason_short}。お金・カード・暗証番号の話には応じないでください。`);
+      setStatus("HIGH", "大丈夫です。落ち着いてくださいね", `この電話は、詐欺でよくある話し方をしています(${r.reason_short})。お金・カード・暗証番号のことは、今は何も答えなくて大丈夫です。`);
       $("handoffBtn").classList.remove("hidden");
     } else if (level === "MEDIUM") {
-      setStatus("MEDIUM", "注意: 怪しい点があります", `${r.reason_short}。いったん切って家族に相談しても大丈夫です。`);
+      setStatus("MEDIUM", "少し気になる電話です", `${r.reason_short}。あわてなくて大丈夫です。わからないときは、いったん切って家族に聞いてからでも間に合います。`);
       $("handoffBtn").classList.remove("hidden");
     } else {
       setStatus("SAFE", "聞き取り中", "今のところ怪しい言い回しはありません");
     }
+  }
+
+  // 家族への経過の知らせ(AIに代わった・電話が終わった)。失敗しても画面の動きは止めない
+  function sendEvent(type, extra = {}) {
+    if (!sessionId) return;
+    api("/api/event", { session_id: sessionId, type, ...extra })
+      .then((r) => { if (r.family_notice === "sent") $("familyNote").classList.remove("hidden"); })
+      .catch(() => {});
   }
 
   function showBridge(show) {
@@ -389,6 +392,12 @@
   });
 
   $("stopBtn").addEventListener("click", () => {
+    if (sessionId && lastRisk !== "SAFE") {
+      sendEvent("ended", {
+        minutes: startedAt ? Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000)) : null,
+        ai_replies: history.filter((h) => h.role === "shield").length,
+      });
+    }
     listening = false;
     sessionId = ""; // 次の聞き取りは別の通話として扱う(相談用メモは残す)
     mode = "watch";
@@ -407,7 +416,8 @@
     $("handoffBtn").classList.add("hidden");
     showBridge(false);
     $("backBtn").classList.remove("hidden");
-    setStatus("AI", "AIが応対しています", "端末を電話のそばに置いたままにしてください。あなたは話さなくて大丈夫です。AIは約束ごと(予約・支払い・同意)はしません");
+    setStatus("AI", "AIが代わりに話しています", "あなたは何もしなくて大丈夫です。電話は切らずに、この端末を電話のそばに置いたままにしてください。AIがお金や約束の話に応じることはありません。");
+    sendEvent("handoff");
     const opening = "お待たせしました。えーと、何のお話でしたっけ。もう一度ゆっくりお願いできますか。";
     history.push({ role: "shield", text: opening });
     addLog("AI", opening);

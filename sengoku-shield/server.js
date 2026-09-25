@@ -12,7 +12,7 @@ const { isValidSignature, say, gather, twiml, escapeXml } = require("./lib/twili
 const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
-const { notifyOwner, notifyFamily, familyTargets } = require("./lib/notify");
+const { notifyOwner, notifyFamily, notifyFamilyProgress, familyTargets } = require("./lib/notify");
 const jev = require("./lib/jev");
 const { judgeUtterance } = require("./lib/realtime");
 const { maskPhone } = require("./lib/mask");
@@ -178,12 +178,16 @@ function isAuthorizedApp(req) {
 const familyNotified = new Map();
 const FAMILY_NOTIFY_TTL_MS = 6 * 60 * 60 * 1000;
 
-function markFamilyNotified(sessionId) {
+function markFamilyNotified(key) {
   const now = Date.now();
   for (const [id, at] of familyNotified) if (now - at > FAMILY_NOTIFY_TTL_MS) familyNotified.delete(id);
-  if (familyNotified.has(sessionId)) return false;
-  familyNotified.set(sessionId, now);
+  if (familyNotified.has(key)) return false;
+  familyNotified.set(key, now);
   return true;
+}
+
+function validSessionId(id) {
+  return /^[A-Za-z0-9-]{8,64}$/.test(id || "") ? id : null;
 }
 
 // 発話1つを判定して、画面制御用のJSONを返す
@@ -193,7 +197,7 @@ async function apiJudge(body, res) {
     return sendJson(res, 400, { error: "utterance が必要です" });
   }
   const result = await judgeUtterance({ utterance: body.utterance, recent: body.recent });
-  const sessionId = /^[A-Za-z0-9-]{8,64}$/.test(body.session_id || "") ? body.session_id : null;
+  const sessionId = validSessionId(body.session_id);
   let family_notice = "off";
   if (familyTargets().length && sessionId) {
     family_notice = "none";
@@ -224,8 +228,27 @@ async function apiDecoy(body, res) {
   sendJson(res, 200, await decoy.reply(history, turn, { gender }));
 }
 
+// 見守りの経過(AIに代わった / 電話が終わった)を家族に知らせる。種類ごとに1通話1回まで
+const EVENT_TYPES = new Set(["handoff", "ended"]);
+
+async function apiEvent(body, res) {
+  const sessionId = validSessionId(body.session_id);
+  if (!sessionId || !EVENT_TYPES.has(body.type)) {
+    return sendJson(res, 400, { error: "session_id と type(handoff / ended)が必要です" });
+  }
+  if (!familyTargets().length) return sendJson(res, 200, { family_notice: "off" });
+  if (!markFamilyNotified(`${sessionId}:${body.type}`)) return sendJson(res, 200, { family_notice: "already" });
+  const extra = {
+    minutes: Number.isFinite(body.minutes) ? Math.min(600, Math.max(0, Math.round(body.minutes))) : undefined,
+    ai_replies: Number.isFinite(body.ai_replies) ? Math.min(1000, Math.max(0, Math.round(body.ai_replies))) : undefined,
+  };
+  notifyFamilyProgress(body.type, extra).catch((err) => console.error("[notify]", err.message));
+  sendJson(res, 200, { family_notice: "sent" });
+}
+
 const API_ROUTES = {
   "/api/judge": apiJudge,
+  "/api/event": apiEvent,
   "/api/decoy": apiDecoy,
 };
 

@@ -147,7 +147,7 @@
       <div class="why">上の欄に相手の言葉を入れるか、例文を押してください。</div>
     </div>
     <div id="excuse" class="excuse" hidden>
-      <span>まず相手にこう言って、時間をかせぎます</span>
+      <span>あわてなくて大丈夫。まず相手に、こう言ってみてください</span>
       <p id="excuseText"></p>
     </div>
     <div id="tags" class="tags" hidden></div>
@@ -175,7 +175,8 @@
     <ul class="notes">
       <li>判定はこの端末の中だけで行い、入れた言葉はどこにも送りません。</li>
       <li>例文はすべて開発時に作った模擬データです。言い換えられた詐欺はまだ見逃しやすく、本物の手口の言い回しを集めて改良していきます。</li>
-      <li>本番では、怪しいときに「AIに応対を代わる」ボタンと、家族へのLINE通知が出ます(AIは本人の声を真似しません)。</li>
+      <li>本番では、怪しいときに「AIに代わってもらう」ボタンが出て、家族のLINEにも知らせます(AIは本人の声を真似しません)。</li>
+      <li>警告は、お年寄りを怖がらせないやさしい言葉で出し、音は鳴らしません(スピーカーの電話だと相手に聞こえるため)。</li>
       <li>不審な電話の相談は 警察相談専用電話 <span class="num">#9110</span>、お金を渡す・家に来ると言われたときは <span class="num">110</span> 番へ。</li>
     </ul>
   </section>
@@ -192,8 +193,8 @@
     global: new RegExp(p.source, p.flags + "g"),
   }));
   const LEVELS = [
-    { min: 8, level: "HIGH", title: "【警告】詐欺の可能性が高い電話です", advice: "お金・カード・暗証番号の話には応じないでください。" },
-    { min: 4, level: "MEDIUM", title: "注意: 怪しい点があります", advice: "いったん切って、家族に相談しても大丈夫です。" },
+    { min: 8, level: "HIGH", title: "大丈夫です。落ち着いてくださいね", advice: "詐欺でよくある話し方です。お金・カード・暗証番号のことは、今は何も答えなくて大丈夫です。" },
+    { min: 4, level: "MEDIUM", title: "少し気になる電話です", advice: "あわてなくて大丈夫です。わからないときは、いったん切って家族に聞いてからでも間に合います。" },
     { min: 0, level: "SAFE", title: "今のところ怪しい言い回しはありません", advice: "普通の電話では、シールドは何もしません。" },
   ];
   const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };

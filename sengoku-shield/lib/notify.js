@@ -50,6 +50,37 @@ async function notifyFamily(judgment, utterance) {
   return results.some(Boolean);
 }
 
+// 見守り中の経過を家族に知らせる(AIに代わった / 電話が終わった)。
+// 警察へ中継しているなど、実際にしていないことは書かない。
+function familyProgressMessage(type, { minutes, ai_replies } = {}) {
+  if (type === "handoff") {
+    return [
+      "【戦国シールド】本人が「AIに代わってもらう」を押しました",
+      "今、AIが相手と話して時間をかせいでいます。本人は電話のそばで待っています。",
+      "電話が終わったら、もう一度お知らせします。",
+    ].join("\n");
+  }
+  if (type === "ended") {
+    const parts = [];
+    if (Number.isFinite(minutes)) parts.push(`約${minutes}分`);
+    if (Number.isFinite(ai_replies) && ai_replies > 0) parts.push(`AIの返事 ${ai_replies}回`);
+    return [
+      "【戦国シールド】見守っていた電話が終わりました" + (parts.length ? `(${parts.join("・")})` : ""),
+      "本人に電話をかけて、お金やカードを渡す約束をしていないか、やさしく聞いてあげてください。",
+      "心配なときは #9110(警察相談専用電話)に相談できます。",
+    ].join("\n");
+  }
+  return null;
+}
+
+async function notifyFamilyProgress(type, extra) {
+  const targets = familyTargets();
+  const text = familyProgressMessage(type, extra);
+  if (!targets.length || !text) return false;
+  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
+  return results.some(Boolean);
+}
+
 async function notifyOwner(call) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   const to = process.env.SHIELD_LINE_USER_ID;
@@ -69,4 +100,11 @@ async function notifyOwner(call) {
   return pushLine(to, text);
 }
 
-module.exports = { notifyOwner, notifyFamily, familyTargets, familyMessage };
+module.exports = {
+  notifyOwner,
+  notifyFamily,
+  notifyFamilyProgress,
+  familyTargets,
+  familyMessage,
+  familyProgressMessage,
+};

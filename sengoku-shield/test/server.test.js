@@ -128,3 +128,46 @@ test("見守り中に「疑い:高」になったら、1通話につき1回だ�
   assert.match(text, /#9110/);
   assert.doesNotMatch(text, /1234-5678/); // 番号は伏せる
 });
+
+test("AIに代わった・電話が終わったことを、種類ごとに1回だけ家族に知らせる", async (t) => {
+  process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+  process.env.SHIELD_FAMILY_LINE_IDS = "Ufamily1";
+  t.after(() => {
+    delete process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    delete process.env.SHIELD_FAMILY_LINE_IDS;
+  });
+  const pushed = [];
+  const orig = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (String(url).startsWith("https://api.line.me/")) {
+      pushed.push(JSON.parse(opts.body).messages[0].text);
+      return new Response("{}", { status: 200 });
+    }
+    return orig(url, opts);
+  };
+  t.after(() => (global.fetch = orig));
+
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const event = async (body) =>
+    orig(`${base}/api/event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer app-secret" },
+      body: JSON.stringify(body),
+    });
+
+  assert.strictEqual((await event({ session_id: "session-bbbb-1", type: "hack" })).status, 400);
+  assert.strictEqual((await (await event({ session_id: "session-bbbb-1", type: "handoff" })).json()).family_notice, "sent");
+  assert.strictEqual((await (await event({ session_id: "session-bbbb-1", type: "handoff" })).json()).family_notice, "already");
+  assert.strictEqual(
+    (await (await event({ session_id: "session-bbbb-1", type: "ended", minutes: 7, ai_replies: 12 })).json()).family_notice,
+    "sent"
+  );
+  await new Promise((r) => setTimeout(r, 50));
+
+  assert.strictEqual(pushed.length, 2);
+  assert.match(pushed[0], /AIに代わってもらう/);
+  assert.match(pushed[1], /約7分・AIの返事 12回/);
+  for (const text of pushed) assert.doesNotMatch(text, /中継|通報しました|警察に(送|伝え)/);
+});
