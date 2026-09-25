@@ -12,14 +12,8 @@ const { isValidSignature, say, gather, twiml, escapeXml } = require("./lib/twili
 const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
-const {
-  notifyOwner,
-  notifyFamily,
-  notifyFamilyProgress,
-  notifyFamilyAccount,
-  familyTargets,
-} = require("./lib/notify");
-const intel = require("./lib/intel");
+const { notifyOwner, notifyFamily, notifyFamilyProgress, familyTargets } = require("./lib/notify");
+const escalate = require("./lib/escalate");
 const jev = require("./lib/jev");
 const { judgeUtterance } = require("./lib/realtime");
 const family = require("./lib/family");
@@ -119,6 +113,15 @@ async function handleTurn(params, res) {
     call.history.push({ role: "shield", text: CLOSING, source: "fixed" });
     store.save(call);
     return sendXml(res, say(CLOSING) + "<Hangup/>");
+  }
+
+  // Twilioの自動応答でも、相手が口座・会う日時と場所を言ったら家族へ急ぎで知らせる
+  if (speech) {
+    escalate.onCallerSpeech({
+      sessionId: call.callSid,
+      lines: callerUtterances(call),
+      suspicious: ["medium", "high"].includes(call.detection.level),
+    });
   }
 
   call.turns += 1;
@@ -234,20 +237,14 @@ async function apiJudge(body, res) {
       }
     }
   }
-  // 相手が振込先の口座を言ったら、電話が終わるのを待たずに家族へ知らせる(口座ごとに1回)
-  let account_notice = "none";
-  if (familyTargets().length && sessionId && result.risk_level !== "SAFE") {
-    const lines = [...(Array.isArray(body.recent) ? body.recent : []), body.utterance].map((t) => String(t || "").slice(0, 500));
-    const found = intel.extract(lines);
-    const account = found.find((f) => f.type === "account")?.value;
-    const bank = found.find((f) => f.type === "bank")?.value;
-    const phone = found.find((f) => f.type === "phone")?.value;
-    if (account && markFamilyNotified(`${sessionId}:account:${account}`)) {
-      account_notice = "sent";
-      notifyFamilyAccount({ bank, account, phone }).catch((err) => console.error("[notify]", err.message));
-    }
-  }
-  sendJson(res, 200, { ...result, family_notice, account_notice });
+  // 相手が口座・会う日時と場所・家に来る話をしたら、電話が終わるのを待たずに家族へ(LINE・自動電話)
+  const lines = [...(Array.isArray(body.recent) ? body.recent : []), body.utterance].map((t) => String(t || "").slice(0, 500));
+  const { account_notice, call_notice } = escalate.onCallerSpeech({
+    sessionId,
+    lines,
+    suspicious: result.risk_level !== "SAFE",
+  });
+  sendJson(res, 200, { ...result, family_notice, account_notice, call_notice });
 }
 
 // 「AIに代わる」を押した後、相手の発話にAIが返事をする

@@ -163,6 +163,18 @@ AI・本人だけで受け渡しの約束を進めることはしない。そこ
 - LINE Developers で Messaging API のチャネルを作り、Webhook URL を `<SHIELD_PUBLIC_URL>/line/webhook` にする。
   バツルーレットの配信用とは別のチャネルにすること(家族以外に戦国シールドのメッセージが届かないように)。
 
+### 家族への自動電話(急ぎのとき)
+
+LINEに気づかない家族にも届くよう、急ぎのときは自動音声で電話をかける(`lib/familycall.js`、`lib/escalate.js`)。
+
+- **かけるとき**: 詐欺の疑いがある電話で、相手が「振込先の口座」「会う日時と場所」「家に来る話」のどれかを言った瞬間(電話が終わるのを待たない)。1回の通話につき1回。
+  見守り画面(`/api/judge`)と、Twilioの自動応答の両方で動く。
+- **かける相手**: LINEで電話番号を登録した家族と、`SHIELD_FAMILY_PHONES`(カンマ区切り)。
+- **読み上げる内容**: 「こちらは、戦国シールドです。見守っているご家族の電話で、詐欺と思われる電話がありました。相手は、明日の午後3時に、新宿駅の東口改札で受け取ると言っています。…
+  本人が110番できていないようなら、代わりに110番をお願いします。くわしくは、戦国シールドのLINEを見てください。」を2回。口座番号は聞き取りにくいので電話では読まずLINEで送る。
+- AIが自分で110番することはしない(110番は人がかける番号なので、家族にお願いする)。
+- 音声認識で数字が漢数字・全角で出ても(「一二三四五六七」「１２３４５６７」「三時」)、番号や時刻として読み取る。
+
 ### 家族への通知と、警察への相談(エスカレーション)
 
 - **家族のLINEに経過を知らせる**: 「疑い:高」になったとき・本人が「AIに代わってもらう」を押したとき・その電話が終わったとき(通話時間とAIの返事の回数)に、それぞれ1回ずつ知らせる(`/api/event`)。
@@ -287,6 +299,8 @@ npm install
 | `TWILIO_VOICE` | | 読み上げ音声を直接指定(`SHIELD_VOICE_GENDER` より優先) |
 | `LINE_CHANNEL_SECRET` / `LINE_CHANNEL_ACCESS_TOKEN` | | 戦国シールドのLINE公式アカウント(家族の登録と通知)。Webhook は `/line/webhook` |
 | `SHIELD_LINE_ADD_URL` | | 見守り画面に出す、LINE公式アカウントの友だち追加URL(例: `https://lin.ee/xxxx`) |
+| `TWILIO_ACCOUNT_SID` / `SHIELD_CALLER_ID` | | 家族への自動電話に使う Twilio のアカウントと発信番号(`TWILIO_AUTH_TOKEN` も必要) |
+| `SHIELD_FAMILY_PHONES` | | LINE登録とは別に、自動電話をかける家族の番号(カンマ区切り) |
 | `SHIELD_FAMILY_LINE_IDS` | | 招待番号を使わずに、知らせる家族のLINEユーザーIDを直接書く場合(カンマ区切り) |
 | `SHIELD_APP_TOKEN` | | スマホ連動(`/app`・`/api/*`)の合言葉。未設定なら `/api/*` は使えない |
 | `JEV_REALTIME` / `JEV_REALTIME_TIMEOUT_MS` | | `1` で発話ごとの判定にも Jev を使う / そのときの待ち時間(既定 1500ms) |
@@ -335,6 +349,7 @@ npm run audit               # 監査ログの検証
 - `benign-samples.json` — 普通の電話の例文集(誤検知チェック用。増やすほど安全。追加するときは `"split": "dev"`)
 - `demo/` — 判定デモ(`template.html` から `build.js` で `index.html` を作る)
 - `lib/family.js` / `lib/line.js` — 見守り家族の名簿と、LINE公式アカウントでの登録受付(招待番号)
+- `lib/escalate.js` / `lib/familycall.js` — 急ぎの知らせ(相手の口座をLINEへ・家族への自動電話)
 - `lib/intel.js` — 相手の発言から、警察に伝える手がかり(口座・金額・日時・場所など)を抜き出す(サーバーとブラウザで共用)
 - `lib/realtime.js` — スマホ連動用の発話ごとの判定(画面制御用JSON)
 - `public/app.html` — 見守り画面(聞き取り・警告・「AIに応対を代わる」ボタン)

@@ -43,3 +43,12 @@ test("110番で読み上げる台本に、名前・金額・日時・場所が�
   assert.match(text, /みずほ銀行新宿支店、口座番号1234567/);
   assert.match(lines[lines.length - 1], /あなたのお名前と住所/);
 });
+
+test("音声認識の漢数字・全角数字も、番号や時刻として読み取る", () => {
+  const got = extract(["口座番号は一二三四五六七です", "電話は〇九〇一二三四五六七八", "明日の三時に駅前の公園で"]).map((f) => `${f.type}:${f.value}`);
+  assert.ok(got.includes("account:1234567"), got.join(","));
+  assert.ok(got.includes("phone:09012345678"), got.join(","));
+  assert.ok(got.includes("datetime:明日の三時"), got.join(","));
+  // 「三万円」のような数の言い方は、番号にしない
+  assert.ok(extract(["三万円を用意して"]).some((f) => f.type === "amount" && f.value === "三万円"));
+});

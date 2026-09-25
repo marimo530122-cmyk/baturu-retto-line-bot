@@ -356,6 +356,10 @@
     if (r.family_notice === "sent" || r.family_notice === "already" || r.account_notice === "sent") {
       $("familyNote").classList.remove("hidden");
     }
+    if (r.call_notice === "calling") {
+      $("familyNote").textContent = "ご家族のLINEに知らせ、電話もかけています";
+      $("familyNote").classList.remove("hidden");
+    }
     if (r.risk_level !== "SAFE" && r.reason_short) reasons.add(r.reason_short);
     for (const id of r.matched_ids || []) matchedIds.add(id);
     // 一度上がった警告は、通話の途中で勝手に下げない(相手が話題を変えても安心させない)
