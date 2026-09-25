@@ -52,7 +52,7 @@ async function notifyFamily(judgment, utterance) {
 
 // 見守り中の経過を家族に知らせる(AIに代わった / 電話が終わった)。
 // 警察へ中継しているなど、実際にしていないことは書かない。
-function familyProgressMessage(type, { minutes, ai_replies } = {}) {
+function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
   if (type === "handoff") {
     return [
       "【戦国シールド】本人が「AIに代わってもらう」を押しました",
@@ -64,9 +64,16 @@ function familyProgressMessage(type, { minutes, ai_replies } = {}) {
     const parts = [];
     if (Number.isFinite(minutes)) parts.push(`約${minutes}分`);
     if (Number.isFinite(ai_replies) && ai_replies > 0) parts.push(`AIの返事 ${ai_replies}回`);
+    const types = new Set(intel.map((f) => f.type));
+    const meeting = types.has("visit") || (types.has("datetime") && types.has("place"));
     return [
       "【戦国シールド】見守っていた電話が終わりました" + (parts.length ? `(${parts.join("・")})` : ""),
-      "本人に電話をかけて、お金やカードを渡す約束をしていないか、やさしく聞いてあげてください。",
+      ...(intel.length
+        ? ["", "相手が言っていたこと:", ...intel.map((f) => `・${f.label}: ${f.value}`), ""]
+        : []),
+      meeting
+        ? "相手が、会う日時・場所や家に来る話をしていました。本人が110番できていないようなら、代わりに110番してください。"
+        : "本人に電話をかけて、お金やカードを渡す約束をしていないか、やさしく聞いてあげてください。",
       "心配なときは #9110(警察相談専用電話)に相談できます。",
     ].join("\n");
   }

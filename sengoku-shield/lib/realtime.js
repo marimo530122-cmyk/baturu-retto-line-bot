@@ -108,6 +108,7 @@ async function judgeUtterance(input, { useJev = process.env.JEV_REALTIME === "1"
     suggested_action: RISK_TO_ACTION[risk_level],
     natural_excuse_ja: risk_level === "SAFE" ? "" : pickExcuse(text),
     reason_short,
+    matched_ids: detection.matches.map((m) => m.id),
     engine: verdict.by,
     latency_ms: Math.round(Number(process.hrtime.bigint() - started) / 1e4) / 100,
   };

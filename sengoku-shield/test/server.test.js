@@ -165,7 +165,17 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
   assert.strictEqual((await (await event({ session_id: "session-bbbb-1", type: "handoff" })).json()).family_notice, "sent");
   assert.strictEqual((await (await event({ session_id: "session-bbbb-1", type: "handoff" })).json()).family_notice, "already");
   assert.strictEqual(
-    (await (await event({ session_id: "session-bbbb-1", type: "ended", minutes: 7, ai_replies: 12 })).json()).family_notice,
+    (await (await event({
+      session_id: "session-bbbb-1",
+      type: "ended",
+      minutes: 7,
+      ai_replies: 12,
+      intel: [
+        { type: "datetime", value: "明日の午後3時" },
+        { type: "place", value: "新宿駅の東口改札" },
+        { type: "account", value: "1234567" }, // 口座番号は家族には送らない
+      ],
+    })).json()).family_notice,
     "sent"
   );
   await new Promise((r) => setTimeout(r, 50));
@@ -173,5 +183,8 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
   assert.strictEqual(pushed.length, 2);
   assert.match(pushed[0], /AIに代わってもらう/);
   assert.match(pushed[1], /約7分・AIの返事 12回/);
+  assert.match(pushed[1], /日時: 明日の午後3時/);
+  assert.match(pushed[1], /代わりに110番/);
+  assert.doesNotMatch(pushed[1], /1234567/);
   for (const text of pushed) assert.doesNotMatch(text, /中継|通報しました|警察に(送|伝え)/);
 });

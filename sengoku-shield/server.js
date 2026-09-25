@@ -231,6 +231,8 @@ async function apiDecoy(body, res) {
 
 // 見守りの経過(AIに代わった / 電話が終わった)を家族に知らせる。種類ごとに1通話1回まで
 const EVENT_TYPES = new Set(["handoff", "ended"]);
+const INTEL_LABELS = { datetime: "日時", place: "場所", amount: "金額", visit: "自宅に来る話", person: "名乗った名前", bank: "金融機関" };
+const INTEL_TYPES = new Set(Object.keys(INTEL_LABELS));
 
 async function apiEvent(body, res) {
   const sessionId = validSessionId(body.session_id);
@@ -242,6 +244,11 @@ async function apiEvent(body, res) {
   const extra = {
     minutes: Number.isFinite(body.minutes) ? Math.min(600, Math.max(0, Math.round(body.minutes))) : undefined,
     ai_replies: Number.isFinite(body.ai_replies) ? Math.min(1000, Math.max(0, Math.round(body.ai_replies))) : undefined,
+    // 家族が代わりに110番できるよう、相手が言った日時・場所・金額などを受け取る(種類と長さを制限)
+    intel: (Array.isArray(body.intel) ? body.intel : [])
+      .filter((f) => f && INTEL_TYPES.has(f.type) && typeof f.value === "string")
+      .slice(0, 10)
+      .map((f) => ({ type: f.type, label: INTEL_LABELS[f.type], value: f.value.slice(0, 60) })),
   };
   notifyFamilyProgress(body.type, extra).catch((err) => console.error("[notify]", err.message));
   sendJson(res, 200, { family_notice: "sent" });

@@ -63,7 +63,55 @@
     return types.has("visit") || (types.has("datetime") && types.has("place"));
   }
 
-  const api = { RULES, extract, needsPoliceNow };
+  // 検知ルール(lib/detector.js)のidから、110番で伝える「何の話だったか」を作る。
+  // 名乗り・急がせる・口止めは話の中身ではないので入れない
+  const TOPIC_BY_ID = {
+    refund: "還付金",
+    atm: "ATMの操作",
+    card_pin: "キャッシュカードや暗証番号",
+    gift_card: "電子マネーやギフトカード",
+    unpaid_legal: "未納料金や裁判",
+    account_frozen: "口座の不正利用",
+    personal_info: "預金や個人情報",
+    investment: "もうけ話",
+    cash_demand: "お金の用意",
+    advance_fee: "保証金の先払い",
+  };
+
+  function topicsFromIds(ids) {
+    return [...new Set((ids || []).map((id) => TOPIC_BY_ID[id]).filter(Boolean))];
+  }
+
+  // 電話が終わったあと、110番(または #9110)で本人がそのまま読み上げる台本を作る。
+  // 頭が真っ白になっていても、読むだけで警察に必要なこと(いつ・誰が・いくら・いつどこで)が伝わるように。
+  function policeScript({ found = [], topics = [], startedAt = null } = {}) {
+    const pick = (type) => found.filter((f) => f.type === type).map((f) => f.value);
+    const first = (type) => pick(type)[0];
+    const lines = ["もしもし。詐欺だと思う電話がありました。"];
+    if (startedAt) {
+      const d = new Date(startedAt);
+      if (!isNaN(d)) lines.push(`電話があったのは、${d.getMonth() + 1}月${d.getDate()}日の${d.getHours()}時${d.getMinutes()}分ごろです。`);
+    }
+    if (first("person")) lines.push(`相手は「${first("person")}」と名乗りました。`);
+    if (topics.length) lines.push(`${topics.join("や")}の話をされました。`);
+    if (first("amount")) lines.push(`${pick("amount").join("と")}を用意するように言われました。`);
+    if (first("datetime") && first("place")) {
+      lines.push(`${first("datetime")}に、${first("place")}で受け取ると言っています。`);
+    } else if (first("datetime")) {
+      lines.push(`日時は、${first("datetime")}と言われました。`);
+    } else if (first("place")) {
+      lines.push(`場所は、${first("place")}と言われました。`);
+    }
+    if (first("visit")) lines.push("家に取りに来ると言っています。");
+    if (first("bank") || first("account")) {
+      lines.push(`振込先として、${[first("bank"), first("account") && `口座番号${first("account")}`].filter(Boolean).join("、")}と言われました。`);
+    }
+    if (first("phone")) lines.push(`相手が言った電話番号は、${pick("phone").join("、")}です。`);
+    lines.push("私の名前と住所は、(あなたのお名前と住所)です。");
+    return lines;
+  }
+
+  const api = { RULES, extract, needsPoliceNow, policeScript, topicsFromIds, TOPIC_BY_ID };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.ShieldIntel = api;
 })(typeof window !== "undefined" ? window : globalThis);

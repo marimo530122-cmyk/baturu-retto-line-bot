@@ -100,6 +100,9 @@
   .tag { font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 1px 8px; color: var(--ink); }
   .tag i { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
 
+  .script { border: 2px solid var(--accent); border-radius: 14px; padding: 14px 16px; background: var(--surface); }
+  .script p { margin: 6px 0; }
+  .script ol { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; font-size: 19px; line-height: 1.6; }
   .urgent { border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); border-radius: 14px; padding: 14px 16px; }
   .urgent p { margin: 4px 0 0; color: var(--ink); }
   .intel { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -133,6 +136,7 @@
       <textarea id="utter" placeholder="例: 市役所の保険課です。医療費の還付金があります。"></textarea>
       <div class="actions">
         <button id="judgeBtn" class="primary" type="button">判定する</button>
+        <button id="endBtn" class="ghost" type="button">電話が終わったあとの画面</button>
         <button id="resetBtn" class="ghost" type="button">新しい電話として試す</button>
       </div>
       <p class="hint">同じ電話の続きとして何回か入れると、会話全体で判定します。</p>
@@ -154,8 +158,15 @@
       <div class="why">上の欄に相手の言葉を入れるか、例文を押してください。</div>
     </div>
     <div id="excuse" class="excuse" hidden>
-      <span>あわてなくて大丈夫。まず相手に、こう言ってみてください</span>
+      <span>① まず、電話の相手にこう言ってみてください</span>
       <p id="excuseText"></p>
+      <span>② 言えたら「AIに代わってもらう」ボタンを押す(本番の画面。あとはAIがお話しします)</span>
+    </div>
+    <div id="script" class="script" hidden>
+      <strong>電話が終わりました。よくがんばりましたね</strong>
+      <p id="scriptLead"></p>
+      <ol id="scriptLines"></ol>
+      <p class="hint">お金やカードを渡してしまった場合は、そのことも伝えてください。</p>
     </div>
     <div id="tags" class="tags" hidden></div>
     <div id="urgent" class="urgent" hidden role="alert">
@@ -210,8 +221,8 @@
     global: new RegExp(p.source, p.flags + "g"),
   }));
   const LEVELS = [
-    { min: 8, level: "HIGH", title: "大丈夫です。落ち着いてくださいね", advice: "詐欺でよくある話し方です。お金・カード・暗証番号のことは、今は何も答えなくて大丈夫です。" },
-    { min: 4, level: "MEDIUM", title: "少し気になる電話です", advice: "あわてなくて大丈夫です。わからないときは、いったん切って家族に聞いてからでも間に合います。" },
+    { min: 8, level: "HIGH", title: "大丈夫です。落ち着いてくださいね", advice: "お金・カード・暗証番号のことは、今は何も答えなくて大丈夫です。下の①と②のとおりにしてください。" },
+    { min: 4, level: "MEDIUM", title: "少し気になる電話です", advice: "あわてなくて大丈夫です。気になるときは、下の①と②のとおりにしてください。" },
     { min: 0, level: "SAFE", title: "今のところ怪しい言い回しはありません", advice: "普通の電話では、シールドは何もしません。" },
   ];
   const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
@@ -285,9 +296,8 @@
     lv.textContent = info.title;
     const why = document.createElement("div");
     why.className = "why";
-    why.textContent = result.matches.length
-      ? `${result.matches.map((m) => m.label).join("・")}。${info.advice}`
-      : info.advice;
+    // お年寄りには「詐欺です」と言わず、することだけを伝える(当たった手口は下のタグに出す)
+    why.textContent = info.advice;
     st.append(lv, why);
 
     if (level !== "SAFE" && !excuse) excuse = pickExcuse(utterances[utterances.length - 1]);
@@ -371,6 +381,28 @@
   for (const b of document.querySelectorAll(".ex")) {
     b.addEventListener("click", () => judge(b.dataset.text));
   }
+  // 電話が終わったら、110番(または #9110)で読み上げる台本を見せる
+  $("endBtn").addEventListener("click", () => {
+    if (!utterances.length || lastLevel === "SAFE") {
+      $("copyNote").textContent = "怪しい電話のときだけ、終わったあとに警察への台本が出ます。詐欺の例を入れてから押してください。";
+      return;
+    }
+    const found = ShieldIntel.extract(utterances);
+    const topics = ShieldIntel.topicsFromIds(scoreCall(utterances).matches.map((m) => m.id));
+    $("scriptLead").textContent = ShieldIntel.needsPoliceNow(found)
+      ? "相手が、会う日時や場所を言っていました。今すぐ 110番 にかけて、下の文をそのまま読んでください。"
+      : "心配なときは #9110(警察相談専用電話)にかけて、下の文をそのまま読んでください。";
+    const ol = $("scriptLines");
+    ol.replaceChildren();
+    for (const l of ShieldIntel.policeScript({ found, topics, startedAt: new Date() })) {
+      const li = document.createElement("li");
+      li.textContent = l;
+      ol.append(li);
+    }
+    $("script").hidden = false;
+    $("script").scrollIntoView({ block: "start" });
+  });
+
   $("resetBtn").addEventListener("click", () => {
     utterances = [];
     lastLevel = "SAFE";
@@ -389,6 +421,7 @@
     $("tags").hidden = true;
     $("intelBox").hidden = true;
     $("urgent").hidden = true;
+    $("script").hidden = true;
     $("copyFallback").hidden = true;
     renderLog();
   });

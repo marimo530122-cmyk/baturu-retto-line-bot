@@ -29,3 +29,17 @@ test("会う日時と場所、または家に来る話がそろったら、す�
 test("宅配の日時連絡だけでは、すぐ110番にはならない", () => {
   assert.strictEqual(needsPoliceNow(extract(["宅配便です。明日の朝9時にお届けします。"])), false);
 });
+
+test("110番で読み上げる台本に、名前・金額・日時・場所が入る", () => {
+  const { policeScript } = require("../lib/intel");
+  const { topicsFromIds } = require("../lib/intel");
+  const lines = policeScript({ found: extract(scamCall), topics: topicsFromIds(["refund", "authority", "urgency", "cash_demand"]) });
+  const text = lines.join("\n");
+  assert.match(lines[0], /詐欺だと思う電話がありました/);
+  assert.match(text, /「佐藤」と名乗りました/);
+  assert.match(text, /還付金やお金の用意の話をされました/); // 名乗り・急がせるは話の中身に入れない
+  assert.match(text, /300万円を用意するように言われました/);
+  assert.match(text, /明日の午後3時に、新宿駅の東口改札で受け取ると言っています/);
+  assert.match(text, /みずほ銀行新宿支店、口座番号1234567/);
+  assert.match(lines[lines.length - 1], /あなたのお名前と住所/);
+});
