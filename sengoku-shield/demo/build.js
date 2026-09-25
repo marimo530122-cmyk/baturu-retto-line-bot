@@ -28,8 +28,11 @@ function build() {
   const json = JSON.stringify(demoPatterns()).replace(/</g, "\\u003c");
   // 画面の「この試作品について」の数字は、その場でベンチマークを回して埋める
   const s = benchmark.run(detector).summary;
+  // 手がかりの抜き出し(lib/intel.js)もそのまま埋め込む。</script> が紛れ込まないようにする
+  const intelJs = fs.readFileSync(path.join(__dirname, "..", "lib", "intel.js"), "utf-8").replace(/<\/script/gi, "<\\/script");
   return template
     .replace("__PATTERNS__", json)
+    .replace("__INTEL_JS__", () => intelJs)
     .replace("__FP__", s.falsePositives)
     .replace("__BENIGN__", s.benignTotal)
     .replace("__DEV_HIT__", s.dev.detected)

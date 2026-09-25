@@ -67,6 +67,10 @@ test("スマホ連動: 合言葉が無いと使えず、あれば判定とAI応�
       body: JSON.stringify(body),
     });
 
+  const intelJs = await fetch(`${base}/intel.js`);
+  assert.strictEqual(intelJs.status, 200);
+  assert.match(await intelJs.text(), /ShieldIntel/);
+
   const page = await fetch(`${base}/app`);
   assert.strictEqual(page.status, 200);
   assert.match(await page.text(), /AIに応対を代わる/);

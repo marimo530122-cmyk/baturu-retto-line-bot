@@ -100,6 +100,12 @@
   .tag { font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 1px 8px; color: var(--ink); }
   .tag i { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
 
+  .urgent { border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); border-radius: 14px; padding: 14px 16px; }
+  .urgent p { margin: 4px 0 0; color: var(--ink); }
+  .intel { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .intel li { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; overflow-wrap: anywhere; }
+  .intel .k { color: var(--muted); font-size: 14px; }
+  .intel .v { font-weight: 700; }
   .facts { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px; display: grid; }
   .fact { display: grid; grid-template-columns: 5.5em 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
   .fact:last-child { border-bottom: 0; }
@@ -135,6 +141,7 @@
       <button class="ex scam" type="button" data-text="市役所の保険課です。医療費の還付金があります。"><b>詐欺の例</b>市役所の保険課です。医療費の還付金があります。</button>
       <button class="ex scam" type="button" data-text="期限が今日までなので、お近くのATMに行ってください。"><b>詐欺の例</b>期限が今日までなので、お近くのATMに行ってください。</button>
       <button class="ex scam" type="button" data-text="キャッシュカードを封筒に入れて、係の者が回収に伺います。誰にも言わないでください。"><b>詐欺の例</b>キャッシュカードを封筒に入れて…誰にも言わないで</button>
+      <button class="ex scam" type="button" data-text="担当の佐藤と申します。300万円を用意して、明日の午後3時に新宿駅の東口改札で係の者に渡してください。"><b>詐欺の例</b>日時・場所・金額を言ってくる(受け取り役)</button>
       <button class="ex benign" type="button" data-text="警察署の生活安全課です。届け出いただいた自転車が見つかりましたので、ご連絡しました。"><b>普通の例</b>警察署です。自転車が見つかりました。</button>
       <button class="ex benign" type="button" data-text="宅配便です。お荷物のお届け日時の確認でお電話しました。"><b>普通の例</b>宅配便です。お届け日時の確認です。</button>
     </div>
@@ -151,6 +158,15 @@
       <p id="excuseText"></p>
     </div>
     <div id="tags" class="tags" hidden></div>
+    <div id="urgent" class="urgent" hidden role="alert">
+      <strong>相手が、会う日時や場所・家に来る話をしています</strong>
+      <p>お金やカードは渡さず、電話が終わったらすぐに <span class="num">110</span> 番。このあとどうすればいいか、警察が教えてくれます。</p>
+    </div>
+    <div id="intelBox" class="panel" hidden>
+      <h2>警察に伝える手がかり(相手が言ったこと)</h2>
+      <ul id="intelList" class="intel"></ul>
+      <p class="hint">自動で抜き出した候補です。聞き間違いがあるかもしれません。</p>
+    </div>
   </section>
 
   <section aria-labelledby="logHead">
@@ -183,6 +199,7 @@
 </main>
 
 <script id="patterns" type="application/json">__PATTERNS__</script>
+<script>__INTEL_JS__</script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -289,6 +306,24 @@
       tags.append(t);
     }
     tags.hidden = result.matches.length === 0;
+
+    // 警察に伝える手がかり(相手が言った口座・金額・日時・場所など)
+    const intel = window.ShieldIntel ? ShieldIntel.extract(utterances) : [];
+    const list = $("intelList");
+    list.replaceChildren();
+    for (const f of intel) {
+      const li = document.createElement("li");
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = f.label;
+      const v = document.createElement("span");
+      v.className = "v";
+      v.textContent = f.value;
+      li.append(k, v);
+      list.append(li);
+    }
+    $("intelBox").hidden = !intel.length || level === "SAFE";
+    $("urgent").hidden = !(window.ShieldIntel && ShieldIntel.needsPoliceNow(intel)) || level === "SAFE";
   }
 
   function renderLog() {
@@ -352,6 +387,8 @@
     st.append(lv, why);
     $("excuse").hidden = true;
     $("tags").hidden = true;
+    $("intelBox").hidden = true;
+    $("urgent").hidden = true;
     $("copyFallback").hidden = true;
     renderLog();
   });
@@ -366,6 +403,7 @@
       "【戦国シールド デモの記録】",
       `判定(会話全体): ${LEVELS.find((l) => l.level === lastLevel).title}`,
       `当たった手口: ${whole.matches.map((m) => m.label).join("、") || "なし"}`,
+      `相手が言った手がかり: ${(window.ShieldIntel ? ShieldIntel.extract(utterances) : []).map((f) => `${f.label}=${f.value}`).join("、") || "なし"}`,
       "入れた言葉:",
       ...utterances.map((u) => {
         const own = scoreCall([u]);

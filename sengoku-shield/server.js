@@ -37,6 +37,7 @@ const MAX_SILENCE = 3;
 // スマホ連動(/app と /api/*)用の合言葉。未設定なら /api/* は使えない
 const APP_TOKEN = process.env.SHIELD_APP_TOKEN;
 const APP_HTML_PATH = path.join(__dirname, "public", "app.html");
+const INTEL_JS_PATH = path.join(__dirname, "lib", "intel.js");
 
 // 冒頭アナウンス: やっていないことは言わない(虚偽告知にならないよう、事実だけを告げる)
 const GREETING =
@@ -267,6 +268,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && pathname === "/app") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     return res.end(fs.readFileSync(APP_HTML_PATH));
+  }
+  if (req.method === "GET" && pathname === "/intel.js") {
+    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+    return res.end(fs.readFileSync(INTEL_JS_PATH));
   }
   if (API_ROUTES[pathname]) {
     if (req.method !== "POST" || !APP_TOKEN) return sendJson(res, 404, { error: "not found" });

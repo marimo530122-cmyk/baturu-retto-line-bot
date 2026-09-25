@@ -100,6 +100,12 @@
   .tag { font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 1px 8px; color: var(--ink); }
   .tag i { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
 
+  .urgent { border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); border-radius: 14px; padding: 14px 16px; }
+  .urgent p { margin: 4px 0 0; color: var(--ink); }
+  .intel { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .intel li { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; overflow-wrap: anywhere; }
+  .intel .k { color: var(--muted); font-size: 14px; }
+  .intel .v { font-weight: 700; }
   .facts { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px; display: grid; }
   .fact { display: grid; grid-template-columns: 5.5em 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
   .fact:last-child { border-bottom: 0; }
@@ -135,6 +141,7 @@
       <button class="ex scam" type="button" data-text="市役所の保険課です。医療費の還付金があります。"><b>詐欺の例</b>市役所の保険課です。医療費の還付金があります。</button>
       <button class="ex scam" type="button" data-text="期限が今日までなので、お近くのATMに行ってください。"><b>詐欺の例</b>期限が今日までなので、お近くのATMに行ってください。</button>
       <button class="ex scam" type="button" data-text="キャッシュカードを封筒に入れて、係の者が回収に伺います。誰にも言わないでください。"><b>詐欺の例</b>キャッシュカードを封筒に入れて…誰にも言わないで</button>
+      <button class="ex scam" type="button" data-text="担当の佐藤と申します。300万円を用意して、明日の午後3時に新宿駅の東口改札で係の者に渡してください。"><b>詐欺の例</b>日時・場所・金額を言ってくる(受け取り役)</button>
       <button class="ex benign" type="button" data-text="警察署の生活安全課です。届け出いただいた自転車が見つかりましたので、ご連絡しました。"><b>普通の例</b>警察署です。自転車が見つかりました。</button>
       <button class="ex benign" type="button" data-text="宅配便です。お荷物のお届け日時の確認でお電話しました。"><b>普通の例</b>宅配便です。お届け日時の確認です。</button>
     </div>
@@ -151,6 +158,15 @@
       <p id="excuseText"></p>
     </div>
     <div id="tags" class="tags" hidden></div>
+    <div id="urgent" class="urgent" hidden role="alert">
+      <strong>相手が、会う日時や場所・家に来る話をしています</strong>
+      <p>お金やカードは渡さず、電話が終わったらすぐに <span class="num">110</span> 番。このあとどうすればいいか、警察が教えてくれます。</p>
+    </div>
+    <div id="intelBox" class="panel" hidden>
+      <h2>警察に伝える手がかり(相手が言ったこと)</h2>
+      <ul id="intelList" class="intel"></ul>
+      <p class="hint">自動で抜き出した候補です。聞き間違いがあるかもしれません。</p>
+    </div>
   </section>
 
   <section aria-labelledby="logHead">
@@ -183,6 +199,76 @@
 </main>
 
 <script id="patterns" type="application/json">[{"id":"refund","label":"還付金・払い戻し","weight":3,"source":"還付|払い?戻し|返金","flags":""},{"id":"atm","label":"ATM操作の誘導","weight":4,"source":"ATM|エーティーエム|現金自動|振込機","flags":"i"},{"id":"card_pin","label":"キャッシュカード・暗証番号","weight":4,"source":"暗証番号|キャッシュカード|カードを?(預か|回収|交換|封筒)","flags":""},{"id":"gift_card","label":"電子マネー・ギフトカード払い","weight":4,"source":"電子マネー|ギフト(カード|券)|プリペイド|(アマゾン|Amazon|アップル|Apple|グーグル|Google|iTunes).{0,6}(カード|券)|コンビニで.{0,10}(買|購入)","flags":"i"},{"id":"unpaid_legal","label":"未納料金・訴訟の脅し","weight":3,"source":"未納|滞納|未払い|訴訟|裁判|差し?押さえ|法的(措置|手続)|債権","flags":""},{"id":"account_frozen","label":"口座凍結・不正利用","weight":3,"source":"口座.{0,6}(凍結|停止|止め|使えなく)|不正(利用|使用|アクセス)|犯罪に(使|利用)","flags":""},{"id":"authority","label":"公的機関・警察を名乗る","weight":2,"source":"警察|警視庁|刑事|金融庁|財務局|検察|裁判所|市役所|区役所|年金(事務所|機構)|税務署|総務省|消費者(センター|庁)|銀行協会","flags":""},{"id":"urgency","label":"急がせる・今日中","weight":1,"source":"至急|今日中|本日中|今すぐ|すぐに|期限が?(今日|本日)|あと\\d+(分|時間)","flags":""},{"id":"secrecy","label":"口止め","weight":2,"source":"(誰|だれ)にも(言わ|話さ|相談し)|内緒|秘密に|家族に(は)?(言わ|話さ)","flags":""},{"id":"personal_info","label":"個人情報・資産の聞き出し","weight":2,"source":"口座番号|預金(残高|額)|貯金(は|が)?いくら|(生年月日|マイナンバー)を?(教え|確認)|タンス預金|家に(現金|お金)","flags":""},{"id":"investment","label":"もうけ話・投資","weight":3,"source":"必ず(儲か|もうか)|元本保証|高配当|未公開株|名義(を)?貸|当選(しました|金)","flags":""},{"id":"cash_demand","label":"現金・示談金の要求","weight":3,"source":"示談金|(お金|現金)が?.{0,4}(必要|要る|いる)|(お金|現金)を?.{0,4}用意|\\d+万円?.{0,6}(用意|必要|振り?込)","flags":""},{"id":"advance_fee","label":"保証金・手数料の先払い","weight":4,"source":"(保証金|手数料).{0,12}(先に|事前に|前もって)|(先に|事前に|前もって).{0,12}(保証金|手数料)|保証金.{0,10}(振り?込|払)","flags":""}]</script>
+<script>// 相手の発言から「警察に伝えるべき手がかり」を抜き出す
+// (電話番号・口座・金融機関・金額・日時・場所・自宅に来る話・名乗った名前・URL)
+//
+// - 相手(詐欺の疑いがある側)の発言だけに使う。本人の情報を抜き出す用途には使わない。
+// - 音声認識の聞き間違いや、ただの言い回しにも当たるので、結果は「候補」として人が確かめる前提。
+// - サーバー(Node)と見守り画面・デモページ(ブラウザ)の両方で同じものを使う。
+
+(function (root) {
+  const RULES = [
+    { type: "phone", label: "電話番号", source: "(?:\\+81|0)\\d{1,4}[-‐ー−\\s]?\\d{1,4}[-‐ー−\\s]?\\d{3,4}" },
+    { type: "account", label: "口座番号", source: "(?:口座(?:番号)?|普通|当座)(?:は|が|番号は)?[:：\\s]*(\\d[\\d\\s-]{4,10}\\d)", group: 1 },
+    { type: "bank", label: "金融機関", source: "[^\\s、。「」]{1,10}(?:銀行|信用金庫|信金|信用組合|ゆうちょ|郵便局|農協)(?:[^\\s、。「」]{1,10}支店)?" },
+    { type: "amount", label: "金額", source: "\\d{1,3}(?:,\\d{3})+円|\\d+(?:万|千)?円|\\d+万|[一二三四五六七八九十百千]+万円?" },
+    {
+      type: "datetime",
+      label: "日時",
+      source:
+        "(?:今日|明日|明後日|あさって|本日|今夜|今晩|\\d{1,2}月\\d{1,2}日|\\d{1,2}日)(?:の)?(?:午前|午後|朝|夕方|夜)?\\s*(?:\\d{1,2}時(?:\\d{1,2}分|半)?)?|(?:午前|午後)?\\d{1,2}時(?:\\d{1,2}分|半)?",
+    },
+    {
+      type: "place",
+      label: "場所",
+      // 場所の名前は助詞(に・で・を・は・が・と)の手前までにする(「明日の3時に」まで拾わないように)
+      source:
+        "[^\\s、。「」にでをはがと]{1,12}(?:駅|公園|コンビニ|郵便局|スーパー|駐車場|交差点)(?:の?[^\\s、。「」にでをはがと]{0,8}?(?:改札|出口|ロータリー|前))?",
+    },
+    { type: "visit", label: "自宅に来る話", source: "(?:ご?自宅|家|お宅|おうち)(?:に|まで)(?:伺|行|うかが|取りに|受け取りに|回収)" },
+    { type: "person", label: "名乗った名前", source: "(?:担当|係)の?([^\\s、。「」]{1,8}?)(?:と申します|です|が伺|が行)|([^\\s、。「」]{1,8}?)と申します", group: [1, 2] },
+    { type: "url", label: "URL", source: "https?:\\/\\/[^\\s「」、。]+|[a-z0-9-]+\\.(?:com|net|jp|org|info|xyz)(?:\\/[^\\s「」、。]*)?", flags: "i" },
+  ];
+
+  // 抜き出した手がかりを種類ごとに重複なしで返す
+  function extract(lines) {
+    const found = [];
+    const seen = new Set();
+    for (const line of lines || []) {
+      const text = String(line || "");
+      for (const rule of RULES) {
+        const re = new RegExp(rule.source, "g" + (rule.flags || ""));
+        let m;
+        while ((m = re.exec(text))) {
+          if (!m[0]) {
+            re.lastIndex++;
+            continue;
+          }
+          const groups = Array.isArray(rule.group) ? rule.group : rule.group ? [rule.group] : [0];
+          const value = groups.map((g) => m[g]).find(Boolean);
+          if (!value) continue;
+          const v = value.trim();
+          const key = `${rule.type}:${v}`;
+          if (!v || seen.has(key)) continue;
+          seen.add(key);
+          found.push({ type: rule.type, label: rule.label, value: v, line: text });
+        }
+      }
+    }
+    return found;
+  }
+
+  // 相手が会う日時・場所や、家に来る話をしてきたか(=すぐ110番を勧める場面)
+  function needsPoliceNow(found) {
+    const types = new Set(found.map((f) => f.type));
+    return types.has("visit") || (types.has("datetime") && types.has("place"));
+  }
+
+  const api = { RULES, extract, needsPoliceNow };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.ShieldIntel = api;
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -289,6 +375,24 @@
       tags.append(t);
     }
     tags.hidden = result.matches.length === 0;
+
+    // 警察に伝える手がかり(相手が言った口座・金額・日時・場所など)
+    const intel = window.ShieldIntel ? ShieldIntel.extract(utterances) : [];
+    const list = $("intelList");
+    list.replaceChildren();
+    for (const f of intel) {
+      const li = document.createElement("li");
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = f.label;
+      const v = document.createElement("span");
+      v.className = "v";
+      v.textContent = f.value;
+      li.append(k, v);
+      list.append(li);
+    }
+    $("intelBox").hidden = !intel.length || level === "SAFE";
+    $("urgent").hidden = !(window.ShieldIntel && ShieldIntel.needsPoliceNow(intel)) || level === "SAFE";
   }
 
   function renderLog() {
@@ -352,6 +456,8 @@
     st.append(lv, why);
     $("excuse").hidden = true;
     $("tags").hidden = true;
+    $("intelBox").hidden = true;
+    $("urgent").hidden = true;
     $("copyFallback").hidden = true;
     renderLog();
   });
@@ -366,6 +472,7 @@
       "【戦国シールド デモの記録】",
       `判定(会話全体): ${LEVELS.find((l) => l.level === lastLevel).title}`,
       `当たった手口: ${whole.matches.map((m) => m.label).join("、") || "なし"}`,
+      `相手が言った手がかり: ${(window.ShieldIntel ? ShieldIntel.extract(utterances) : []).map((f) => `${f.label}=${f.value}`).join("、") || "なし"}`,
       "入れた言葉:",
       ...utterances.map((u) => {
         const own = scoreCall([u]);

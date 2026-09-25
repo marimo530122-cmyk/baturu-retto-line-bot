@@ -53,6 +53,13 @@
     display: block; text-align: center; text-decoration: none; border-radius: 12px;
     padding: 16px; margin: 6px 0; font-weight: 700;
   }
+  .urgent { border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); }
+  .urgent p { margin: 6px 0 0; color: var(--fg); }
+  .num { font-weight: 700; font-size: 1.2em; }
+  .intel { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
+  .intel li { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; overflow-wrap: anywhere; }
+  .intel .k { color: var(--muted); font-size: 15px; }
+  .intel .v { font-weight: 700; }
   .family-note { text-align: center; font-weight: 700; color: var(--safe); margin: 4px 0; }
   .bridge-text { font-size: 24px; font-weight: 700; margin: 6px 0 0; line-height: 1.5; }
   input[type="text"], input[type="password"] {
@@ -89,12 +96,24 @@
   <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
   <p id="familyNote" class="family-note hidden">ご家族のLINEに知らせました</p>
 
+  <div id="urgentCard" class="card urgent hidden" role="alert">
+    <strong>相手が、会う日時や場所・家に来る話をしてきました</strong>
+    <p>お金やカードは渡さないでください。電話が終わったら、すぐに <span class="num">110</span> 番してください。
+    このあとどうすればいいか、警察が教えてくれます。</p>
+  </div>
+
+  <div id="intelCard" class="card hidden">
+    <strong>警察に伝える手がかり(相手が言ったこと)</strong>
+    <ul id="intelList" class="intel"></ul>
+    <p class="note">自動で抜き出した候補です。聞き間違いがあるかもしれません。</p>
+  </div>
+
   <div id="helpCard" class="card hidden">
     <strong>電話を切ったあと、相談できます</strong>
     <a class="linkbtn primary" href="tel:%239110">#9110 警察相談専用電話にかける</a>
     <a class="linkbtn secondary" href="tel:110">お金を渡す・家に来ると言われた → 110番</a>
-    <button id="memoBtn" class="secondary" type="button">相談用メモをコピー</button>
-    <p class="note" id="memoNote">相談するときに、いつ・どんな電話だったかをそのまま伝えられるメモです。</p>
+    <button id="memoBtn" class="secondary" type="button">警察に伝えるメモをコピー</button>
+    <p class="note" id="memoNote">いつ・どんな電話で、相手が何を言ったか(口座・金額・日時・場所など)を、そのまま伝えられるメモです。</p>
   </div>
 
   <div class="card">
@@ -137,6 +156,7 @@
   </div>
 </main>
 
+<script src="/intel.js"></script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -157,6 +177,28 @@
   const callerLines = [];    // この通話の相手の発言(相談用メモ用)
   let startedAt = null;
 
+  // 相手の発言から、警察に伝える手がかり(口座・金額・日時・場所など)を抜き出して表示する
+  let intel = [];
+  function updateIntel() {
+    if (!window.ShieldIntel) return;
+    intel = ShieldIntel.extract(callerLines);
+    const list = $("intelList");
+    list.replaceChildren();
+    for (const f of intel) {
+      const li = document.createElement("li");
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = f.label;
+      const v = document.createElement("span");
+      v.className = "v";
+      v.textContent = f.value;
+      li.append(k, v);
+      list.append(li);
+    }
+    $("intelCard").classList.toggle("hidden", !intel.length || lastRisk === "SAFE");
+    $("urgentCard").classList.toggle("hidden", !ShieldIntel.needsPoliceNow(intel) || lastRisk === "SAFE");
+  }
+
   function newSession() {
     sessionId = (crypto.randomUUID && crypto.randomUUID()) || `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     reasons.clear();
@@ -164,6 +206,9 @@
     startedAt = new Date();
     $("familyNote").classList.add("hidden");
     $("helpCard").classList.add("hidden");
+    intel = [];
+    $("intelCard").classList.add("hidden");
+    $("urgentCard").classList.add("hidden");
   }
   const recent = [];   // 判定用の直近の相手の発話
   const history = [];  // AI応対中の会話
@@ -276,6 +321,7 @@
     lastRisk = level;
     if (!bridge && r.natural_excuse_ja) bridge = r.natural_excuse_ja;
     $("helpCard").classList.toggle("hidden", level === "SAFE");
+    updateIntel();
     if (mode === "ai") return;
     showBridge(level !== "SAFE");
     // 画面の言葉は、怖がらせず落ち着いてもらうことを一番にする(画面だけ。声には出さない)。
@@ -450,6 +496,8 @@
       `日時: ${when}ごろ`,
       `自動判定: ${lastRisk === "HIGH" ? "詐欺の疑い 高" : lastRisk === "MEDIUM" ? "詐欺の疑い 中" : "該当なし"}`,
       `気になった点: ${[...reasons].join(" / ") || "なし"}`,
+      "相手が言った手がかり(自動で抜き出した候補):",
+      ...(intel.length ? intel.map((f) => `・${f.label}: ${f.value}`) : ["・なし"]),
       "相手の発言(聞き取った文字、聞き間違いを含むことがあります):",
       ...callerLines.map((t) => `・${t}`),
     ].join("\n");

@@ -44,3 +44,12 @@ test("Twilio の読み上げ声は SHIELD_VOICE_GENDER で男性・女性を切�
   assert.match(run({ SHIELD_VOICE_GENDER: "female" }), /voice="Polly\.Mizuki"/);
   assert.match(run({ SHIELD_VOICE_GENDER: "male", TWILIO_VOICE: "Polly.Kazuha" }), /voice="Polly\.Kazuha"/);
 });
+
+test("AIの返事が約束(振り込む・渡す・行く・待つ)になっていたら読み上げない", () => {
+  for (const t of ["はい、明日振り込みます。", "わかりました、駅で待ってます。", "じゃあ3時に行きますね。", "駅でお待ちしています", "うちの住所は…"]) {
+    assert.strictEqual(decoy.isSafeReply(t), false, t);
+  }
+  for (const t of ["メモしますから、口座番号をもう一度ゆっくりお願いします。", "お名前、なんておっしゃいましたっけ。", ...decoy.STALL_PHRASES]) {
+    assert.strictEqual(decoy.isSafeReply(t), true, t);
+  }
+});
