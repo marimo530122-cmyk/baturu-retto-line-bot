@@ -6,7 +6,9 @@ const decoy = require("../lib/decoy");
 test("APIキーが無いときは固定文面で応答する", async () => {
   const r = await decoy.reply([{ role: "caller", text: "還付金があります" }], 1);
   assert.strictEqual(r.source, "fixed");
-  assert.ok(decoy.STALL_PHRASES.includes(r.text));
+  // 時間稼ぎ・聞き出し・なだめの、どれかの決まった言い方になる
+  const { ASK_PHRASES, CALM_PHRASES } = require("../lib/elicit");
+  assert.ok([...decoy.STALL_PHRASES, ...Object.values(ASK_PHRASES), ...CALM_PHRASES].includes(r.text), r.text);
 });
 
 test("番号っぽい数字や長すぎる返事は読み上げない", () => {

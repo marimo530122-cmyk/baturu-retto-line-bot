@@ -71,6 +71,41 @@ async function judgeCall(history, { timeoutMs = 15_000 } = {}) {
   }
 }
 
+// AIが代わりに話している間の、相手の様子(聞き出しを続けるか、なだめてつなぎ止めるか)
+const ENGAGEMENT = {
+  cooperating: "相手は話を続けていて、名前・振込先・日時などを話している",
+  suspicious: "相手が怪しみ始めている、いら立っている、話が進まないことを責めている",
+  leaving: "相手が電話を切ろうとしている、かけ直すと言っている",
+};
+
+const ENGAGEMENT_INSTRUCTIONS =
+  "これは、詐欺の疑いがある電話にAIが代わりに応対している会話の文字起こしです。" +
+  "caller が電話をかけてきた相手、shield がAIの発言です。最後の caller の発言を中心に、相手の今の様子を選んでください。";
+
+async function judgeEngagement(history, { timeoutMs = 1500 } = {}) {
+  if (!enabled()) return null;
+  const transcript = history.slice(-8).map((h) => ({ speaker: h.role, text: h.text }));
+  if (!transcript.some((t) => t.speaker === "caller")) return null;
+  try {
+    const res = await fetch(`${process.env.TYPESAFE_API_BASE_URL || "https://api.typesafe.ai"}/v1/systemone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TYPESAFE_API_KEY}` },
+      body: JSON.stringify({
+        model: process.env.JEV_MODEL || "jev-1.13.0",
+        state: { transcript },
+        questions: { engagement: { type: "choice", instructions: ENGAGEMENT_INSTRUCTIONS, criteria: ENGAGEMENT } },
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`Jev API error: ${res.status}`);
+    const choice = (await res.json())?.answers?.engagement?.choice;
+    return Object.hasOwn(ENGAGEMENT, choice) ? choice : null;
+  } catch (err) {
+    console.error("[jev] 相手の様子の判定に失敗(言葉からの判定だけを使います):", err.message);
+    return null;
+  }
+}
+
 // 正規表現の判定とJevの判定を合わせて、最終的な疑いレベルを決める
 // - どちらかが「高」なら高(見逃しを減らす)
 // - 正規表現が「中」でも、Jevが普通の用件と判定したら「低」に下げる(誤検知を減らす)
@@ -91,4 +126,4 @@ function combine(detection, jev) {
   return { level: detection.level, label: detection.label, by: "regex+jev" };
 }
 
-module.exports = { judgeCall, combine, enabled, VERDICTS };
+module.exports = { judgeCall, judgeEngagement, combine, enabled, VERDICTS, ENGAGEMENT };

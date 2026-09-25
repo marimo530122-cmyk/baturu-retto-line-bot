@@ -3,7 +3,12 @@
 // ANTHROPIC_API_KEY が無い・APIが失敗/拒否した・タイムアウトした場合は、
 // 固定の「時間稼ぎフレーズ」をローテーションで返す(電話は止めない)。
 
+const elicit = require("./elicit");
+const jev = require("./jev");
+
 const AI_MODEL = process.env.SHIELD_AI_MODEL || "claude-opus-5";
+// 相手の様子をJevに聞くときの待ち時間(返事が遅れすぎないように短く)
+const JEV_ENGAGEMENT_TIMEOUT_MS = Number(process.env.JEV_ENGAGEMENT_TIMEOUT_MS || 1500);
 const USE_AI = Boolean(process.env.ANTHROPIC_API_KEY);
 
 // Twilio の webhook は15秒でタイムアウトするので、AIはそれより十分短く打ち切る
@@ -103,12 +108,43 @@ function toMessages(history) {
   return messages;
 }
 
-async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER } = {}) {
-  if (!USE_AI) return { text: stallPhrase(turn), source: "fixed" };
-  const messages = toMessages(history);
-  if (!messages.length || messages[messages.length - 1].role !== "user") {
-    return { text: stallPhrase(turn), source: "fixed" };
+// 今の作戦(足りない手がかり・相手の様子)を決める。Jevが使えれば相手の様子はJevに聞く
+async function planTurn(history) {
+  const callerLines = history.filter((h) => h.role === "caller").map((h) => h.text);
+  const missing = elicit.missingTargets(callerLines);
+  let suspicious = elicit.looksSuspicious(callerLines[callerLines.length - 1]);
+  let engagement = null;
+  if (jev.enabled()) {
+    engagement = await jev.judgeEngagement(history, { timeoutMs: JEV_ENGAGEMENT_TIMEOUT_MS });
+    if (engagement === "suspicious" || engagement === "leaving") suspicious = true;
   }
+  return { missing, suspicious, engagement };
+}
+
+// 決まった言い方から選ぶ(聞き出し・なだめ・時間稼ぎ)。直前に言ったことは繰り返さない
+function fixedReply(plan, turn, recentShieldLines) {
+  const phrase = elicit.fallbackPhrase({ ...plan, recentShieldLines, turn });
+  if (phrase) return phrase;
+  for (let i = 0; i < STALL_PHRASES.length; i++) {
+    const p = stallPhrase(turn + i);
+    if (!recentShieldLines.includes(p)) return p;
+  }
+  return stallPhrase(turn);
+}
+
+async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER } = {}) {
+  const plan = await planTurn(history);
+  const strategy = {
+    missing: plan.missing.map((m) => m.label),
+    suspicious: plan.suspicious,
+    engagement: plan.engagement,
+  };
+  const recentShieldLines = history.filter((h) => h.role === "shield").slice(-4).map((h) => h.text);
+  const fixed = (source) => ({ text: fixedReply(plan, turn, recentShieldLines), source, strategy });
+
+  if (!USE_AI) return fixed("fixed");
+  const messages = toMessages(history);
+  if (!messages.length || messages[messages.length - 1].role !== "user") return fixed("fixed");
   try {
     const response = await getClient().beta.messages.create({
       model: AI_MODEL,
@@ -117,27 +153,30 @@ async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER }
       // 安全分類器に止められた場合は、サーバー側で自動的に別モデルで再実行させる
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: systemPrompt(gender),
+      // 基本のルール + 今の作戦(足りない手がかりを聞く / なだめてつなぎ止める)
+      system: `${systemPrompt(gender)}\n\n${elicit.guidance(plan)}`,
       messages,
     });
-    if (response.stop_reason === "refusal") {
-      return { text: stallPhrase(turn), source: "fixed(refusal)" };
-    }
+    if (response.stop_reason === "refusal") return fixed("fixed(refusal)");
     const text = response.content
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("")
       .trim();
-    if (!isSafeReply(text)) return { text: stallPhrase(turn), source: "fixed(rule)" };
-    return { text, source: "ai" };
+    if (!isSafeReply(text)) return fixed("fixed(rule)");
+    // 同じ返事の繰り返しは機械だとばれるので、決まった言い方に替える
+    if (recentShieldLines.includes(text)) return fixed("fixed(repeat)");
+    return { text, source: "ai", strategy };
   } catch (err) {
     console.error("[decoy] AI応答に失敗したので固定文面を使います:", err.message);
-    return { text: stallPhrase(turn), source: "fixed(error)" };
+    return fixed("fixed(error)");
   }
 }
 
 module.exports = {
   reply,
+  planTurn,
+  fixedReply,
   stallPhrase,
   isSafeReply,
   toMessages,
