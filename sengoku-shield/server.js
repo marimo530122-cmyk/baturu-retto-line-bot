@@ -12,7 +12,14 @@ const { isValidSignature, say, gather, twiml, escapeXml } = require("./lib/twili
 const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
-const { notifyOwner, notifyFamily, notifyFamilyProgress, familyTargets } = require("./lib/notify");
+const {
+  notifyOwner,
+  notifyFamily,
+  notifyFamilyProgress,
+  notifyFamilyAccount,
+  familyTargets,
+} = require("./lib/notify");
+const intel = require("./lib/intel");
 const jev = require("./lib/jev");
 const { judgeUtterance } = require("./lib/realtime");
 const family = require("./lib/family");
@@ -227,7 +234,20 @@ async function apiJudge(body, res) {
       }
     }
   }
-  sendJson(res, 200, { ...result, family_notice });
+  // 相手が振込先の口座を言ったら、電話が終わるのを待たずに家族へ知らせる(口座ごとに1回)
+  let account_notice = "none";
+  if (familyTargets().length && sessionId && result.risk_level !== "SAFE") {
+    const lines = [...(Array.isArray(body.recent) ? body.recent : []), body.utterance].map((t) => String(t || "").slice(0, 500));
+    const found = intel.extract(lines);
+    const account = found.find((f) => f.type === "account")?.value;
+    const bank = found.find((f) => f.type === "bank")?.value;
+    const phone = found.find((f) => f.type === "phone")?.value;
+    if (account && markFamilyNotified(`${sessionId}:account:${account}`)) {
+      account_notice = "sent";
+      notifyFamilyAccount({ bank, account, phone }).catch((err) => console.error("[notify]", err.message));
+    }
+  }
+  sendJson(res, 200, { ...result, family_notice, account_notice });
 }
 
 // 「AIに代わる」を押した後、相手の発話にAIが返事をする
@@ -247,7 +267,16 @@ async function apiDecoy(body, res) {
 
 // 見守りの経過(AIに代わった / 電話が終わった)を家族に知らせる。種類ごとに1通話1回まで
 const EVENT_TYPES = new Set(["handoff", "ended"]);
-const INTEL_LABELS = { datetime: "日時", place: "場所", amount: "金額", visit: "自宅に来る話", person: "名乗った名前", bank: "金融機関" };
+const INTEL_LABELS = {
+  datetime: "日時",
+  place: "場所",
+  amount: "金額",
+  visit: "自宅に来る話",
+  person: "名乗った名前",
+  bank: "金融機関",
+  account: "口座番号",
+  phone: "相手が言った電話番号",
+};
 const INTEL_TYPES = new Set(Object.keys(INTEL_LABELS));
 
 async function apiEvent(body, res) {

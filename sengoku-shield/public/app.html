@@ -111,7 +111,8 @@
     <p id="scriptLead"></p>
     <ol id="scriptLines" class="script-lines"></ol>
     <button id="scriptCopyBtn" class="secondary" type="button">この文をコピー(家族に送る用)</button>
-    <p class="note">お金やカードを渡してしまった場合は、そのことも伝えてください。</p>
+    <p class="note">お金やカードを渡してしまった場合は、そのことも伝えてください。
+    振り込んでしまった場合は、振り込んだ銀行にもすぐ電話して「詐欺にあったので、相手の口座を止めてください」と伝えてください。</p>
   </div>
 
   <div id="urgentCard" class="card urgent hidden" role="alert">
@@ -352,7 +353,9 @@
     toggleButtons();
     callerLines.push(text);
     const r = await api("/api/judge", { utterance: text, recent: recent.slice(0, -1), session_id: sessionId });
-    if (r.family_notice === "sent" || r.family_notice === "already") $("familyNote").classList.remove("hidden");
+    if (r.family_notice === "sent" || r.family_notice === "already" || r.account_notice === "sent") {
+      $("familyNote").classList.remove("hidden");
+    }
     if (r.risk_level !== "SAFE" && r.reason_short) reasons.add(r.reason_short);
     for (const id of r.matched_ids || []) matchedIds.add(id);
     // 一度上がった警告は、通話の途中で勝手に下げない(相手が話題を変えても安心させない)
@@ -511,9 +514,9 @@
       sendEvent("ended", {
         minutes: startedAt ? Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000)) : null,
         ai_replies: history.filter((h) => h.role === "shield").length,
-        // 家族が代わりに110番できるよう、日時・場所・金額などの手がかりも送る
+        // 家族が代わりに110番できるよう、日時・場所・金額・相手の口座などの手がかりも送る
         intel: intel
-          .filter((f) => ["datetime", "place", "amount", "visit", "person", "bank"].includes(f.type))
+          .filter((f) => ["datetime", "place", "amount", "visit", "person", "bank", "account", "phone"].includes(f.type))
           .map((f) => ({ type: f.type, label: f.label, value: f.value })),
       });
     }

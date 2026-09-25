@@ -173,7 +173,7 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
       intel: [
         { type: "datetime", value: "明日の午後3時" },
         { type: "place", value: "新宿駅の東口改札" },
-        { type: "account", value: "1234567" }, // 口座番号は家族には送らない
+        { type: "account", value: "1234567" }, // 相手の口座は家族に送り、警察・銀行に伝えてもらう
       ],
     })).json()).family_notice,
     "sent"
@@ -185,7 +185,8 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
   assert.match(pushed[1], /約7分・AIの返事 12回/);
   assert.match(pushed[1], /日時: 明日の午後3時/);
   assert.match(pushed[1], /代わりに110番/);
-  assert.doesNotMatch(pushed[1], /1234567/);
+  assert.match(pushed[1], /口座番号: 1234567/);
+  assert.match(pushed[1], /口座を止めてもらってください/);
   for (const text of pushed) assert.doesNotMatch(text, /中継|通報しました|警察に(送|伝え)/);
 });
 
@@ -237,4 +238,49 @@ test("見守り画面から招待番号を出し、LINEのWebhook(署名つき)�
   const removed = await api("/api/family/remove", { id: list.members[0].id });
   assert.strictEqual(removed.removed, true);
   assert.deepStrictEqual(removed.members, []);
+});
+
+test("相手が振込先の口座を言ったら、電話の途中でもすぐ家族に口座を送る(口座ごとに1回)", async (t) => {
+  process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+  process.env.SHIELD_FAMILY_LINE_IDS = "Ufamily1";
+  t.after(() => {
+    delete process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    delete process.env.SHIELD_FAMILY_LINE_IDS;
+  });
+  const pushed = [];
+  const orig = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (String(url).startsWith("https://api.line.me/")) {
+      pushed.push(JSON.parse(opts.body).messages[0].text);
+      return new Response("{}", { status: 200 });
+    }
+    return orig(url, opts);
+  };
+  t.after(() => (global.fetch = orig));
+
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const judge = async (utterance, recent = []) =>
+    (await orig(`${base}/api/judge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer app-secret" },
+      body: JSON.stringify({ utterance, recent, session_id: "session-cccc-1" }),
+    })).json();
+
+  // 普通の電話(お店の支払い案内など)では口座を送らない
+  const benign = await judge("お支払いは、みずほ銀行新宿支店、口座番号は7654321でお願いします");
+  assert.strictEqual(benign.account_notice, "none");
+
+  const first = await judge("みずほ銀行新宿支店、口座番号は1234567です", ["還付金があります。今日中にATMで手続きを"]);
+  assert.strictEqual(first.account_notice, "sent");
+  const again = await judge("口座番号は1234567ですよ", ["還付金があります。今日中にATMで手続きを"]);
+  assert.strictEqual(again.account_notice, "none");
+  await new Promise((r) => setTimeout(r, 50));
+
+  const accountMsgs = pushed.filter((p) => p.includes("振込先の口座を言いました"));
+  assert.strictEqual(accountMsgs.length, 1);
+  assert.match(accountMsgs[0], /金融機関: みずほ銀行新宿支店/);
+  assert.match(accountMsgs[0], /口座番号: 1234567/);
+  assert.match(accountMsgs[0], /SNSなどには書き込まないでください/);
 });

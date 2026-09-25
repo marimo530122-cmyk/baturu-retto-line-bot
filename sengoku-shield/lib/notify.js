@@ -77,6 +77,9 @@ function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
       meeting
         ? "相手が、会う日時・場所や家に来る話をしていました。本人が110番できていないようなら、代わりに110番してください。"
         : "本人に電話をかけて、お金やカードを渡す約束をしていないか、やさしく聞いてあげてください。",
+      ...(types.has("account") || types.has("bank")
+        ? ["相手が言った口座は、110番か #9110 で伝えてください。本人が振り込んでしまっていたら、振り込んだ銀行にも電話して口座を止めてもらってください。"]
+        : []),
       "心配なときは #9110(警察相談専用電話)に相談できます。",
     ].join("\n");
   }
@@ -87,6 +90,30 @@ async function notifyFamilyProgress(type, extra) {
   const targets = familyTargets();
   const text = familyProgressMessage(type, extra);
   if (!targets.length || !text) return false;
+  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
+  return results.some(Boolean);
+}
+
+// 相手が振込先の口座を言った瞬間に、家族へ知らせる(口座を早く止めてもらうため)。
+// 口座番号は相手(詐欺の疑いがある側)のもので、登録済みの家族にだけ送る。
+function familyAccountMessage({ bank, account, phone } = {}) {
+  return [
+    "【戦国シールド・急ぎ】見守り中の電話で、相手が振込先の口座を言いました",
+    "",
+    ...(bank ? [`金融機関: ${bank}`] : []),
+    ...(account ? [`口座番号: ${account}`] : []),
+    ...(phone ? [`相手が言った電話番号: ${phone}`] : []),
+    "",
+    "詐欺グループの口座の可能性があります。110番(急がないときは #9110)で、この口座のことを伝えてください。",
+    "もし本人が振り込んでしまっていたら、振り込んだ銀行にもすぐ電話して「詐欺にあったので、相手の口座を止めてください」と伝えてください。",
+    "※音声の聞き取りなので、番号がまちがっている場合があります。SNSなどには書き込まないでください。",
+  ].join("\n");
+}
+
+async function notifyFamilyAccount(info) {
+  const targets = familyTargets();
+  if (!targets.length || !(info && (info.account || info.bank))) return false;
+  const text = familyAccountMessage(info);
   const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
   return results.some(Boolean);
 }
@@ -117,4 +144,6 @@ module.exports = {
   familyTargets,
   familyMessage,
   familyProgressMessage,
+  familyAccountMessage,
+  notifyFamilyAccount,
 };
