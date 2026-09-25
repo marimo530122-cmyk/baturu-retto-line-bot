@@ -76,6 +76,14 @@
   .note:empty { display: none; }
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
+  .family-list { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+  .family-list li { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .family-list button { width: auto; margin: 0; padding: 8px 12px; font-size: 15px; }
+  .invite { border: 2px solid var(--accent); border-radius: 12px; padding: 12px; margin-top: 8px; }
+  .invite ol { margin: 4px 0; padding-left: 1.4em; }
+  .invite-code { font-size: 40px; font-weight: 700; letter-spacing: 0.15em; text-align: center; margin: 8px 0;
+    font-variant-numeric: tabular-nums; user-select: all; }
   .choice {
     display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0;
     padding: 14px; border: 2px solid var(--line); border-radius: 12px; font-size: 20px; color: var(--fg);
@@ -143,6 +151,22 @@
       <input id="testText" type="text" placeholder="例: 還付金があるのでATMに行ってください">
     </div>
     <button id="testBtn" class="secondary" type="button">判定する</button>
+  </div>
+
+  <div class="card">
+    <strong>見守り家族(怪しい電話のときに知らせる人)</strong>
+    <ul id="familyList" class="family-list"></ul>
+    <button id="inviteBtn" class="secondary" type="button">家族を登録する</button>
+    <div id="invitePanel" class="invite hidden">
+      <p>家族のスマホで、次の2つをしてもらってください。</p>
+      <ol>
+        <li>戦国シールドのLINEを友だち追加する<span id="lineAdd"></span></li>
+        <li>そのトークに、この番号を送る</li>
+      </ol>
+      <p id="inviteCode" class="invite-code" aria-live="polite"></p>
+      <p class="note" id="inviteNote">30分たつと使えなくなります。</p>
+    </div>
+    <p class="note" id="familyNoteText"></p>
   </div>
 
   <div class="card">
@@ -537,6 +561,81 @@
     try { speechSynthesis.cancel(); } catch {}
     speak("はいはい、もしもし。ちょっと耳が遠くてねえ、もう一度ゆっくりお願いできますか。");
   });
+
+  // ---- 見守り家族の登録 ----
+  let familyCount = 0;
+  let invitePoll = null;
+
+  function renderFamily(list, lineReady) {
+    const ul = $("familyList");
+    ul.replaceChildren();
+    familyCount = list.length;
+    for (const m of list) {
+      const li = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = `${m.name}${m.hasPhone ? `(電話 末尾${m.phoneTail})` : "(LINEのみ)"}`;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "secondary";
+      del.textContent = "登録を消す";
+      del.addEventListener("click", async () => {
+        try {
+          const r = await api("/api/family/remove", { id: m.id });
+          renderFamily(r.members, true);
+        } catch (err) {
+          $("familyNoteText").textContent = err.message;
+        }
+      });
+      li.append(label, del);
+      ul.append(li);
+    }
+    $("familyNoteText").textContent = !lineReady
+      ? "サーバーでLINEの設定(LINE_CHANNEL_SECRET)がまだなので、家族の登録は使えません。"
+      : list.length
+        ? `${list.length}人が登録されています。`
+        : "まだ誰も登録されていません。「家族を登録する」を押してください。";
+  }
+
+  async function loadFamily() {
+    if (!$("token").value.trim()) return;
+    try {
+      const r = await api("/api/family/list", {});
+      renderFamily(r.members, r.lineReady);
+      return r.members;
+    } catch {
+      return null;
+    }
+  }
+
+  $("inviteBtn").addEventListener("click", async () => {
+    if (!$("token").value.trim()) return ($("familyNoteText").textContent = "先に、画面下の合言葉を入れてください。");
+    try {
+      const r = await api("/api/family/invite", {});
+      $("inviteCode").textContent = r.code.replace(/(\d{3})(\d{3})/, "$1 $2");
+      $("lineAdd").textContent = r.lineAddUrl ? `(${r.lineAddUrl})` : "";
+      $("inviteNote").textContent = `30分たつと使えなくなります(${new Date(r.expiresAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}まで)。`;
+      $("invitePanel").classList.remove("hidden");
+      // 家族が番号を送ったら、自動で一覧に出す(5秒ごとに確認、30分まで)
+      clearInterval(invitePoll);
+      const before = familyCount;
+      const until = Date.now() + 30 * 60 * 1000;
+      invitePoll = setInterval(async () => {
+        const list = await loadFamily();
+        if ((list && list.length > before) || Date.now() > until) {
+          clearInterval(invitePoll);
+          if (list && list.length > before) {
+            $("invitePanel").classList.add("hidden");
+            $("familyNoteText").textContent = `登録できました。${list.length}人が登録されています。`;
+          }
+        }
+      }, 5000);
+    } catch (err) {
+      $("familyNoteText").textContent = err.message;
+    }
+  });
+
+  $("token").addEventListener("change", loadFamily);
+  loadFamily();
 
   // 警察相談(#9110)で伝えやすいよう、この通話の内容をメモにしてコピーする
   $("memoBtn").addEventListener("click", async () => {

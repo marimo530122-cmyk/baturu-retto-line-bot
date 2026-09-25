@@ -2,6 +2,7 @@
 // LINE_CHANNEL_ACCESS_TOKEN と SHIELD_LINE_USER_ID が両方あるときだけ動く
 
 const { maskPhone, maskText } = require("./mask");
+const family = require("./family");
 
 async function pushLine(to, text) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -18,15 +19,17 @@ async function pushLine(to, text) {
 }
 
 // 見守り画面(/app)で「疑い:高」になった瞬間に、離れて暮らす家族のLINEへ知らせる(任意)
-// - 送り先は SHIELD_FAMILY_LINE_IDS(カンマ区切り)。無ければ SHIELD_LINE_USER_ID
+// - 送り先は招待番号で登録した家族と、SHIELD_FAMILY_LINE_IDS(カンマ区切り。無ければ SHIELD_LINE_USER_ID)
 // - 1回の通話(見守りセッション)につき1回だけ
 // - 会話の全文は送らない。手口の種類と、番号を伏せた短い抜粋だけ
+// 送り先 = 招待番号で登録した家族(data/family.json) + 設定で直接書いたID
 function familyTargets() {
   const ids = (process.env.SHIELD_FAMILY_LINE_IDS || process.env.SHIELD_LINE_USER_ID || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return process.env.LINE_CHANNEL_ACCESS_TOKEN ? ids : [];
+  const registered = family.members().map((m) => m.lineUserId);
+  return process.env.LINE_CHANNEL_ACCESS_TOKEN ? [...new Set([...registered, ...ids])] : [];
 }
 
 function familyMessage(judgment, utterance) {

@@ -15,6 +15,8 @@ const store = require("./lib/store");
 const { notifyOwner, notifyFamily, notifyFamilyProgress, familyTargets } = require("./lib/notify");
 const jev = require("./lib/jev");
 const { judgeUtterance } = require("./lib/realtime");
+const family = require("./lib/family");
+const line = require("./lib/line");
 const { maskPhone } = require("./lib/mask");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -150,6 +152,20 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+function readRaw(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > 1_000_000) reject(new Error("body too large"));
+      else chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+    req.on("error", reject);
+  });
+}
+
 function readJson(req) {
   return new Promise((resolve, reject) => {
     let data = "";
@@ -254,7 +270,24 @@ async function apiEvent(body, res) {
   sendJson(res, 200, { family_notice: "sent" });
 }
 
+// 見守り家族の登録(招待番号を出す・一覧・削除)
+async function apiFamilyInvite(body, res) {
+  sendJson(res, 200, { ...family.createInvite(), lineAddUrl: process.env.SHIELD_LINE_ADD_URL || null });
+}
+
+async function apiFamilyList(body, res) {
+  sendJson(res, 200, { members: family.publicList(), lineReady: Boolean(process.env.LINE_CHANNEL_SECRET) });
+}
+
+async function apiFamilyRemove(body, res) {
+  if (typeof body.id !== "string") return sendJson(res, 400, { error: "id が必要です" });
+  sendJson(res, 200, { removed: family.removeById(body.id), members: family.publicList() });
+}
+
 const API_ROUTES = {
+  "/api/family/invite": apiFamilyInvite,
+  "/api/family/list": apiFamilyList,
+  "/api/family/remove": apiFamilyRemove,
   "/api/judge": apiJudge,
   "/api/event": apiEvent,
   "/api/decoy": apiDecoy,
@@ -275,6 +308,26 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && pathname === "/app") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     return res.end(fs.readFileSync(APP_HTML_PATH));
+  }
+  // LINE公式アカウントからの Webhook(家族の登録)。署名を確かめてから処理する
+  if (req.method === "POST" && pathname === "/line/webhook") {
+    if (!process.env.LINE_CHANNEL_SECRET) {
+      res.writeHead(404);
+      return res.end();
+    }
+    const raw = await readRaw(req).catch(() => null);
+    if (raw === null || !line.isValidSignature(raw, req.headers["x-line-signature"])) {
+      res.writeHead(401);
+      return res.end();
+    }
+    res.writeHead(200);
+    res.end();
+    let body = null;
+    try {
+      body = JSON.parse(raw);
+    } catch {}
+    if (body) await line.handleWebhook(body);
+    return;
   }
   if (req.method === "GET" && pathname === "/intel.js") {
     res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });

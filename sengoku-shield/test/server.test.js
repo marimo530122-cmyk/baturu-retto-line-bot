@@ -188,3 +188,53 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
   assert.doesNotMatch(pushed[1], /1234567/);
   for (const text of pushed) assert.doesNotMatch(text, /中継|通報しました|警察に(送|伝え)/);
 });
+
+test("見守り画面から招待番号を出し、LINEのWebhook(署名つき)で家族が登録される", async (t) => {
+  process.env.LINE_CHANNEL_SECRET = "line-secret";
+  process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+  t.after(() => {
+    delete process.env.LINE_CHANNEL_SECRET;
+    delete process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  });
+  const replies = [];
+  const orig = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (String(url).includes("/profile/")) return Response.json({ displayName: "長女" });
+    if (String(url).startsWith("https://api.line.me/")) {
+      replies.push(JSON.parse(opts.body));
+      return new Response("{}", { status: 200 });
+    }
+    return orig(url, opts);
+  };
+  t.after(() => (global.fetch = orig));
+
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const api = async (p, body = {}) =>
+    (await orig(base + p, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer app-secret" },
+      body: JSON.stringify(body),
+    })).json();
+
+  const { code } = await api("/api/family/invite");
+  const webhookBody = JSON.stringify({
+    events: [{ type: "message", replyToken: "rt", source: { type: "user", userId: "Udaughter" }, message: { type: "text", text: code } }],
+  });
+  const bad = await orig(`${base}/line/webhook`, { method: "POST", headers: { "X-Line-Signature": "bad" }, body: webhookBody });
+  assert.strictEqual(bad.status, 401);
+
+  const sig = crypto.createHmac("sha256", "line-secret").update(webhookBody).digest("base64");
+  const ok = await orig(`${base}/line/webhook`, { method: "POST", headers: { "X-Line-Signature": sig }, body: webhookBody });
+  assert.strictEqual(ok.status, 200);
+  await new Promise((r) => setTimeout(r, 50));
+
+  const list = await api("/api/family/list");
+  assert.deepStrictEqual(list.members.map((m) => m.name), ["長女"]);
+  assert.match(replies[0].messages[0].text, /登録しました/);
+
+  const removed = await api("/api/family/remove", { id: list.members[0].id });
+  assert.strictEqual(removed.removed, true);
+  assert.deepStrictEqual(removed.members, []);
+});
