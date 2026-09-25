@@ -48,6 +48,12 @@
   .note strong { color: var(--warn); }
   code { font: 15px ui-monospace, "SFMono-Regular", Menlo, monospace; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; overflow-wrap: anywhere; }
   .num { font-weight: 700; user-select: all; }
+  .check { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .check label { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; cursor: pointer; }
+  .check input { width: 22px; height: 22px; margin: 3px 0 0; accent-color: var(--accent); }
+  .check li:has(input:checked) { color: var(--muted); }
+  .reset { justify-self: start; font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   .muted { color: var(--muted); font-size: 15px; }
 </style>
 
@@ -81,6 +87,33 @@
     </div>
   </section>
 
+  <section aria-labelledby="visit">
+    <h2 id="visit">帰省したときの<span style="white-space:nowrap">10分</span>チェックリスト</h2>
+    <p class="muted">ボイスワープの設定は、お年寄り本人には難しいので、息子さん・娘さんが実家の電話機の前で、このリストを見ながら済ませる前提です。チェックはこのスマホにだけ残ります。</p>
+    <div class="panel">
+      <h3>行く前に、自分の家で(準備)</h3>
+      <ul class="check">
+        <li><label><input type="checkbox" data-id="p1"><span>NTT(<span class="num">116</span>)でボイスワープを申し込んだ(実家の電話の契約者名で。ひかり電話も同じ窓口)</span></label></li>
+        <li><label><input type="checkbox" data-id="p2"><span>戦国シールドのサーバーとTwilioの番号が動いている(自分の携帯からTwilioの番号にかけて、AIが出る)</span></label></li>
+        <li><label><input type="checkbox" data-id="p3"><span>自分を見守り家族としてLINEに登録し、電話番号も送った(見守り画面に「電話 末尾〇〇〇〇」と出る)</span></label></li>
+        <li><label><input type="checkbox" data-id="p4"><span>Twilioの番号をメモした(実家で転送先として入れる)</span></label></li>
+      </ul>
+      <h3>実家の電話機の前で(約10分)</h3>
+      <ul class="check">
+        <li><label><input type="checkbox" data-id="v1"><span>留守番電話が何回(何秒)で応答する設定か、電話機で確かめた</span></label></li>
+        <li><label><input type="checkbox" data-id="v2"><span>実家の電話から <span class="num">142</span> にかけ、音声案内に従って転送先にTwilioの番号を登録した</span></label></li>
+        <li><label><input type="checkbox" data-id="v3"><span>「無応答時転送」を選び、呼び出し時間を<strong>15〜20秒</strong>にした(留守番電話が応答するより短く)</span></label></li>
+        <li><label><input type="checkbox" data-id="v4"><span>転送を「開始」にした</span></label></li>
+        <li><label><input type="checkbox" data-id="v5"><span>自分の携帯から実家にかけて、20秒ほど出ずに待つ → AIに回ることを確かめた</span></label></li>
+        <li><label><input type="checkbox" data-id="v6"><span>AIに「還付金があります。口座番号は1234567です」と話し、自分のLINEと携帯に知らせが来ることを確かめた</span></label></li>
+        <li><label><input type="checkbox" data-id="v7"><span>本人に「知らない電話は、しばらく鳴らしておけば機械が出てくれるから、出なくていいよ」と伝えた</span></label></li>
+      </ul>
+      <p class="muted">留守番電話の方が先に応答すると、AIに回りません。電話機の留守番電話を「20秒より長く」にするか、ボイスワープの呼び出し時間を短くしてください。
+      ボイスワープには、実家の電話機を使わずに外から設定を変えられる「リモートコントロール」もあります(事前の申し込みと暗証番号が必要です。NTTで確認してください)。</p>
+      <button id="resetChecks" type="button" class="reset">チェックを消す</button>
+    </div>
+  </section>
+
   <section aria-labelledby="choose">
     <h2 id="choose">転送のしかたを選ぶ</h2>
     <div class="options">
@@ -97,7 +130,8 @@
       <div class="option">
         <span class="tag" style="background:var(--paper);color:var(--muted)">まずはここから</span>
         <h3>B. 出られないときだけAIが出る</h3>
-        <p>ボイスワープの「無応答時転送」。家の電話が鳴り、決めた秒数(例: 15秒)出なかったらAIに回ります。</p>
+        <p>ボイスワープの「無応答時転送」。家の電話が鳴り、決めた秒数のあいだ出なかったらAIに回ります。</p>
+        <p><strong>おすすめは15〜20秒</strong>(5〜6回鳴るくらい)。知り合いからの電話はいつもどおり本人が取れて、長く鳴らし続ける電話だけがAIに回ります。</p>
         <ul>
           <li>いつもどおり電話が鳴るので、本人が戸惑いにくいです。</li>
           <li>「知らない電話には出ない」と決めておくと、効果が上がります。</li>
@@ -125,7 +159,7 @@
         </li>
         <li>
           <p><strong>家の電話で、転送先をTwilioの番号にする</strong></p>
-          <p>家の固定電話から、ボイスワープの操作用の番号(<span class="num">142</span>)にかけ、音声案内に従って転送先にTwilioの番号を登録し、転送を開始します。A・Bのどちらにするかも、ここで選びます。操作が分からないときは、NTTの説明書か116で確認してください。</p>
+          <p>家の固定電話から、ボイスワープの操作用の番号(<span class="num">142</span>)にかけ、音声案内に従って転送先にTwilioの番号を登録し、転送を開始します。A・Bのどちらにするかも、ここで選びます。Bの呼び出し時間は15〜20秒がおすすめです(留守番電話が応答するより短くしてください)。操作が分からないときは、NTTの説明書か116で確認してください。</p>
         </li>
         <li>
           <p><strong>(Aを選んだとき)ご家族の番号を登録する</strong></p>
@@ -175,3 +209,24 @@
     </div>
   </section>
 </main>
+
+<script>
+(() => {
+  const KEY = "landlineChecklist";
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { state = {}; }
+  const boxes = [...document.querySelectorAll(".check input")];
+  for (const b of boxes) {
+    b.checked = Boolean(state[b.dataset.id]);
+    b.addEventListener("change", () => {
+      state[b.dataset.id] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    });
+  }
+  document.getElementById("resetChecks").addEventListener("click", () => {
+    state = {};
+    for (const b of boxes) b.checked = false;
+    try { localStorage.setItem(KEY, "{}"); } catch {}
+  });
+})();
+</script>
