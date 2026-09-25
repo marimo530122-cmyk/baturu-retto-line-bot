@@ -66,6 +66,12 @@
   .note:empty { display: none; }
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
+  .choice {
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0;
+    padding: 14px; border: 2px solid var(--line); border-radius: 12px; font-size: 20px; color: var(--fg);
+  }
+  .choice:has(input:checked) { border-color: var(--accent); font-weight: 700; }
+  .choice input { width: 22px; height: 22px; }
 </style>
 </head>
 <body>
@@ -107,6 +113,16 @@
       <input id="testText" type="text" placeholder="例: 還付金があるのでATMに行ってください">
     </div>
     <button id="testBtn" class="secondary" type="button">判定する</button>
+  </div>
+
+  <div class="card">
+    <strong>本人の声(AIが代わりに話すときの声)</strong>
+    <div class="row gender" role="radiogroup" aria-label="本人の声">
+      <label class="choice"><input type="radio" name="gender" value="female"> 女性</label>
+      <label class="choice"><input type="radio" name="gender" value="male"> 男性</label>
+    </div>
+    <button id="voiceTestBtn" class="secondary" type="button">声を試しに聞く</button>
+    <p class="note" id="voiceNote"></p>
   </div>
 
   <div class="card">
@@ -152,6 +168,54 @@
   const history = [];  // AI応対中の会話
 
   $("token").value = storage.get("shieldToken");
+
+  // ---- 本人の声の性別に合わせた読み上げ声 ----
+  // 端末に入っている日本語の声から、名前で男性・女性を見分けて選ぶ(本人の声を真似る機能は使わない)
+  const MALE_VOICE = /otoya|ichiro|keita|takumi|daichi|hattori|male|男性|男/i;
+  const FEMALE_VOICE = /kyoko|haruka|ayumi|sayaka|nanami|mizuki|o-ren|female|女性|女|google 日本語/i;
+  let gender = storage.get("shieldGender") || "female";
+
+  function japaneseVoices() {
+    try { return speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang)); } catch { return []; }
+  }
+
+  // 使う声と、声の高さ(pitch)を決める。男性の声が端末に無いときは、女性の声を低めにして代用する
+  function voiceSetting() {
+    const voices = japaneseVoices();
+    const male = voices.find((v) => MALE_VOICE.test(v.name) && !/female/i.test(v.name));
+    const female = voices.find((v) => FEMALE_VOICE.test(v.name));
+    if (gender === "male") {
+      if (male) return { voice: male, pitch: 0.9, exact: true };
+      return { voice: voices[0] || null, pitch: 0.6, exact: false };
+    }
+    if (female) return { voice: female, pitch: 1.0, exact: true };
+    return { voice: voices.find((v) => v !== male) || voices[0] || null, pitch: 1.1, exact: false };
+  }
+
+  function updateVoiceNote() {
+    for (const r of document.querySelectorAll('input[name="gender"]')) r.checked = r.value === gender;
+    if (!window.speechSynthesis) {
+      $("voiceNote").textContent = "この端末は読み上げに対応していません。";
+      return;
+    }
+    const v = voiceSetting();
+    const label = gender === "male" ? "男性" : "女性";
+    $("voiceNote").textContent = !v.voice
+      ? "日本語の声が見つかりません(端末の設定で日本語の読み上げ音声を入れてください)。"
+      : v.exact
+        ? `使う声: ${v.voice.name}(${label})`
+        : `この端末には${label}の声が入っていないため、「${v.voice.name}」の高さを変えて代用します。端末の設定で${label}の日本語音声を追加すると自然になります。`;
+  }
+
+  for (const r of document.querySelectorAll('input[name="gender"]')) {
+    r.addEventListener("change", () => {
+      gender = r.value;
+      storage.set("shieldGender", gender);
+      updateVoiceNote();
+    });
+  }
+  try { speechSynthesis.onvoiceschanged = updateVoiceNote; } catch {}
+  updateVoiceNote();
   $("token").addEventListener("change", () => storage.set("shieldToken", $("token").value.trim()));
 
   if (!Recognition) {
@@ -241,8 +305,11 @@
     return new Promise((resolve) => {
       if (!window.speechSynthesis) return resolve();
       const u = new SpeechSynthesisUtterance(text);
+      const v = voiceSetting();
       u.lang = "ja-JP";
-      u.rate = 0.95;
+      if (v.voice) u.voice = v.voice;
+      u.pitch = v.pitch;
+      u.rate = 0.9; // 年配の人らしく、少しゆっくり
       // 端末によっては読み上げ終わりの合図が来ないので、長さから見積もった時間で打ち切る
       const guard = setTimeout(resolve, 3000 + text.length * 250);
       u.onend = u.onerror = () => { clearTimeout(guard); resolve(); };
@@ -252,7 +319,7 @@
 
   async function aiReply(text) {
     history.push({ role: "caller", text });
-    const r = await api("/api/decoy", { history });
+    const r = await api("/api/decoy", { history, gender });
     history.push({ role: "shield", text: r.text });
     addLog("AI", r.text);
     // 自分の読み上げを自分で聞き取らないよう、話している間は聞き取りを止める
@@ -358,6 +425,11 @@
     $("handoffBtn").classList.toggle("hidden", lastRisk === "SAFE");
     showBridge(lastRisk !== "SAFE");
     setStatus(lastRisk === "SAFE" ? "SAFE" : lastRisk, "自分の応対に戻しました", "判定は続けています");
+  });
+
+  $("voiceTestBtn").addEventListener("click", () => {
+    try { speechSynthesis.cancel(); } catch {}
+    speak("はいはい、もしもし。ちょっと耳が遠くてねえ、もう一度ゆっくりお願いできますか。");
   });
 
   // 警察相談(#9110)で伝えやすいよう、この通話の内容をメモにしてコピーする

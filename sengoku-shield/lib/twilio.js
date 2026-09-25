@@ -22,7 +22,11 @@ function escapeXml(s) {
     .replaceAll("'", "&apos;");
 }
 
-const VOICE = process.env.TWILIO_VOICE || "Polly.Mizuki";
+// 読み上げの声。SHIELD_VOICE_GENDER=male なら男性の声(Polly.Takumi)、それ以外は女性の声(Polly.Mizuki)。
+// TWILIO_VOICE を指定すればそちらが優先。
+const VOICE =
+  process.env.TWILIO_VOICE ||
+  (process.env.SHIELD_VOICE_GENDER === "male" ? "Polly.Takumi" : "Polly.Mizuki");
 
 function say(text) {
   return `<Say language="ja-JP" voice="${escapeXml(VOICE)}">${escapeXml(text)}</Say>`;

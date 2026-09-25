@@ -219,7 +219,9 @@ async function apiDecoy(body, res) {
     return sendJson(res, 400, { error: "最後は相手(caller)の発話にしてください" });
   }
   const turn = history.filter((h) => h.role === "shield").length + 1;
-  sendJson(res, 200, await decoy.reply(history, turn));
+  // 本人の声の性別(見守り画面の設定)に合わせて、AIの話し方を変える
+  const gender = decoy.normalizeGender(body.gender) || undefined;
+  sendJson(res, 200, await decoy.reply(history, turn, { gender }));
 }
 
 const API_ROUTES = {

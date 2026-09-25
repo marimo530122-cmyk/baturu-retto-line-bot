@@ -30,13 +30,29 @@ const SYSTEM_PROMPT = `あなたは詐欺電話対策の自動応答システム
 
 const STALL_PHRASES = [
   "はいはい、ちょっと耳が遠くて。もう一度ゆっくりお願いできますか。",
-  "あら、そうなんですか。えーと、それはどういうことでしょう。",
+  "へえ、そうなんですか。えーと、それはどういうことでしょう。",
   "ちょっと待ってくださいね、メガネを探してきますから。",
   "すみません、今お湯を沸かしてて。なんのお話でしたっけ。",
   "うーん、難しいお話ですねえ。もう少し詳しく教えてもらえますか。",
   "なるほどねえ。ところで、どちらさまでしたっけ。",
   "メモを取りますので、最初からもう一度お願いします。",
 ];
+
+// 本人の声の性別に合わせた話し方(見守り画面の設定、または SHIELD_VOICE_GENDER)。
+// 声そのものは合成音声のまま(本人の声を真似る機能は、なりすましに悪用できるので入れない)。
+const GENDER_STYLE = {
+  female: "話し方: 年配の女性らしい、やわらかい話し方にする(「そうなんですねえ」「あらまあ」など)。",
+  male: "話し方: 年配の男性らしい、落ち着いた話し方にする(「そうかい」「うーん、なるほどなあ」など)。",
+};
+
+function normalizeGender(gender) {
+  return Object.hasOwn(GENDER_STYLE, gender) ? gender : null;
+}
+
+function systemPrompt(gender) {
+  const g = normalizeGender(gender);
+  return g ? `${SYSTEM_PROMPT}\n\n${GENDER_STYLE[g]}` : SYSTEM_PROMPT;
+}
 
 function stallPhrase(turn) {
   return STALL_PHRASES[turn % STALL_PHRASES.length];
@@ -73,7 +89,7 @@ function toMessages(history) {
   return messages;
 }
 
-async function reply(history, turn) {
+async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER } = {}) {
   if (!USE_AI) return { text: stallPhrase(turn), source: "fixed" };
   const messages = toMessages(history);
   if (!messages.length || messages[messages.length - 1].role !== "user") {
@@ -87,7 +103,7 @@ async function reply(history, turn) {
       // 安全分類器に止められた場合は、サーバー側で自動的に別モデルで再実行させる
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: SYSTEM_PROMPT,
+      system: systemPrompt(gender),
       messages,
     });
     if (response.stop_reason === "refusal") {
@@ -106,4 +122,13 @@ async function reply(history, turn) {
   }
 }
 
-module.exports = { reply, stallPhrase, isSafeReply, toMessages, SYSTEM_PROMPT, STALL_PHRASES };
+module.exports = {
+  reply,
+  stallPhrase,
+  isSafeReply,
+  toMessages,
+  systemPrompt,
+  normalizeGender,
+  SYSTEM_PROMPT,
+  STALL_PHRASES,
+};
