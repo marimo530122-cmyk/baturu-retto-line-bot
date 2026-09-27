@@ -18,6 +18,10 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 5. (任意) 蓄積したログの中から動画化したいものを選び、`.github/workflows/generate-short-video.yml`
    を起動すると、`scripts/generate_short_video.py` がナレーション音声・字幕付きの縦型
    ショート動画(MP4)を生成し、GitHub Releaseに添付してダウンロードURLを発行する。
+6. (任意) 実際に撮影した素材(自撮りトーク等)は `.github/workflows/auto-edit-video.yml` に
+   GoogleドライブのURLを渡すと、`scripts/auto_edit_video.py` が自動編集(無音カット・フィラー除去・
+   Claudeによる言い直しカット・色補正・音声ノイズ処理・単語タイミング字幕・9:16化・書き出しチェック)
+   して、完成MP4と編集レポートをGitHub Releaseに添付する。
 
 ## データフォーマットのルール
 
@@ -61,6 +65,11 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - **動画合成・字幕焼き込み**: `ffmpeg` + `libass`(GitHub Actionsの `ubuntu-latest` に
   標準搭載)。`.ass` 字幕ファイルを生成し、`ass` フィルタで縦型(9:16, 1080x1920)動画に
   焼き込む。日本語フォント(`fonts-noto-cjk`)のインストールが別途必要(ワークフローに含む)。
+- **撮影素材の自動編集**: 「先に文字起こしし、テキスト上でカット位置を決め、映像は最後に1回だけ
+  ffmpegで処理する」方式(video-use等のAI動画編集と同じ考え方)。文字起こしは
+  [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper)(MIT、無料、CPUで動作)。
+  映像をAIに見せないので、Claudeに渡すのは文字起こしテキストだけ(`--ai` 時のみ)。
+  Whisperはフィラーを勝手に省く癖があるため、`initial_prompt` にフィラーを入れて書き起こさせている。
 - 出所不明な大型OSSリポジトリを丸ごと依存に加えないことで、ライセンス・保守性・CI実行環境
   との相性リスクを避けつつ、車輪の再発明もしていない(TTSエンジンもレンダラも既存OSS)。
 
@@ -72,7 +81,11 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `scripts/generate_short_video.py` — `docs/daily-logs/` のログ(または直接指定した
   ナレーション文)から、TTS音声・字幕焼き込み済みの縦型ショート動画(MP4)を `output/` に
   生成する。`output/` は `.gitignore` 対象(リポジトリを肥大化させないため)。
+- `scripts/auto_edit_video.py` — 撮影素材(パス/URL/Googleドライブ共有リンク)を自動編集して
+  `output/` に縦型MP4・編集レポート(`.report.md`)・プレビュー画像・文字起こしJSONを書き出す。
+  文字起こしJSONを手直しして `--transcript` で渡せば、文字起こしをやり直さずに再編集できる。
 - `scripts/requirements.txt` — 依存パッケージ(`anthropic`, `edge-tts`)。
+- `scripts/requirements-video-edit.txt` — 自動編集用の追加依存(`faster-whisper`, `gdown`)。
 - `package.json` — X自動投稿のAI生成用(`@anthropic-ai/sdk`)。
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
 - `freelance/` — クラウドワークス案件自動ハンター(`python3 freelance/fl.py scrape-cw`)。
@@ -81,6 +94,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   (`repository_dispatch` / `workflow_dispatch`)。
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。
   生成したMP4はGitHub Releaseに添付され、スマホからダウンロードURLとして取得できる。
+- `.github/workflows/auto-edit-video.yml` — 撮影素材の自動編集トリガー(`video_url` にGoogleドライブの
+  共有リンクを渡す)。結果は `edit-YYYYMMDD-HHMMSS` のReleaseに添付され、本文に編集レポートが載る。
 
 ## SNS自動投稿(X)とマネタイズ導線
 
