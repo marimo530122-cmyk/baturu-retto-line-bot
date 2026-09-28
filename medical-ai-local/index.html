@@ -208,6 +208,33 @@ let mediaRecorder = null;
 let recording = false;
 let liveDraftTimer = null;
 let pendingChunks = 0;
+let wakeLock = null;
+
+// 録音中に画面が自動スリープ（消灯）してしまい、聞いている最中に画面が消える不具合の対策。
+// 対応ブラウザ（Chrome/Edge、Android、Safari 16.4+等）では、録音中は画面をスリープさせない。
+async function acquireWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+  } catch (e) {
+    console.warn("画面スリープ防止を取得できませんでした（録音自体は継続します）:", e);
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    wakeLock.release().catch(() => {});
+    wakeLock = null;
+  }
+}
+
+// スリープ防止は、タブが非表示になると自動的に解除される仕様のため、
+// 録音中に画面へ戻ってきたタイミングで再取得する。
+document.addEventListener("visibilitychange", () => {
+  if (recording && document.visibilityState === "visible" && !wakeLock) {
+    acquireWakeLock();
+  }
+});
 
 const fieldLabels = {
   chief_complaint: "🗣️ 主訴・症状の要約",
@@ -314,6 +341,7 @@ async function startMicCycle() {
   }
   recording = true;
   setMicState("recording");
+  await acquireWakeLock();
   recordOneChunk(mimeType);
 }
 
@@ -339,6 +367,7 @@ function stopMicCycle() {
   recording = false;
   if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
   if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  releaseWakeLock();
   setMicState("idle");
 }
 
