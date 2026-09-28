@@ -1,0 +1,139 @@
+<title>スマホだけで置く</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@800&display=swap">
+<style>
+  :root {
+    --paper: #f3f5f8; --surface: #ffffff; --ink: #1b2231; --muted: #5b6475; --line: #d5dae3;
+    --accent: #2c3d6b; --accent-ink: #ffffff; --good: #1d6b45; --good-bg: #e2f1e8; --warn: #8a5a00; --warn-bg: #fdf0cf;
+    --code-bg: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+      --accent: #b9c6ec; --accent-ink: #12151c; --good: #86d4a9; --good-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+      --code-bg: #232937;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12151c; --surface: #1b202a; --ink: #e9ecf2; --muted: #a2aaba; --line: #313848;
+    --accent: #b9c6ec; --accent-ink: #12151c; --good: #86d4a9; --good-bg: #15291f; --warn: #f3c66b; --warn-bg: #33290f;
+    --code-bg: #232937;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 17px/1.75 "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    padding-inline: 16px; padding-block: 20px 56px;
+  }
+  main { max-width: 720px; margin: 0 auto; display: grid; gap: 24px; }
+  h1 { font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", serif; font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
+  h2 { font-size: 21px; margin: 0; text-wrap: balance; }
+  h3 { font-size: 18px; margin: 0; }
+  p { margin: 0; }
+  .lead { color: var(--muted); }
+  section { display: grid; gap: 10px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; }
+  .key { background: var(--good-bg); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
+  .key strong { color: var(--good); }
+  .note { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; }
+  .note strong { color: var(--warn); }
+  ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
+  ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td:first-child { width: 28%; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 700; font-size: 14px; }
+  pre { margin: 0; background: var(--code-bg); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font: 14px/1.6 ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  code { font: 14px ui-monospace, "SFMono-Regular", Menlo, monospace; background: var(--code-bg); border-radius: 6px; padding: 0 5px; overflow-wrap: anywhere; }
+  pre code { background: none; padding: 0; }
+  .prompt { white-space: pre-wrap; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 12px 16px; background: var(--accent); color: var(--accent-ink); cursor: pointer; justify-self: start; }
+  .muted { color: var(--muted); font-size: 15px; }
+  a { color: var(--accent); overflow-wrap: anywhere; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<main>
+  <header style="display:grid;gap:6px">
+    <h1>スマホだけで置く手順</h1>
+    <p class="lead">パソコンもTwilioも使わずに、戦国シールドをインターネット上(Render というサービス)に置く手順です。スマホのブラウザだけでできます。</p>
+  </header>
+
+  <div class="key">
+    <p><strong>Twilioは後回しで大丈夫です</strong></p>
+    <p>Twilioが無くても、<strong>見守り画面(スピーカーにした電話の声を聞いて詐欺を判定し、言い訳とボタンを出す)</strong>・<strong>家族のLINE登録と知らせ</strong>・<strong>ClaudeとJevの判定</strong>は動きます。止まるのは「AIが電話に出る」と「家族への自動電話」の2つだけです。Twilioの設定を後から足せば、その2つも自動で動き始めます。</p>
+  </div>
+
+  <section aria-labelledby="need">
+    <h2 id="need">用意するもの</h2>
+    <div class="panel">
+      <ul>
+        <li><strong>GitHubのアカウント</strong>(もう持っています)</li>
+        <li><strong>Renderのアカウント</strong>(render.com。GitHubでログインできます)</li>
+        <li><strong>クレジットカード</strong>(Renderの有料プランのため)</li>
+        <li>あれば: Claude(Anthropic)のAPIキー、LINEの鍵、TypeSafeのキー。<strong>無くても置けます</strong>。後から足せます。</li>
+      </ul>
+      <div class="note">
+        <p><strong>お金について</strong></p>
+        <p>家族の名簿を消さずに保存するため、ディスク付きの「Starter」プランにしてあります。目安は月7ドル前後(約1,000円)+ディスク代わずかです。正確な金額は申し込む前にRenderの画面で確認してください。無料プランでも動きますが、再起動のたびに家族の登録が消えます。</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="deploy">
+    <h2 id="deploy">置く手順(10〜15分)</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>スマホのブラウザで <strong>dashboard.render.com</strong> を開き、「GitHubでログイン」を選ぶ。</li>
+        <li>「New」→「<strong>Blueprint</strong>」を選ぶ。</li>
+        <li>GitHubの連携を許可し、リポジトリ <code>baturu-retto-line-bot</code> を選ぶ。</li>
+        <li>ブランチを選ぶ欄があれば <code>main</code> を選ぶ(戦国シールドをmainに入れた後の場合。まだなら <code>claude/main-2thn7e</code>)。</li>
+        <li>Renderが設定ファイル(<code>render.yaml</code>)を読み、<strong>sengoku-shield</strong> というサービスが表示される。</li>
+        <li>鍵の入力欄(<code>ANTHROPIC_API_KEY</code> など)が出る。<strong>持っている鍵だけ、ここに直接貼る</strong>。無いものは空のままでよい。</li>
+        <li>「Apply」(作成)を押す。数分で起動します。</li>
+      </ol>
+      <div class="note">
+        <p><strong>鍵はチャットに貼らないでください</strong></p>
+        <p>鍵を入れる場所は、Renderの画面の入力欄だけです。Claude Codeにも貼る必要はありません。万一どこかに貼ってしまったら、発行元のサイトで作り直してください。</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="use">
+    <h2 id="use">置いた後にやること</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>Renderの sengoku-shield の画面の上にある <strong>URL</strong>(<code>https://sengoku-shield-xxxx.onrender.com</code> のような形)を確認する。</li>
+        <li>そのURLの後ろに <code>/health</code> を付けて開き、<strong>ok</strong> と出れば動いています。</li>
+        <li>「Environment」を開き、<code>SHIELD_APP_TOKEN</code> の値(Renderが自動で作った合言葉)を表示してコピーする。</li>
+        <li>URLの後ろに <code>/app</code> を付けて開くと見守り画面。画面下の「合言葉」欄に貼る(一度入れればスマホが覚えます)。</li>
+        <li>LINEを使う場合: LINE Developers の Webhook URL を、URLの後ろに <code>/line/webhook</code> を付けたものにする。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section aria-labelledby="later">
+    <h2 id="later">後から鍵を足すとき</h2>
+    <div class="panel">
+      <p>Renderの sengoku-shield →「Environment」→「Add Environment Variable」で、名前と値を入れて保存します。自動で再起動して使えるようになります。</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>足したいこと</th><th>入れる名前</th></tr></thead>
+          <tbody>
+            <tr><td>AIの返事を自然にする</td><td><code>ANTHROPIC_API_KEY</code></td></tr>
+            <tr><td>Jevの判定</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+            <tr><td>家族へのLINE</td><td><code>LINE_CHANNEL_SECRET</code>・<code>LINE_CHANNEL_ACCESS_TOKEN</code>・<code>SHIELD_LINE_ADD_URL</code></td></tr>
+            <tr><td>AIが電話に出る(Twilio)</td><td><code>TWILIO_AUTH_TOKEN</code></td></tr>
+            <tr><td>家族への自動電話(Twilio)</td><td><code>TWILIO_ACCOUNT_SID</code>・<code>SHIELD_CALLER_ID</code></td></tr>
+            <tr><td>AIの声を男性に</td><td><code>SHIELD_VOICE_GENDER</code> を <code>male</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">公開URL(<code>SHIELD_PUBLIC_URL</code>)は、Renderでは自動で入るので設定不要です。</p>
+    </div>
+  </section>
+</main>

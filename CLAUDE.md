@@ -98,6 +98,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   口座・会う日時と場所・家に来る話が出たら、登録した家族に自動音声の電話もかける(1通話1回)。AIが自分で110番はしない。
   本人や家族の声を真似る機能(声のクローン)は入れない。それ自体がオレオレ詐欺の道具になり、
   声の見本を集めて保存すること自体も漏洩時の被害が大きいため。AIの声は、性別を合わせた汎用の合成音声のみ。
+  Twilio は無くても起動する(電話の受け口 `/voice/*` だけ閉じる)。スマホだけで置くときはリポジトリ直下の
+  `render.yaml`(Render Blueprint、家族の名簿を残すためディスク付き)を使う。鍵は Render の画面に直接入れ、チャットや Git に書かない。
   詳細は `sengoku-shield/README.md`。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。

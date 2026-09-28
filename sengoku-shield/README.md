@@ -236,6 +236,11 @@ LINEに気づかない家族にも届くよう、急ぎのときは自動音声�
 申し込みから試し電話までの手順、国際電話の着信停止・非通知拒否などのあわせ技、転送の通話料などの注意を
 `docs/landline.html` にまとめた(ご家族がスマホで見ながら設定できるページ)。
 
+## スマホだけで置く(`docs/cloud-setup.html`)
+
+パソコンも Twilio も使わずに Render に置く手順。Twilio なしでも見守り画面・家族のLINE・Claude/Jev の判定は動き、
+止まるのは「AIが電話に出る」と「家族への自動電話」だけ。
+
 ## 警察署でのヒアリング(`docs/hearing.html`)
 
 生活安全課で詐欺の手口を教えてもらうための質問リスト(20問、最優先5問)。最近の手口と決まり文句、本物の警察・役所の電話との見分け方、
@@ -315,12 +320,18 @@ npm run start:env      # .env を読んで起動
 npm run check          # Claude・Jev・LINE・Twilio・公開URLにつながるかを ○× で確認
 ```
 
+### スマホだけでクラウドに置く(Render)
+
+リポジトリ直下の `render.yaml` を Render の Blueprint で読み込むと、パソコンなしで置ける。
+手順は `docs/cloud-setup.html`。鍵は Render の Environment 画面に直接入れる(チャットや Git には書かない)。
+家族の名簿を残すためディスク付き(Starter)プランにしている。Twilio は後から足してよい。
+
 ### 環境変数
 
 | 変数 | 必須 | 説明 |
 |---|---|---|
-| `TWILIO_AUTH_TOKEN` | ○ | Twilio からのリクエストの署名検証に使う |
-| `SHIELD_PUBLIC_URL` | ○ | このサーバーの公開URL(例: `https://shield.example.com`)。署名検証に使う |
+| `TWILIO_AUTH_TOKEN` | | Twilio からのリクエストの署名検証に使う。空なら電話の受け口(`/voice/*`)を閉じて起動し、見守り画面・LINE だけで動く |
+| `SHIELD_PUBLIC_URL` | ○ | このサーバーの公開URL(例: `https://shield.example.com`)。署名検証に使う。Render では `RENDER_EXTERNAL_URL` が自動で使われるので不要 |
 | `ANTHROPIC_API_KEY` | | あれば AI が返事をする。無ければ固定フレーズ |
 | `SHIELD_ALLOWLIST` | | AIを通さず転送する番号(カンマ区切り、`+8190...` 形式) |
 | `SHIELD_FORWARD_TO` | | 転送先の電話番号 |

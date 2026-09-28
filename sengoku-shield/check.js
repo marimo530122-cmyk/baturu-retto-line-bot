@@ -5,6 +5,8 @@
 const crypto = require("crypto");
 
 const env = process.env;
+// Render に置いたときは、Render が入れてくれる公開URLを使う
+if (!env.SHIELD_PUBLIC_URL && env.RENDER_EXTERNAL_URL) env.SHIELD_PUBLIC_URL = env.RENDER_EXTERNAL_URL;
 const results = [];
 
 function row(name, status, detail) {
@@ -14,7 +16,8 @@ function row(name, status, detail) {
 }
 
 async function checkRequired() {
-  const missing = ["SHIELD_PUBLIC_URL", "SHIELD_APP_TOKEN", "TWILIO_AUTH_TOKEN"].filter((k) => !env[k]);
+  // Twilio は後からでよい(無ければ電話の受け口だけ閉じて動く)
+  const missing = ["SHIELD_PUBLIC_URL", "SHIELD_APP_TOKEN"].filter((k) => !env[k]);
   if (missing.length) {
     row("サーバーの起動に必要な設定", "ng", `${missing.join("・")} が空です`);
     if (!env.SHIELD_APP_TOKEN) {
@@ -106,7 +109,7 @@ async function checkLine() {
 
 async function checkTwilio() {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) {
-    return row("Twilio(家族への自動電話)", "skip", "TWILIO_ACCOUNT_SID か TWILIO_AUTH_TOKEN が空");
+    return row("Twilio(電話の応対・家族への自動電話)", "skip", "未設定(見守り画面と LINE だけで動きます。電話の受け口は閉じています)");
   }
   try {
     const auth = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64");

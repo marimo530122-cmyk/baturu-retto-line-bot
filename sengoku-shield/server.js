@@ -21,10 +21,13 @@ const line = require("./lib/line");
 const { maskPhone } = require("./lib/mask");
 
 const PORT = Number(process.env.PORT || 3000);
-const PUBLIC_URL = (process.env.SHIELD_PUBLIC_URL || "").replace(/\/$/, "");
+// Render に置いたときは、Render が入れてくれる RENDER_EXTERNAL_URL をそのまま使う
+const PUBLIC_URL = (process.env.SHIELD_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\/$/, "");
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 // ローカルで curl から試すときだけ 1 にする(本番では絶対に使わない)
 const SKIP_SIGNATURE = process.env.SHIELD_SKIP_SIGNATURE === "1";
+// Twilio を使わない(見守り画面・LINE だけで動かす)ときは、電話の受け口(/voice/*)を閉じておく
+const VOICE_ENABLED = SKIP_SIGNATURE || Boolean(AUTH_TOKEN && PUBLIC_URL);
 
 // 家族・知人など、AIを通さず転送する番号(カンマ区切り、+81形式)
 const ALLOWLIST = new Set(
@@ -369,7 +372,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 400, { error: "リクエストを読めませんでした" });
     }
   }
-  const handler = ROUTES[pathname];
+  const handler = VOICE_ENABLED ? ROUTES[pathname] : null;
   if (req.method !== "POST" || !handler) {
     res.writeHead(404);
     return res.end();
@@ -395,12 +398,12 @@ const server = http.createServer(async (req, res) => {
 });
 
 if (require.main === module) {
-  if (!SKIP_SIGNATURE && (!AUTH_TOKEN || !PUBLIC_URL)) {
-    console.error("TWILIO_AUTH_TOKEN と SHIELD_PUBLIC_URL を設定してください。");
-    process.exit(1);
+  if (!VOICE_ENABLED) {
+    console.log("Twilio の設定(TWILIO_AUTH_TOKEN と SHIELD_PUBLIC_URL)が無いので、電話の受け口(/voice/*)は閉じて起動します。見守り画面と LINE は使えます。");
   }
+  if (!APP_TOKEN) console.log("SHIELD_APP_TOKEN が空なので、見守り画面の判定(/api/*)は使えません。");
   server.listen(PORT, () => {
-    console.log(`戦国シールド起動: port ${PORT}(AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
+    console.log(`戦国シールド起動: port ${PORT}(電話の受け口: ${VOICE_ENABLED ? "ON" : "OFF"} / AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
   });
 }
 
