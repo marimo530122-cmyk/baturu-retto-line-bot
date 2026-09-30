@@ -60,12 +60,12 @@
 <main>
   <header style="display:grid;gap:6px">
     <h1>パソコンでやること</h1>
-    <p class="lead">戦国シールドを、試作品から「実際に動くもの」にするための、パソコンでの作業のまとめです。上から順にやれば動くように並べてあります。</p>
+    <p class="lead">鮮刻シールドを、試作品から「実際に動くもの」にするための、パソコンでの作業のまとめです。上から順にやれば動くように並べてあります。</p>
   </header>
 
   <div class="key">
     <p><strong>Jevは「入れる」ものではありません</strong></p>
-    <p>Jev(TypeSafe)はインターネット越しに使うサービスです。TypeSafeで発行したキーを戦国シールドのサーバーの設定に書き込めば、それだけで使えます。スマホの見守り画面はサーバーの判定を使うので、<strong>サーバーにJevのキーを入れれば、スマホでも自動的にJevが使われます</strong>。スマホに何かを入れる必要はありません。</p>
+    <p>Jev(TypeSafe)はインターネット越しに使うサービスです。TypeSafeで発行したキーを鮮刻シールドのサーバーの設定に書き込めば、それだけで使えます。スマホの見守り画面はサーバーの判定を使うので、<strong>サーバーにJevのキーを入れれば、スマホでも自動的にJevが使われます</strong>。スマホに何かを入れる必要はありません。</p>
   </div>
 
   <section aria-labelledby="order">
@@ -91,7 +91,7 @@
           <tbody>
             <tr><td>AIの返事(Claude)</td><td>console.anthropic.com</td><td>APIキー → <code>ANTHROPIC_API_KEY</code></td></tr>
             <tr><td>詐欺の判定・相手の様子(Jev)</td><td>TypeSafe のサイト</td><td>APIキー → <code>TYPESAFE_API_KEY</code></td></tr>
-            <tr><td>家族へのLINE</td><td>LINE Developers(戦国シールド専用のMessaging APIチャネルを新しく作る)</td><td>チャネルシークレット → <code>LINE_CHANNEL_SECRET</code><br>チャネルアクセストークン(長期) → <code>LINE_CHANNEL_ACCESS_TOKEN</code><br>友だち追加URL → <code>SHIELD_LINE_ADD_URL</code></td></tr>
+            <tr><td>家族へのLINE</td><td>LINE Developers(鮮刻シールド専用のMessaging APIチャネルを新しく作る)</td><td>チャネルシークレット → <code>LINE_CHANNEL_SECRET</code><br>チャネルアクセストークン(長期) → <code>LINE_CHANNEL_ACCESS_TOKEN</code><br>友だち追加URL → <code>SHIELD_LINE_ADD_URL</code></td></tr>
             <tr><td>電話(AIの応答・家族への自動電話)</td><td>Twilio(日本の電話番号を1つ取る。住所確認の書類が必要)</td><td>Account SID → <code>TWILIO_ACCOUNT_SID</code><br>Auth Token → <code>TWILIO_AUTH_TOKEN</code><br>取った番号(+81〜) → <code>SHIELD_CALLER_ID</code></td></tr>
           </tbody>
         </table>
@@ -115,7 +115,7 @@
 cd baturu-retto-line-bot/sengoku-shield
 npm install
 npm test</code></pre>
-      <p class="muted">戦国シールドはまだ <code>claude/main-2thn7e</code> ブランチにあります(main には入っていません)。リポジトリが非公開なら、GitHubへのログインを求められます。<code>npm test</code> で全部のテストが通れば準備OKです。</p>
+      <p class="muted">鮮刻シールドはまだ <code>claude/main-2thn7e</code> ブランチにあります(main には入っていません)。リポジトリが非公開なら、GitHubへのログインを求められます。<code>npm test</code> で全部のテストが通れば準備OKです。</p>
       <h3>キーを書き込む</h3>
       <pre><code>cp .env.example .env</code></pre>
       <p>できた <code>.env</code> をメモ帳などで開き、1で集めたキーを「=」の右に書き込みます。<code>.env</code> はGitHubには上がりません。</p>
@@ -139,7 +139,7 @@ npm run check</code></pre>
     <div class="panel">
       <ol class="steps">
         <li>スマホのブラウザ(Chrome か Safari)で <code>https://〜.trycloudflare.com/app</code> を開き、画面下に合言葉を入れる。</li>
-        <li>「見守り家族」で「家族を登録する」を押し、出た6桁の番号を、自分のスマホから戦国シールドのLINEに送る(電話番号も送る)。</li>
+        <li>「見守り家族」で「家族を登録する」を押し、出た6桁の番号を、自分のスマホから鮮刻シールドのLINEに送る(電話番号も送る)。</li>
         <li>「文字で試す」に「市役所です。還付金があるので今日中にATMに行ってください」と入れ、警告が出ることを確かめる。</li>
         <li>「AIに代わってもらう」を押してから、「みずほ銀行新宿支店、口座番号は1234567です」と入れる → AIが聞き返し、自分のLINEに口座が届き、自動電話が鳴ることを確かめる。</li>
       </ol>
@@ -149,7 +149,7 @@ npm run check</code></pre>
   <section aria-labelledby="always">
     <h2 id="always">4. 24時間動かす(後日)</h2>
     <div class="panel">
-      <p>パソコンを切ると戦国シールドも止まるので、本番ではインターネット上のサーバー(クラウド)に移します。Node.js が動いて、<strong>ファイルを保存しておける場所(家族の名簿を置くため)</strong>があるサービスなら使えます。どこにするかは、試運転がうまくいってから、Claude Codeと一緒に決めましょう。</p>
+      <p>パソコンを切ると鮮刻シールドも止まるので、本番ではインターネット上のサーバー(クラウド)に移します。Node.js が動いて、<strong>ファイルを保存しておける場所(家族の名簿を置くため)</strong>があるサービスなら使えます。どこにするかは、試運転がうまくいってから、Claude Codeと一緒に決めましょう。</p>
     </div>
   </section>
 
@@ -157,7 +157,7 @@ npm run check</code></pre>
     <h2 id="prompt">Claude Codeに渡す指示文</h2>
     <div class="panel">
       <p>パソコンでClaude Codeを起動し(<code>baturu-retto-line-bot</code> フォルダで)、下の文をそのまま貼り付けてください。</p>
-      <pre><code class="prompt" id="promptText">このリポジトリの sengoku-shield(戦国シールド)を、このパソコンで動かすのを手伝ってください。ブランチは claude/main-2thn7e です。急いで、でも確実に進めてください。
+      <pre><code class="prompt" id="promptText">このリポジトリの sengoku-shield(鮮刻シールド)を、このパソコンで動かすのを手伝ってください。ブランチは claude/main-2thn7e です。急いで、でも確実に進めてください。
 
 1. Node.js(22以降)・git・cloudflared が入っているか確認し、足りないものは入れ方を教えてください。
 2. sengoku-shield で npm install と npm test を実行し、全部通ることを確認してください。

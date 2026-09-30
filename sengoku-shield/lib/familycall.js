@@ -24,13 +24,14 @@ function ready() {
 
 // 電話で読み上げる文(短く、何をしてほしいかをはっきり)
 function callMessage({ datetime, place, visit, bank, account, amount } = {}) {
-  const lines = ["こちらは、戦国シールドです。", "見守っているご家族の電話で、詐欺と思われる電話がありました。"];
+  // 自動音声で読み上げるので、読み間違いのないよう名前はひらがなで書く(鮮刻シールド)
+  const lines = ["こちらは、せんこくシールドです。", "見守っているご家族の電話で、詐欺と思われる電話がありました。"];
   if (datetime && place) lines.push(`相手は、${datetime}に、${place}で受け取ると言っています。`);
   else if (visit) lines.push("相手は、家に取りに来ると言っています。");
   if (amount) lines.push(`金額は、${amount}と言っています。`);
   if (bank || account) lines.push(`相手は、振込先として${bank ? `${bank}の` : ""}口座を言いました。口座番号はLINEに送りました。`);
   lines.push("本人が110番できていないようなら、代わりに110番をお願いします。");
-  lines.push("くわしくは、戦国シールドのLINEを見てください。");
+  lines.push("くわしくは、せんこくシールドのLINEを見てください。");
   return lines.join("");
 }
 

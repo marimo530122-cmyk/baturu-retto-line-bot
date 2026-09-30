@@ -1,4 +1,4 @@
-// 戦国シールドのLINE公式アカウント: 家族の登録を受け付ける
+// 鮮刻シールドのLINE公式アカウント: 家族の登録を受け付ける
 //
 // LINE Developers の Messaging API チャネルで Webhook URL を <SHIELD_PUBLIC_URL>/line/webhook にする。
 // 必要な環境変数: LINE_CHANNEL_SECRET(署名の確認)と LINE_CHANNEL_ACCESS_TOKEN(返信・通知)。
@@ -43,7 +43,7 @@ async function displayName(userId) {
 
 const TEXT = {
   welcome:
-    "戦国シールドです。友だち追加ありがとうございます。\n" +
+    "鮮刻シールドです。友だち追加ありがとうございます。\n" +
     "見守るご家族の画面に出ている「6桁の招待番号」を、このトークに送ってください。",
   registered: (name) =>
     `見守り家族として登録しました${name ? `(${name}さん)` : ""}。\n` +

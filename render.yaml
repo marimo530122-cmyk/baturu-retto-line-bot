@@ -1,4 +1,4 @@
-# 戦国シールドを Render(クラウド)に置くための設定。パソコンなしでスマホから置ける。
+# 鮮刻シールドを Render(クラウド)に置くための設定。パソコンなしでスマホから置ける。
 # 手順は sengoku-shield/docs/cloud-setup.html。
 # 鍵(APIキー・トークン)はここに書かない。Render の画面の入力欄に直接入れる(sync: false の項目)。
 services:

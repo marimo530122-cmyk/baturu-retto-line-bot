@@ -1,4 +1,4 @@
-<title>戦国シールド 判定デモ</title>
+<title>鮮刻シールド 判定デモ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
@@ -125,7 +125,7 @@
 
 <main>
   <header>
-    <h1 class="name">戦国シールド<span class="chip">試作品</span></h1>
+    <h1 class="name">鮮刻シールド<span class="chip">試作品</span></h1>
     <p class="sub">電話の相手の言葉を入れると、詐欺によくある言い回しかどうかをその場で判定します。</p>
   </header>
 
@@ -433,7 +433,7 @@
     }
     const whole = scoreCall(utterances);
     const text = [
-      "【戦国シールド デモの記録】",
+      "【鮮刻シールド デモの記録】",
       `判定(会話全体): ${LEVELS.find((l) => l.level === lastLevel).title}`,
       `当たった手口: ${whole.matches.map((m) => m.label).join("、") || "なし"}`,
       `相手が言った手がかり: ${(window.ShieldIntel ? ShieldIntel.extract(utterances) : []).map((f) => `${f.label}=${f.value}`).join("、") || "なし"}`,

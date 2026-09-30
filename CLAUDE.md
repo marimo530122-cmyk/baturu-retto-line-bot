@@ -90,7 +90,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `docs/daily-logs/` — 生成されたメモの蓄積先。
 - `freelance/` — クラウドワークス案件自動ハンター(`python3 freelance/fl.py scrape-cw`)。
   詳細は `freelance/README.md`。取得結果の `freelance/projects/` は、最新版(`cw_latest_projects.csv/.html`)以外 Git に入れない。
-- `sengoku-shield/` — 戦国シールド(詐欺電話対策ツール)。Twilio着信にAIが応対して時間を稼ぎ、
+- `sengoku-shield/` — 鮮刻シールド(せんこくシールド、詐欺電話対策ツール。「戦国」ではなく「鮮刻」。フォルダ名やURLの sengoku はそのまま)。Twilio着信にAIが応対して時間を稼ぎ、
   正規表現+Jev(TypeSafe、任意)で詐欺パターンを検知する。声紋照合・公的機関の名乗り・SNS自動投稿は意図的に入れていない。
   検知ルールはAI提案→機械チェック→人間承認で育てる(`evolve.js`、自動反映はしない)。
   普通の電話78件で誤検知ゼロを確認するベンチマーク(`evidence/` に結果を保存)と、

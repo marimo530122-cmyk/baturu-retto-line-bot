@@ -107,7 +107,7 @@ function pct(x) {
 function toMarkdown(result) {
   const s = result.summary;
   const lines = [
-    "# 戦国シールド ベンチマーク結果",
+    "# 鮮刻シールド ベンチマーク結果",
     "",
     `- 実行日時: ${result.ranAt}`,
     `- 判定: **${result.passed ? "合格" : "不合格"}**`,
