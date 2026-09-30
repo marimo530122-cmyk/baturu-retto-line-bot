@@ -96,6 +96,8 @@
     advance_fee: "保証金の先払い",
     secrecy: "誰にも言うなという口止め",
     bank_cover_story: "銀行でうその理由を言うよう指示",
+    proxy_pickup: "代わりの人がお金を受け取りに来る話",
+    card_swap: "キャッシュカードを封筒に入れさせる話",
   };
 
   function topicsFromIds(ids) {
@@ -104,13 +106,22 @@
 
   // 電話が終わったあと、110番(または #9110)で本人がそのまま読み上げる台本を作る。
   // 頭が真っ白になっていても、読むだけで警察に必要なこと(いつ・誰が・いくら・いつどこで)が伝わるように。
-  function policeScript({ found = [], topics = [], startedAt = null } = {}) {
+  // forFamily: 離れて暮らす家族が、実家の親の代わりに通報するときの言い方にする
+  function policeScript({ found = [], topics = [], startedAt = null, forFamily = false } = {}) {
     const pick = (type) => found.filter((f) => f.type === type).map((f) => f.value);
     const first = (type) => pick(type)[0];
-    const lines = ["もしもし。詐欺だと思う電話がありました。"];
+    const lines = [forFamily ? "もしもし。実家の親の固定電話に、詐欺だと思う電話がありました。" : "もしもし。詐欺だと思う電話がありました。"];
     if (startedAt) {
       const d = new Date(startedAt);
-      if (!isNaN(d)) lines.push(`電話があったのは、${d.getMonth() + 1}月${d.getDate()}日の${d.getHours()}時${d.getMinutes()}分ごろです。`);
+      if (!isNaN(d)) {
+        // サーバー(Render など)は世界標準時で動くので、必ず日本時間で書く
+        const p = Object.fromEntries(
+          new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hour12: false })
+            .formatToParts(d)
+            .map((x) => [x.type, x.value])
+        );
+        lines.push(`電話があったのは、${p.month}月${p.day}日の${Number(p.hour)}時${Number(p.minute)}分ごろです。`);
+      }
     }
     if (first("person") || first("org")) {
       lines.push(`相手は「${[first("org"), first("person")].filter(Boolean).join("の")}」と名乗りました。`);
@@ -129,7 +140,7 @@
       lines.push(`振込先として、${[first("bank"), first("account") && `口座番号${first("account")}`].filter(Boolean).join("、")}と言われました。`);
     }
     if (first("phone")) lines.push(`相手が言った電話番号は、${pick("phone").join("、")}です。`);
-    lines.push("私の名前と住所は、(あなたのお名前と住所)です。");
+    lines.push(forFamily ? "私は家族の(あなたのお名前)で、実家の住所は(実家の住所)です。" : "私の名前と住所は、(あなたのお名前と住所)です。");
     return lines;
   }
 

@@ -67,3 +67,15 @@ test("「銀行の人にも話さないで」のような言い回しを銀行�
   assert.ok(!extract(["ご家族にも銀行の人にも話さないでください"]).some((f) => f.type === "bank"));
   assert.ok(extract(["しずおか銀行藤枝支店です"]).some((f) => f.type === "bank" && f.value === "しずおか銀行藤枝支店"));
 });
+
+test("家族が代わりに110番するときの台本は、家族の立場の言い方になる", () => {
+  const script = intel.policeScript({ found: extract(["口座番号は1234567です"]), forFamily: true }).join("\n");
+  assert.match(script, /実家の親の固定電話に/);
+  assert.match(script, /家族の\(あなたのお名前\)/);
+  assert.match(script, /1234567/);
+});
+
+test("110番の台本の時刻は、サーバーの時間帯に関係なく日本時間で書く", () => {
+  const script = intel.policeScript({ startedAt: "2026-09-30T01:05:00Z" }).join("\n");
+  assert.match(script, /9月30日の10時5分ごろ/);
+});
