@@ -1,17 +1,17 @@
 {
   "passed": true,
   "failures": [],
-  "ranAt": "2026-09-30T22:10:38.691Z",
+  "ranAt": "2026-09-30T22:15:41.970Z",
   "inputs": {
     "benign": {
       "file": "benign-samples.json",
-      "count": 78,
-      "sha256": "98e69e852e0573cd284109737989562d7775de6e42b9bdca37525e91914d2a6d"
+      "count": 81,
+      "sha256": "56532efbbeba281408f677057dc14d63eac26b4941c67c97c8f22461cb9e6dbd"
     },
     "scam": {
       "file": "scam-samples.json",
-      "count": 39,
-      "sha256": "8fd1940ab4135596c9d949b0e41643b09266c3b648cea62224923f5ce37024bc"
+      "count": 41,
+      "sha256": "3a96d01cb7dddd6617ad212ef7d5cfb259944a1d0b77412debf5fe9807a976cc"
     },
     "rules": [
       {
@@ -79,20 +79,36 @@
         "source": "^(?!.*(ことは|ことなど)(絶対に|決して)?(ありません|ない))(?=.*(警察|刑事|捜査|検察|警視庁))(?=.*(ビデオ通話|テレビ電話|LINE|ライン|スカイプ|ズーム|Zoom))"
       },
       {
+        "id": "auto_voice_push",
+        "source": "^(?=.*(日本郵便|郵便局|お荷物|NTT|総務省|電話(が|は)?(使えなく|停止|止ま)))(?=.*([0-9０-９一二三]|いち|に)\\s*(番)?\\s*を?\\s*押し)"
+      },
+      {
+        "id": "safe_account",
+        "source": "安全な口座|(預金|お金|資産|財産)を?[^。]{0,10}(避難|退避)|資産(調査|の保全)|口座(に|へ)[^。]{0,8}(一時的に)?(移し|移動|移す)"
+      },
+      {
+        "id": "accomplice",
+        "source": "共犯|容疑がかかって|(あなた|お客様)[^。]{0,10}(逮捕|捜査の対象)|逮捕状|捜査妨害"
+      },
+      {
+        "id": "parcel_trouble",
+        "source": "(荷物|郵便物|小包)[^。]{0,25}(税関|偽造|不審物|止められ|犯罪に)"
+      },
+      {
         "id": "card_swap",
         "source": "(封筒|カード)[^。]{0,15}割印|割印[^。]{0,15}(封筒|カード)|(キャッシュ)?カードを?[^。]{0,6}封筒に(入れ|しまっ)"
       }
     ],
-    "rulesSha256": "2f961f37e1fdc1090ced8b65b75705777ed5cf7ad39246faaaeb2da0210d01f0"
+    "rulesSha256": "62b8d1e039e94c8193c95f8aa5be09ab0bcdc850586053e01c35e7fefb57303a"
   },
   "summary": {
-    "benignTotal": 78,
+    "benignTotal": 81,
     "falsePositives": 0,
-    "benignTouched": 8,
-    "scamTotal": 39,
+    "benignTouched": 9,
+    "scamTotal": 41,
     "dev": {
-      "total": 29,
-      "detected": 29,
+      "total": 31,
+      "detected": 31,
       "rate": 1
     },
     "holdout": {
@@ -140,6 +156,14 @@
         "detected": 1
       },
       "ニセ警察官(ビデオ通話へ誘導)": {
+        "total": 1,
+        "detected": 1
+      },
+      "日本郵便かたり(自動音声)": {
+        "total": 1,
+        "detected": 1
+      },
+      "ニセ警察官(安全な口座)": {
         "total": 1,
         "detected": 1
       }
@@ -225,6 +249,16 @@
       "level": "low",
       "matched": [
         "authority"
+      ]
+    },
+    {
+      "id": "b080",
+      "split": "dev",
+      "category": "家族",
+      "text": "テレビでやってたけど、共犯の疑いがあるとか言って電話してくる詐欺があるんだって。気をつけてね。",
+      "level": "low",
+      "matched": [
+        "accomplice"
       ]
     }
   ],

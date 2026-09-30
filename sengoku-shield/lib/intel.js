@@ -99,6 +99,10 @@
     proxy_pickup: "代わりの人がお金を受け取りに来る話",
     card_swap: "キャッシュカードを封筒に入れさせる話",
     police_video_call: "警察を名乗ってビデオ通話やLINEに誘う話",
+    auto_voice_push: "郵便や電話会社をかたる自動音声",
+    safe_account: "安全な口座へお金を移す話",
+    accomplice: "共犯や逮捕の話",
+    parcel_trouble: "荷物のトラブルの話",
   };
 
   function topicsFromIds(ids) {

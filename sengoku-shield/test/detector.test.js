@@ -53,3 +53,13 @@ test("警察を名乗ってビデオ通話・LINEに誘う話を拾い、家族�
   assert.ok(!ids("日曜日にビデオ通話しようね").includes("police_video_call"));
   assert.ok(!ids("警察がビデオ通話をすることは絶対にありません").includes("police_video_call"));
 });
+
+test("郵便をかたる自動音声・安全な口座・共犯の脅し・荷物のトラブルを拾い、普通の自動音声や家族の話は疑いにしない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("日本郵便です。お荷物の件は1を押してください").includes("auto_voice_push"));
+  assert.ok(ids("預金を安全な口座へ移してください").includes("safe_account"));
+  assert.ok(ids("あなたにも共犯の容疑がかかっています").includes("accomplice"));
+  assert.ok(ids("お荷物が税関で止められています").includes("parcel_trouble"));
+  assert.strictEqual(score(["明日のご予約の確認です。予約どおりの方は1を押してください。"]).level, "none");
+  assert.ok(!["medium", "high"].includes(score(["テレビで、共犯の疑いがあると言って電話してくる詐欺があるんだって"]).level));
+});
