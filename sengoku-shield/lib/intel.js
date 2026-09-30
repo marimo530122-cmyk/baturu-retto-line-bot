@@ -96,6 +96,8 @@
     advance_fee: "保証金の先払い",
     secrecy: "誰にも言うなという口止め",
     bank_cover_story: "銀行でうその理由を言うよう指示",
+    proxy_pickup: "代わりの人がお金を受け取りに来る話",
+    card_swap: "キャッシュカードを封筒に入れさせる話",
   };
 
   function topicsFromIds(ids) {

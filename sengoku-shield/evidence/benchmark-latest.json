@@ -1,17 +1,17 @@
 {
   "passed": true,
   "failures": [],
-  "ranAt": "2026-09-30T09:23:59.477Z",
+  "ranAt": "2026-09-30T09:50:48.323Z",
   "inputs": {
     "benign": {
       "file": "benign-samples.json",
-      "count": 72,
-      "sha256": "fe58cff7e2529a06f38e20d18de4992bc96c7955a02549a1109a467ec9fa9326"
+      "count": 76,
+      "sha256": "4082aea9f9e570ab98f68dfec971dfd11054ecb2d5763c5463a87c71803eb8d4"
     },
     "scam": {
       "file": "scam-samples.json",
-      "count": 36,
-      "sha256": "37ff19765eb605726d752dc0d9067c66fae3e29958a97bdfadf86bca32954727"
+      "count": 38,
+      "sha256": "bcc789ab2d368de03939d706ecff9e6837aa969c7e4d51a20fddf62095bd785e"
     },
     "rules": [
       {
@@ -69,18 +69,26 @@
       {
         "id": "advance_fee",
         "source": "(保証金|手数料).{0,12}(先に|事前に|前もって)|(先に|事前に|前もって).{0,12}(保証金|手数料)|保証金.{0,10}(振り?込|払)"
+      },
+      {
+        "id": "proxy_pickup",
+        "source": "^(?=.*(お金|現金|キャッシュカード|カード|通帳))(?=.*(代わりに|かわりに|代理|上司|同僚|部下|後輩|会社の(人|者))[^。]{0,20}(取りに|受け取りに|もらいに|預かりに)(行|伺|来|うかが))"
+      },
+      {
+        "id": "card_swap",
+        "source": "(封筒|カード)[^。]{0,15}割印|割印[^。]{0,15}(封筒|カード)|(キャッシュ)?カードを?[^。]{0,6}封筒に(入れ|しまっ)"
       }
     ],
-    "rulesSha256": "1ba302b01cc9a5cc7cddccbc657d520c24a8a395e7318ccbe4b22efca591358f"
+    "rulesSha256": "587124d2dff7f465b52a2dfefdd834b8b7c52eb4797f7f20d6ac08667b4141c2"
   },
   "summary": {
-    "benignTotal": 72,
+    "benignTotal": 76,
     "falsePositives": 0,
-    "benignTouched": 6,
-    "scamTotal": 36,
+    "benignTouched": 7,
+    "scamTotal": 38,
     "dev": {
-      "total": 26,
-      "detected": 26,
+      "total": 28,
+      "detected": 28,
       "rate": 1
     },
     "holdout": {
@@ -116,6 +124,14 @@
         "detected": 3
       },
       "警察官かたり(口止め・口裏合わせ)": {
+        "total": 1,
+        "detected": 1
+      },
+      "オレオレ詐欺(代理の受け子)": {
+        "total": 1,
+        "detected": 1
+      },
+      "ニセ警察官(キャッシュカードすり替え)": {
         "total": 1,
         "detected": 1
       }
@@ -178,6 +194,16 @@
       "split": "holdout",
       "category": "公的機関(本物の正当な連絡)",
       "text": "市役所の防災課です。ハザードマップの改訂版を各家庭に配布しています。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b074",
+      "split": "dev",
+      "category": "役所",
+      "text": "市役所です。手続きには印鑑が必要ですので、窓口にお越しの際はお持ちください。",
       "level": "low",
       "matched": [
         "authority"
