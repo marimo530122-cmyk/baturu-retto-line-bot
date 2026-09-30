@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a44">
+<title>戦国シールド 見守り</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --fg: #1d1d1f; --muted: #5f6368; --card: #ffffff; --line: #d9d7d0;
+    --safe: #1e7b4f; --safe-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fff2cc;
+    --danger: #b3261e; --danger-bg: #fde3e1; --accent: #1f2a44; --accent-fg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141518; --fg: #ececec; --muted: #a0a4ab; --card: #1f2126; --line: #34373e;
+      --safe: #7fd4a6; --safe-bg: #17301f; --warn: #ffd166; --warn-bg: #3a2f10;
+      --danger: #ff8a80; --danger-bg: #3d1614; --accent: #c9d4f2; --accent-fg: #141518;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141518; --fg: #ececec; --muted: #a0a4ab; --card: #1f2126; --line: #34373e;
+    --safe: #7fd4a6; --safe-bg: #17301f; --warn: #ffd166; --warn-bg: #3a2f10;
+    --danger: #ff8a80; --danger-bg: #3d1614; --accent: #c9d4f2; --accent-fg: #141518;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 18px/1.6 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 48px; }
+  h1 { font-size: 22px; margin: 4px 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 12px 0; }
+  .status { border-radius: 14px; padding: 18px 16px; margin: 12px 0; font-size: 22px; font-weight: 700; text-align: center; }
+  .status small { display: block; font-size: 16px; font-weight: 400; margin-top: 6px; }
+  .SAFE { background: var(--safe-bg); color: var(--safe); }
+  .MEDIUM { background: var(--warn-bg); color: var(--warn); }
+  .HIGH { background: var(--danger-bg); color: var(--danger); }
+  .IDLE { background: var(--card); color: var(--muted); border: 1px dashed var(--line); }
+  .AI { background: var(--accent); color: var(--accent-fg); }
+  button {
+    font: inherit; border: 0; border-radius: 12px; padding: 16px; width: 100%;
+    margin: 6px 0; cursor: pointer; font-weight: 700;
+  }
+  .primary { background: var(--accent); color: var(--accent-fg); }
+  .secondary { background: transparent; color: var(--fg); border: 2px solid var(--line); }
+  .handoff { background: var(--danger); color: #fff; font-size: 24px; padding: 22px; }
+  .handoff small { display: block; font-size: 15px; font-weight: 400; margin-top: 4px; }
+  .hidden { display: none !important; }
+  .bridge { border: 2px solid var(--danger); }
+  .bridge-label { font-size: 15px; color: var(--muted); }
+  .linkbtn {
+    display: block; text-align: center; text-decoration: none; border-radius: 12px;
+    padding: 16px; margin: 6px 0; font-weight: 700;
+  }
+  .script { border: 2px solid var(--accent); }
+  .script-lines { margin: 8px 0 0; padding-left: 1.4em; display: grid; gap: 8px; font-size: 21px; line-height: 1.6; }
+  .urgent { border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); }
+  .urgent p { margin: 6px 0 0; color: var(--fg); }
+  .num { font-weight: 700; font-size: 1.2em; }
+  .intel { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
+  .intel li { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; overflow-wrap: anywhere; }
+  .intel .k { color: var(--muted); font-size: 15px; }
+  .intel .v { font-weight: 700; }
+  .family-note { text-align: center; font-weight: 700; color: var(--safe); margin: 4px 0; }
+  .bridge-text { font-size: 24px; font-weight: 700; margin: 6px 0 0; line-height: 1.5; }
+  input[type="text"], input[type="password"] {
+    font: inherit; width: 100%; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  label { display: block; font-size: 15px; color: var(--muted); margin-bottom: 4px; }
+  #log { list-style: none; padding: 0; margin: 0; max-height: 40vh; overflow-y: auto; }
+  #log li { padding: 8px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  #log .who { font-size: 13px; color: var(--muted); display: block; }
+  .note { font-size: 15px; color: var(--muted); }
+  .note:empty { display: none; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .family-list { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+  .family-list li { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .family-list button { width: auto; margin: 0; padding: 8px 12px; font-size: 15px; }
+  .invite { border: 2px solid var(--accent); border-radius: 12px; padding: 12px; margin-top: 8px; }
+  .invite ol { margin: 4px 0; padding-left: 1.4em; }
+  .invite-code { font-size: 40px; font-weight: 700; letter-spacing: 0.15em; text-align: center; margin: 8px 0;
+    font-variant-numeric: tabular-nums; user-select: all; }
+  .choice {
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0;
+    padding: 14px; border: 2px solid var(--line); border-radius: 12px; font-size: 20px; color: var(--fg);
+  }
+  .choice:has(input:checked) { border-color: var(--accent); font-weight: 700; }
+  .choice input { width: 22px; height: 22px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>戦国シールド 見守り</h1>
+
+  <div id="status" class="status IDLE">停止中<small>「聞き取りを始める」を押してください</small></div>
+
+  <div id="bridgeCard" class="card bridge hidden">
+    <span class="bridge-label">① まず、電話の相手にこう言ってみてください</span>
+    <p id="bridgeText" class="bridge-text"></p>
+  </div>
+  <button id="handoffBtn" class="handoff hidden" type="button">② 言えたら、このボタンを押してください<small>あとはAIがお話しします</small></button>
+  <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
+  <p id="familyNote" class="family-note hidden">ご家族のLINEに知らせました</p>
+
+  <div id="scriptCard" class="card script hidden">
+    <strong id="scriptTitle">電話が終わりました。よくがんばりましたね</strong>
+    <p id="scriptLead"></p>
+    <ol id="scriptLines" class="script-lines"></ol>
+    <button id="scriptCopyBtn" class="secondary" type="button">この文をコピー(家族に送る用)</button>
+    <p class="note">お金やカードを渡してしまった場合は、そのことも伝えてください。
+    振り込んでしまった場合は、振り込んだ銀行にもすぐ電話して「詐欺にあったので、相手の口座を止めてください」と伝えてください。</p>
+  </div>
+
+  <div id="urgentCard" class="card urgent hidden" role="alert">
+    <strong>相手が、会う日時や場所・家に来る話をしてきました</strong>
+    <p>お金やカードは渡さないでください。電話が終わったら、すぐに <span class="num">110</span> 番してください。
+    このあとどうすればいいか、警察が教えてくれます。</p>
+  </div>
+
+  <div id="intelCard" class="card hidden">
+    <strong>警察に伝える手がかり(相手が言ったこと)</strong>
+    <ul id="intelList" class="intel"></ul>
+    <p class="note">自動で抜き出した候補です。聞き間違いがあるかもしれません。</p>
+  </div>
+
+  <div id="helpCard" class="card hidden">
+    <strong>電話を切ったあと、相談できます</strong>
+    <a class="linkbtn primary" href="tel:%239110">#9110 警察相談専用電話にかける</a>
+    <a class="linkbtn secondary" href="tel:110">お金を渡す・家に来ると言われた → 110番</a>
+    <button id="memoBtn" class="secondary" type="button">警察に伝えるメモをコピー</button>
+    <p class="note" id="memoNote">いつ・どんな電話で、相手が何を言ったか(口座・金額・日時・場所など)を、そのまま伝えられるメモです。</p>
+  </div>
+
+  <div class="card">
+    <button id="startBtn" class="primary" type="button">聞き取りを始める</button>
+    <button id="stopBtn" class="secondary hidden" type="button">電話が終わったら押してください</button>
+    <p class="note" id="support"></p>
+  </div>
+
+  <div class="card">
+    <strong>会話</strong>
+    <ul id="log"></ul>
+  </div>
+
+  <div class="card">
+    <label for="testText">文字で試す(マイクなしで判定だけ確認)</label>
+    <div class="row">
+      <input id="testText" type="text" placeholder="例: 還付金があるのでATMに行ってください">
+    </div>
+    <button id="testBtn" class="secondary" type="button">判定する</button>
+  </div>
+
+  <div class="card">
+    <strong>見守り家族(怪しい電話のときに知らせる人)</strong>
+    <ul id="familyList" class="family-list"></ul>
+    <button id="inviteBtn" class="secondary" type="button">家族を登録する</button>
+    <div id="invitePanel" class="invite hidden">
+      <p>家族のスマホで、次の2つをしてもらってください。</p>
+      <ol>
+        <li>戦国シールドのLINEを友だち追加する<span id="lineAdd"></span></li>
+        <li>そのトークに、この番号を送る</li>
+      </ol>
+      <p id="inviteCode" class="invite-code" aria-live="polite"></p>
+      <p class="note" id="inviteNote">30分たつと使えなくなります。</p>
+    </div>
+    <p class="note" id="familyNoteText"></p>
+  </div>
+
+  <div class="card">
+    <strong>本人の声(AIが代わりに話すときの声)</strong>
+    <div class="row gender" role="radiogroup" aria-label="本人の声">
+      <label class="choice"><input type="radio" name="gender" value="female"> 女性</label>
+      <label class="choice"><input type="radio" name="gender" value="male"> 男性</label>
+    </div>
+    <button id="voiceTestBtn" class="secondary" type="button">声を試しに聞く</button>
+    <p class="note" id="voiceNote"></p>
+  </div>
+
+  <div class="card">
+    <label for="token">合言葉(サーバーの SHIELD_APP_TOKEN)</label>
+    <input id="token" type="password" autocomplete="off">
+    <p class="note">
+      使い方: 家の電話をスピーカーにして、この端末をそばに置きます。相手の声を文字にして判定し、
+      怪しいときは警告と「AIに応対を代わる」ボタンを出します。電話を切る・代わるかどうかは、いつもあなたが決めます。<br>
+      ※ 音声の文字起こしにはブラウザの音声認識(Chromeでは Google のサーバー)を使います。判定のため会話の文字が戦国シールドのサーバーに送られます。
+    </p>
+  </div>
+</main>
+
+<script src="/intel.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const storage = {
+    get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null;
+  let listening = false;
+  let speaking = false;
+  let mode = "watch"; // watch: 自分が応対・裏で判定 / ai: AIが応対
+  let lastRisk = "SAFE";
+  let bridge = "";     // 時間稼ぎの一言(通話中は最初に出たものを使い続ける)
+  let sessionId = "";  // 見守り1回ごとのID(家族への通知を1回にするため)
+  const reasons = new Set(); // この通話で出た手口(相談用メモ用)
+  const matchedIds = new Set(); // この通話で当たった検知ルール(110番の台本用)
+  const callerLines = [];    // この通話の相手の発言(相談用メモ用)
+  let startedAt = null;
+
+  // 相手の発言から、警察に伝える手がかり(口座・金額・日時・場所など)を抜き出して表示する
+  let intel = [];
+  function updateIntel() {
+    if (!window.ShieldIntel) return;
+    intel = ShieldIntel.extract(callerLines);
+    const list = $("intelList");
+    list.replaceChildren();
+    for (const f of intel) {
+      const li = document.createElement("li");
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = f.label;
+      const v = document.createElement("span");
+      v.className = "v";
+      v.textContent = f.value;
+      li.append(k, v);
+      list.append(li);
+    }
+    $("intelCard").classList.toggle("hidden", !intel.length || lastRisk === "SAFE");
+    $("urgentCard").classList.toggle("hidden", !ShieldIntel.needsPoliceNow(intel) || lastRisk === "SAFE");
+  }
+
+  function newSession() {
+    sessionId = (crypto.randomUUID && crypto.randomUUID()) || `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    reasons.clear();
+    matchedIds.clear();
+    callerLines.length = 0;
+    startedAt = new Date();
+    $("familyNote").classList.add("hidden");
+    $("helpCard").classList.add("hidden");
+    intel = [];
+    $("scriptCard").classList.add("hidden");
+    $("scriptCopyBtn").textContent = "この文をコピー(家族に送る用)";
+    $("intelCard").classList.add("hidden");
+    $("urgentCard").classList.add("hidden");
+  }
+  const recent = [];   // 判定用の直近の相手の発話
+  const history = [];  // AI応対中の会話
+
+  $("token").value = storage.get("shieldToken");
+
+  // ---- 本人の声の性別に合わせた読み上げ声 ----
+  // 端末に入っている日本語の声から、名前で男性・女性を見分けて選ぶ(本人の声を真似る機能は使わない)
+  const MALE_VOICE = /otoya|ichiro|keita|takumi|daichi|hattori|male|男性|男/i;
+  const FEMALE_VOICE = /kyoko|haruka|ayumi|sayaka|nanami|mizuki|o-ren|female|女性|女|google 日本語/i;
+  let gender = storage.get("shieldGender") || "female";
+
+  function japaneseVoices() {
+    try { return speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang)); } catch { return []; }
+  }
+
+  // 使う声と、声の高さ(pitch)を決める。男性の声が端末に無いときは、女性の声を低めにして代用する
+  function voiceSetting() {
+    const voices = japaneseVoices();
+    const male = voices.find((v) => MALE_VOICE.test(v.name) && !/female/i.test(v.name));
+    const female = voices.find((v) => FEMALE_VOICE.test(v.name));
+    if (gender === "male") {
+      if (male) return { voice: male, pitch: 0.9, exact: true };
+      return { voice: voices[0] || null, pitch: 0.6, exact: false };
+    }
+    if (female) return { voice: female, pitch: 1.0, exact: true };
+    return { voice: voices.find((v) => v !== male) || voices[0] || null, pitch: 1.1, exact: false };
+  }
+
+  function updateVoiceNote() {
+    for (const r of document.querySelectorAll('input[name="gender"]')) r.checked = r.value === gender;
+    if (!window.speechSynthesis) {
+      $("voiceNote").textContent = "この端末は読み上げに対応していません。";
+      return;
+    }
+    const v = voiceSetting();
+    const label = gender === "male" ? "男性" : "女性";
+    $("voiceNote").textContent = !v.voice
+      ? "日本語の声が見つかりません(端末の設定で日本語の読み上げ音声を入れてください)。"
+      : v.exact
+        ? `使う声: ${v.voice.name}(${label})`
+        : `この端末には${label}の声が入っていないため、「${v.voice.name}」の高さを変えて代用します。端末の設定で${label}の日本語音声を追加すると自然になります。`;
+  }
+
+  for (const r of document.querySelectorAll('input[name="gender"]')) {
+    r.addEventListener("change", () => {
+      gender = r.value;
+      storage.set("shieldGender", gender);
+      updateVoiceNote();
+    });
+  }
+  try { speechSynthesis.onvoiceschanged = updateVoiceNote; } catch {}
+  updateVoiceNote();
+  $("token").addEventListener("change", () => storage.set("shieldToken", $("token").value.trim()));
+
+  if (!Recognition) {
+    $("support").textContent = "このブラウザは音声認識に対応していません。Android の Chrome か、iPhone の Safari を使ってください(「文字で試す」は使えます)。";
+    $("startBtn").disabled = true;
+  }
+
+  function addLog(who, text) {
+    const li = document.createElement("li");
+    const w = document.createElement("span");
+    w.className = "who";
+    w.textContent = who;
+    li.append(w, document.createTextNode(text));
+    $("log").prepend(li);
+  }
+
+  function setStatus(cls, title, sub) {
+    const el = $("status");
+    el.className = `status ${cls}`;
+    el.textContent = title;
+    const small = document.createElement("small");
+    small.textContent = sub || "";
+    el.append(small);
+  }
+
+  async function api(path, body) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${$("token").value.trim()}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `エラー ${res.status}`);
+    return data;
+  }
+
+  // 危険度が上がったときだけ、音と振動で知らせる
+  // 危険度が上がったときだけ、やさしく振動で知らせる。
+  // 音は鳴らさない(電話がスピーカーなので相手に聞こえる。大きな警告音はお年寄りを慌てさせる)。
+  function alarm(level) {
+    try { navigator.vibrate && navigator.vibrate(level === "HIGH" ? [200, 300, 200] : [150]); } catch {}
+  }
+
+  const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
+
+  async function judge(text) {
+    recent.push(text);
+    if (recent.length > 10) recent.shift();
+    if (!sessionId) newSession();
+    toggleButtons();
+    callerLines.push(text);
+    const r = await api("/api/judge", { utterance: text, recent: recent.slice(0, -1), session_id: sessionId });
+    if (r.family_notice === "sent" || r.family_notice === "already" || r.account_notice === "sent") {
+      $("familyNote").classList.remove("hidden");
+    }
+    if (r.call_notice === "calling") {
+      $("familyNote").textContent = "ご家族のLINEに知らせ、電話もかけています";
+      $("familyNote").classList.remove("hidden");
+    }
+    if (r.risk_level !== "SAFE" && r.reason_short) reasons.add(r.reason_short);
+    for (const id of r.matched_ids || []) matchedIds.add(id);
+    // 一度上がった警告は、通話の途中で勝手に下げない(相手が話題を変えても安心させない)
+    const level = RANK[r.risk_level] >= RANK[lastRisk] ? r.risk_level : lastRisk;
+    if (RANK[level] > RANK[lastRisk]) alarm(level);
+    lastRisk = level;
+    if (!bridge && r.natural_excuse_ja) bridge = r.natural_excuse_ja;
+    $("helpCard").classList.toggle("hidden", level === "SAFE");
+    updateIntel();
+    if (mode === "ai") return;
+    showBridge(level !== "SAFE");
+    // 画面の言葉は、怖がらせず落ち着いてもらうことを一番にする(画面だけ。声には出さない)。
+    // 事実でないこと(「警察に中継しています」等)は書かない。
+    if (level === "HIGH") {
+      setStatus("HIGH", "大丈夫です。落ち着いてくださいね", "お金・カード・暗証番号のことは、今は何も答えなくて大丈夫です。下の①と②のとおりにしてください。");
+      $("handoffBtn").classList.remove("hidden");
+    } else if (level === "MEDIUM") {
+      setStatus("MEDIUM", "少し気になる電話です", "あわてなくて大丈夫です。気になるときは、下の①と②のとおりにしてください。いったん切って家族に聞いてからでも間に合います。");
+      $("handoffBtn").classList.remove("hidden");
+    } else {
+      setStatus("SAFE", "聞き取り中", "今のところ怪しい言い回しはありません");
+    }
+  }
+
+  // 家族への経過の知らせ(AIに代わった・電話が終わった)。失敗しても画面の動きは止めない
+  function sendEvent(type, extra = {}) {
+    if (!sessionId) return;
+    api("/api/event", { session_id: sessionId, type, ...extra })
+      .then((r) => { if (r.family_notice === "sent") $("familyNote").classList.remove("hidden"); })
+      .catch(() => {});
+  }
+
+  function showBridge(show) {
+    $("bridgeText").textContent = bridge;
+    $("bridgeCard").classList.toggle("hidden", !show || !bridge);
+  }
+
+  function speak(text) {
+    return new Promise((resolve) => {
+      if (!window.speechSynthesis) return resolve();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = voiceSetting();
+      u.lang = "ja-JP";
+      if (v.voice) u.voice = v.voice;
+      u.pitch = v.pitch;
+      u.rate = 0.9; // 年配の人らしく、少しゆっくり
+      // 端末によっては読み上げ終わりの合図が来ないので、長さから見積もった時間で打ち切る
+      const guard = setTimeout(resolve, 3000 + text.length * 250);
+      u.onend = u.onerror = () => { clearTimeout(guard); resolve(); };
+      speechSynthesis.speak(u);
+    });
+  }
+
+  async function aiReply(text) {
+    history.push({ role: "caller", text });
+    const r = await api("/api/decoy", { history, gender });
+    history.push({ role: "shield", text: r.text });
+    addLog("AI", r.text);
+    // 自分の読み上げを自分で聞き取らないよう、話している間は聞き取りを止める
+    speaking = true;
+    try { recognizer && recognizer.stop(); } catch {}
+    await speak(r.text);
+    speaking = false;
+    if (listening) startRecognizer();
+  }
+
+  async function onUtterance(text) {
+    addLog("相手", text);
+    try {
+      await judge(text);
+      if (mode === "ai") await aiReply(text);
+    } catch (err) {
+      setStatus("IDLE", "判定できませんでした", err.message);
+    }
+  }
+
+  function startRecognizer() {
+    recognizer = new Recognition();
+    recognizer.lang = "ja-JP";
+    recognizer.continuous = true;
+    recognizer.interimResults = false;
+    recognizer.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          const t = e.results[i][0].transcript.trim();
+          if (t) onUtterance(t);
+        }
+      }
+    };
+    recognizer.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        listening = false;
+        setStatus("IDLE", "マイクが使えません", "ブラウザの設定でマイクを許可してください");
+        toggleButtons();
+      } else if (e.error === "network") {
+        listening = false;
+        setStatus("IDLE", "音声認識につながりません", "Braveなどでは使えないことがあります。Chrome か Safari をお試しください");
+        toggleButtons();
+      }
+    };
+    // 音声認識は無音が続くと自分で止まるので、聞き取り中なら再開する
+    recognizer.onend = () => { if (listening && !speaking) startRecognizer(); };
+    try { recognizer.start(); } catch {}
+  }
+
+  function toggleButtons() {
+    $("startBtn").classList.toggle("hidden", listening);
+    // 「文字で試す」だけのときも、見守り中の電話があれば「電話が終わったら押す」を出す
+    $("stopBtn").classList.toggle("hidden", !(listening || sessionId));
+  }
+
+  $("startBtn").addEventListener("click", () => {
+    if (!$("token").value.trim()) return setStatus("IDLE", "合言葉を入れてください", "画面下の欄に入力します");
+    storage.set("shieldToken", $("token").value.trim());
+    listening = true;
+    lastRisk = "SAFE";
+    bridge = "";
+    showBridge(false);
+    recent.length = 0;
+    newSession();
+    setStatus("SAFE", "聞き取り中", "電話をスピーカーにして、この端末をそばに置いてください");
+    toggleButtons();
+    startRecognizer();
+  });
+
+  // 電話が終わったら、110番(または #9110)で読み上げる台本を出す
+  function showPoliceScript() {
+    if (!window.ShieldIntel || lastRisk === "SAFE") return;
+    const urgent = ShieldIntel.needsPoliceNow(intel);
+    const lines = ShieldIntel.policeScript({ found: intel, topics: ShieldIntel.topicsFromIds([...matchedIds]), startedAt });
+    $("scriptLead").textContent = urgent
+      ? "相手が、会う日時や場所を言っていました。今すぐ 110番 にかけて、下の文をそのまま読んでください。"
+      : "心配なときは #9110(警察相談専用電話)にかけて、下の文をそのまま読んでください。";
+    const ol = $("scriptLines");
+    ol.replaceChildren();
+    for (const l of lines) {
+      const li = document.createElement("li");
+      li.textContent = l;
+      ol.append(li);
+    }
+    $("scriptCard").classList.remove("hidden");
+    $("scriptCard").scrollIntoView({ block: "start" });
+    return lines;
+  }
+
+  $("scriptCopyBtn").addEventListener("click", async () => {
+    const text = [...$("scriptLines").children].map((li) => li.textContent).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      $("scriptCopyBtn").textContent = "コピーしました";
+    } catch {}
+  });
+
+  $("stopBtn").addEventListener("click", () => {
+    if (sessionId && lastRisk !== "SAFE") {
+      sendEvent("ended", {
+        minutes: startedAt ? Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000)) : null,
+        ai_replies: history.filter((h) => h.role === "shield").length,
+        // 家族が代わりに110番できるよう、日時・場所・金額・相手の口座などの手がかりも送る
+        intel: intel
+          .filter((f) => ["datetime", "place", "amount", "visit", "person", "org", "bank", "account", "phone"].includes(f.type))
+          .map((f) => ({ type: f.type, label: f.label, value: f.value })),
+      });
+    }
+    showPoliceScript();
+    listening = false;
+    sessionId = ""; // 次の聞き取りは別の通話として扱う(相談用メモ・台本は残す)
+    mode = "watch";
+    try { recognizer && recognizer.stop(); } catch {}
+    try { speechSynthesis.cancel(); } catch {}
+    $("handoffBtn").classList.add("hidden");
+    showBridge(false);
+    $("backBtn").classList.add("hidden");
+    setStatus("IDLE", "電話が終わりました", lastRisk === "SAFE" ? "「聞き取りを始める」で、次の電話も見守ります" : "下の文を読んで、警察に相談してください");
+    toggleButtons();
+  });
+
+  $("handoffBtn").addEventListener("click", async () => {
+    mode = "ai";
+    history.length = 0;
+    $("handoffBtn").classList.add("hidden");
+    showBridge(false);
+    $("backBtn").classList.remove("hidden");
+    setStatus("AI", "今、AIがお話ししています", "AIが相手と話しながら、警察に相談するための記録を作っています。このまま電話のそばで待っていてもらえると助かります。ご協力ありがとうございます。こわくなったら、電話を切っても大丈夫です。");
+    sendEvent("handoff");
+    const opening = "お待たせしました。えーと、何のお話でしたっけ。もう一度ゆっくりお願いできますか。";
+    history.push({ role: "shield", text: opening });
+    addLog("AI", opening);
+    speaking = true;
+    try { recognizer && recognizer.stop(); } catch {}
+    await speak(opening);
+    speaking = false;
+    if (listening) startRecognizer();
+  });
+
+  $("backBtn").addEventListener("click", () => {
+    mode = "watch";
+    try { speechSynthesis.cancel(); } catch {}
+    $("backBtn").classList.add("hidden");
+    $("handoffBtn").classList.toggle("hidden", lastRisk === "SAFE");
+    showBridge(lastRisk !== "SAFE");
+    setStatus(lastRisk === "SAFE" ? "SAFE" : lastRisk, "自分の応対に戻しました", "判定は続けています");
+  });
+
+  $("voiceTestBtn").addEventListener("click", () => {
+    try { speechSynthesis.cancel(); } catch {}
+    speak("はいはい、もしもし。ちょっと耳が遠くてねえ、もう一度ゆっくりお願いできますか。");
+  });
+
+  // ---- 見守り家族の登録 ----
+  let familyCount = 0;
+  let invitePoll = null;
+
+  function renderFamily(list, lineReady) {
+    const ul = $("familyList");
+    ul.replaceChildren();
+    familyCount = list.length;
+    for (const m of list) {
+      const li = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = `${m.name}${m.hasPhone ? `(電話 末尾${m.phoneTail})` : "(LINEのみ)"}`;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "secondary";
+      del.textContent = "登録を消す";
+      del.addEventListener("click", async () => {
+        try {
+          const r = await api("/api/family/remove", { id: m.id });
+          renderFamily(r.members, true);
+        } catch (err) {
+          $("familyNoteText").textContent = err.message;
+        }
+      });
+      li.append(label, del);
+      ul.append(li);
+    }
+    $("familyNoteText").textContent = !lineReady
+      ? "サーバーでLINEの設定(LINE_CHANNEL_SECRET)がまだなので、家族の登録は使えません。"
+      : list.length
+        ? `${list.length}人が登録されています。`
+        : "まだ誰も登録されていません。「家族を登録する」を押してください。";
+  }
+
+  async function loadFamily() {
+    if (!$("token").value.trim()) return;
+    try {
+      const r = await api("/api/family/list", {});
+      renderFamily(r.members, r.lineReady);
+      return r.members;
+    } catch {
+      return null;
+    }
+  }
+
+  $("inviteBtn").addEventListener("click", async () => {
+    if (!$("token").value.trim()) return ($("familyNoteText").textContent = "先に、画面下の合言葉を入れてください。");
+    try {
+      const r = await api("/api/family/invite", {});
+      $("inviteCode").textContent = r.code.replace(/(\d{3})(\d{3})/, "$1 $2");
+      $("lineAdd").textContent = r.lineAddUrl ? `(${r.lineAddUrl})` : "";
+      $("inviteNote").textContent = `30分たつと使えなくなります(${new Date(r.expiresAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}まで)。`;
+      $("invitePanel").classList.remove("hidden");
+      // 家族が番号を送ったら、自動で一覧に出す(5秒ごとに確認、30分まで)
+      clearInterval(invitePoll);
+      const before = familyCount;
+      const until = Date.now() + 30 * 60 * 1000;
+      invitePoll = setInterval(async () => {
+        const list = await loadFamily();
+        if ((list && list.length > before) || Date.now() > until) {
+          clearInterval(invitePoll);
+          if (list && list.length > before) {
+            $("invitePanel").classList.add("hidden");
+            $("familyNoteText").textContent = `登録できました。${list.length}人が登録されています。`;
+          }
+        }
+      }, 5000);
+    } catch (err) {
+      $("familyNoteText").textContent = err.message;
+    }
+  });
+
+  $("token").addEventListener("change", loadFamily);
+  loadFamily();
+
+  // 警察相談(#9110)で伝えやすいよう、この通話の内容をメモにしてコピーする
+  $("memoBtn").addEventListener("click", async () => {
+    const when = (startedAt || new Date()).toLocaleString("ja-JP");
+    const memo = [
+      "【不審な電話の記録(戦国シールド)】",
+      `日時: ${when}ごろ`,
+      `自動判定: ${lastRisk === "HIGH" ? "詐欺の疑い 高" : lastRisk === "MEDIUM" ? "詐欺の疑い 中" : "該当なし"}`,
+      `気になった点: ${[...reasons].join(" / ") || "なし"}`,
+      "相手が言った手がかり(自動で抜き出した候補):",
+      ...(intel.length ? intel.map((f) => `・${f.label}: ${f.value}`) : ["・なし"]),
+      "相手の発言(聞き取った文字、聞き間違いを含むことがあります):",
+      ...callerLines.map((t) => `・${t}`),
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(memo);
+      $("memoNote").textContent = "コピーしました。メモ帳やLINEに貼り付けて使えます。";
+    } catch {
+      $("memoNote").textContent = memo;
+    }
+  });
+
+  // 「文字で試す」は、AI応対中なら相手の発話としてAIに返事をさせる(マイクなしで流れを確認できる)
+  $("testBtn").addEventListener("click", () => {
+    const t = $("testText").value.trim();
+    if (!t) return;
+    if (!$("token").value.trim()) return setStatus("IDLE", "合言葉を入れてください", "画面下の欄に入力します");
+    storage.set("shieldToken", $("token").value.trim());
+    onUtterance(t);
+  });
+})();
+</script>
+</body>
+</html>

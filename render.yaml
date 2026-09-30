@@ -1,0 +1,39 @@
+# 戦国シールドを Render(クラウド)に置くための設定。パソコンなしでスマホから置ける。
+# 手順は sengoku-shield/docs/cloud-setup.html。
+# 鍵(APIキー・トークン)はここに書かない。Render の画面の入力欄に直接入れる(sync: false の項目)。
+services:
+  - type: web
+    name: sengoku-shield
+    runtime: node
+    rootDir: sengoku-shield
+    region: singapore
+    # 家族の名簿(data/family.json)を消さないため、ディスク付きのプランにする(無料プランはディスクが付かない)
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    disk:
+      name: shield-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SHIELD_DATA_DIR
+        value: /var/data
+      # 見守り画面の合言葉。Render が長いものを自動で作る(Environment の画面で見られる)
+      - key: SHIELD_APP_TOKEN
+        generateValue: true
+      - key: SHIELD_VOICE_GENDER
+        value: female
+      # ここから下は、置くときに Render の画面で入力する(空のままでもよい。その機能が止まるだけ)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: SHIELD_LINE_ADD_URL
+        sync: false
