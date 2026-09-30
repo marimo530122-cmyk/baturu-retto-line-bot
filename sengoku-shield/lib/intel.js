@@ -86,6 +86,8 @@
     investment: "もうけ話",
     cash_demand: "お金の用意",
     advance_fee: "保証金の先払い",
+    secrecy: "誰にも言うなという口止め",
+    bank_cover_story: "銀行でうその理由を言うよう指示",
   };
 
   function topicsFromIds(ids) {

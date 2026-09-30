@@ -23,6 +23,7 @@ const MONEY_IDS = new Set([
   "unpaid_legal",
   "account_frozen",
   "secrecy",
+  "bank_cover_story",
   "personal_info",
   "investment",
   "cash_demand",
