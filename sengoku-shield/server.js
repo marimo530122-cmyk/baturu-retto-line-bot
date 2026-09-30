@@ -12,7 +12,7 @@ const { isValidSignature, say, gather, twiml, escapeXml } = require("./lib/twili
 const { score } = require("./lib/detector");
 const decoy = require("./lib/decoy");
 const store = require("./lib/store");
-const { notifyOwner, notifyFamily, notifyFamilyProgress, familyTargets } = require("./lib/notify");
+const { notifyOwner, notifyFamily, notifyFamilyProgress, notifyFamilyCall, familyTargets } = require("./lib/notify");
 const escalate = require("./lib/escalate");
 const jev = require("./lib/jev");
 const { judgeUtterance } = require("./lib/realtime");
@@ -149,10 +149,16 @@ async function handleStatus(params, res) {
   call.jev = await jev.judgeCall(call.history);
   call.verdict = jev.combine(call.detection, call.jev);
   if (call.verdict.level === "high" && !call.notified) {
-    call.notified = await notifyOwner(call).catch((err) => {
-      console.error("[notify]", err.message);
-      return false;
-    });
+    // 持ち主(SHIELD_LINE_USER_ID)と、招待番号で登録した家族(110番用の台本つき)の両方に知らせる
+    const [owner, fam] = await Promise.all(
+      [notifyOwner(call), notifyFamilyCall(call)].map((p) =>
+        p.catch((err) => {
+          console.error("[notify]", err.message);
+          return false;
+        })
+      )
+    );
+    call.notified = owner || fam;
   }
   store.save(call);
   console.log(`[done] ${call.callSid} ${call.durationSec}s ${call.verdict.label} (${call.verdict.by})`);

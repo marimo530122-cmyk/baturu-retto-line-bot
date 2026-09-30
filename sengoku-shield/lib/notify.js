@@ -3,6 +3,7 @@
 
 const { maskPhone, maskText } = require("./mask");
 const family = require("./family");
+const intel = require("./intel");
 
 async function pushLine(to, text) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -94,6 +95,36 @@ async function notifyFamilyProgress(type, extra) {
   return results.some(Boolean);
 }
 
+// 実家の固定電話(Twilio経由)にAIが代わりに出て、詐欺の疑いが高かったとき、登録した家族に知らせる。
+// 家族がそのまま110番で読めるよう、家族向けの台本を付ける。
+function familyCallMessage(call) {
+  const lines = (call.history || []).filter((h) => h.role === "caller").map((h) => h.text);
+  const found = intel.extract(lines);
+  const ids = (call.detection?.matches || []).map((m) => m.id);
+  const script = intel.policeScript({ found, topics: intel.topicsFromIds(ids), startedAt: call.startedAt, forFamily: true });
+  return [
+    "【戦国シールド】実家の電話に、AIが代わりに出ました。詐欺の疑いが高い電話でした",
+    `相手の番号: ${maskPhone(call.from)}`,
+    ...(found.length ? ["", "相手が言っていたこと:", ...found.map((f) => `・${f.label}: ${f.value}`)] : []),
+    "",
+    "まず本人に電話をかけて、お金やカードを渡す約束をしていないか、やさしく聞いてあげてください。",
+    "110番するときは、次の文をそのまま読めば伝わります(かっこの中は書きかえてください)。",
+    "",
+    ...script,
+    "",
+    "急がないときは #9110(警察相談専用電話)に相談できます。",
+    "※自動判定と音声の聞き取りです。相手に折り返し電話はしないでください。SNSなどには書き込まないでください。",
+  ].join("\n");
+}
+
+async function notifyFamilyCall(call) {
+  const targets = familyTargets();
+  if (!targets.length) return false;
+  const text = familyCallMessage(call);
+  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
+  return results.some(Boolean);
+}
+
 // 相手が振込先の口座を言った瞬間に、家族へ知らせる(口座を早く止めてもらうため)。
 // 口座番号は相手(詐欺の疑いがある側)のもので、登録済みの家族にだけ送る。
 function familyAccountMessage({ bank, account, phone } = {}) {
@@ -146,4 +177,6 @@ module.exports = {
   familyProgressMessage,
   familyAccountMessage,
   notifyFamilyAccount,
+  familyCallMessage,
+  notifyFamilyCall,
 };
