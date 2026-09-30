@@ -1,5 +1,5 @@
 // 相手の発言から「警察に伝えるべき手がかり」を抜き出す
-// (電話番号・口座・金融機関・金額・日時・場所・自宅に来る話・名乗った名前・URL)
+// (電話番号・口座・金融機関・金額・日時・場所・自宅に来る話・名乗った名前と所属・URL)
 //
 // - 相手(詐欺の疑いがある側)の発言だけに使う。本人の情報を抜き出す用途には使わない。
 // - 音声認識の聞き間違いや、ただの言い回しにも当たるので、結果は「候補」として人が確かめる前提。
@@ -9,7 +9,7 @@
   const RULES = [
     { type: "phone", label: "電話番号", source: "(?:\\+81|0)\\d{1,4}[-‐ー−\\s]?\\d{1,4}[-‐ー−\\s]?\\d{3,4}" },
     { type: "account", label: "口座番号", source: "(?:口座(?:番号)?|普通|当座)(?:は|が|番号は)?[:：\\s]*(\\d[\\d\\s-]{4,10}\\d)", group: 1 },
-    { type: "bank", label: "金融機関", source: "[^\\s、。「」]{1,10}(?:銀行|信用金庫|信金|信用組合|ゆうちょ|郵便局|農協)(?:[^\\s、。「」]{1,10}支店)?" },
+    { type: "bank", label: "金融機関", source: "[^\\s、。「」にでをはがとも]{1,10}(?:銀行|信用金庫|信金|信用組合|ゆうちょ|郵便局|農協)(?:[^\\s、。「」]{1,10}支店)?" },
     { type: "amount", label: "金額", source: "\\d{1,3}(?:,\\d{3})+円|\\d+(?:万|千)?円|\\d+万|[一二三四五六七八九十百千]+万円?" },
     {
       type: "datetime",
@@ -27,6 +27,13 @@
     },
     { type: "visit", label: "自宅に来る話", source: "(?:ご?自宅|家|お宅|おうち)(?:に|まで)(?:伺|行|うかが|取りに|受け取りに|回収)" },
     { type: "person", label: "名乗った名前", source: "(?:担当|係)の?([^\\s、。「」]{1,8}?)(?:と申します|です|が伺|が行)|([^\\s、。「」]{1,8}?)と申します", group: [1, 2] },
+    {
+      type: "org",
+      label: "名乗った所属",
+      // 「藤枝警察署の生活安全課」「静岡県警」「金融庁」など。本物かどうかは警察で確かめてもらう前提
+      source:
+        "[^\\s、。「」にでをはがと]{0,8}?(?:警察署|県警|府警|道警|警視庁|金融庁|検察庁|市役所|区役所|町役場|年金事務所|税務署)(?:の?[^\\s、。「」にでをはがと]{1,8}?課)?|(?:捜査|生活安全|刑事|詐欺対策)[一二三四五六七八九十\\d]*課",
+    },
     { type: "url", label: "URL", source: "https?:\\/\\/[^\\s「」、。]+|[a-z0-9-]+\\.(?:com|net|jp|org|info|xyz)(?:\\/[^\\s「」、。]*)?", flags: "i" },
   ];
 
@@ -56,7 +63,8 @@
           const groups = Array.isArray(rule.group) ? rule.group : rule.group ? [rule.group] : [0];
           const value = groups.map((g) => m[g]).find(Boolean);
           if (!value) continue;
-          const v = value.trim();
+          // 名前は「生活安全課の田中」のように所属がくっつきやすいので、最後の「の」より後だけにする
+          const v = rule.type === "person" ? value.trim().split("の").pop() : value.trim();
           const key = `${rule.type}:${v}`;
           if (!v || seen.has(key)) continue;
           seen.add(key);
@@ -104,7 +112,9 @@
       const d = new Date(startedAt);
       if (!isNaN(d)) lines.push(`電話があったのは、${d.getMonth() + 1}月${d.getDate()}日の${d.getHours()}時${d.getMinutes()}分ごろです。`);
     }
-    if (first("person")) lines.push(`相手は「${first("person")}」と名乗りました。`);
+    if (first("person") || first("org")) {
+      lines.push(`相手は「${[first("org"), first("person")].filter(Boolean).join("の")}」と名乗りました。`);
+    }
     if (topics.length) lines.push(`${topics.join("や")}の話をされました。`);
     if (first("amount")) lines.push(`${pick("amount").join("と")}を用意するように言われました。`);
     if (first("datetime") && first("place")) {

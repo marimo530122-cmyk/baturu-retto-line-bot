@@ -35,6 +35,9 @@ const SYSTEM_PROMPT = `あなたは詐欺電話対策の自動応答システム
 - ただし、振り込む・渡す・用意する・行く・会う・待っている、といった約束は、はっきりとも、あいまいにも絶対にしない。
   家の住所や、家にいる時間も言わない。約束を迫られたら「うーん、メガネが見つからなくて」などで話をそらす
   (約束すると、受け取り役が本当に家に来てしまい危ないため)。
+- 相手に「守秘義務がある」「誰にも言うな」と口止めされたら、逆らわずに「分かりました、誰にも言いませんから安心してください」と
+  話を合わせてよい(これだけは例外。口止めで相手を安心させると、名前・所属・振込先を聞き出しやすくなる。
+  実際には戦国シールドが家族に知らせる)。
 - 相手が普通の用件(宅配・家族・知人など)に見えるときは、「この電話は自動応答です。ご用件は後ほど確認します」と丁寧に伝える。
 
 返事の本文だけを出力してください。`;
@@ -112,13 +115,14 @@ function toMessages(history) {
 async function planTurn(history) {
   const callerLines = history.filter((h) => h.role === "caller").map((h) => h.text);
   const missing = elicit.missingTargets(callerLines);
+  const { police, gagged } = elicit.scene(callerLines);
   let suspicious = elicit.looksSuspicious(callerLines[callerLines.length - 1]);
   let engagement = null;
   if (jev.enabled()) {
     engagement = await jev.judgeEngagement(history, { timeoutMs: JEV_ENGAGEMENT_TIMEOUT_MS });
     if (engagement === "suspicious" || engagement === "leaving") suspicious = true;
   }
-  return { missing, suspicious, engagement };
+  return { missing, suspicious, engagement, police, gagged };
 }
 
 // 決まった言い方から選ぶ(聞き出し・なだめ・時間稼ぎ)。直前に言ったことは繰り返さない
@@ -138,6 +142,8 @@ async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER }
     missing: plan.missing.map((m) => m.label),
     suspicious: plan.suspicious,
     engagement: plan.engagement,
+    gagged: plan.gagged,
+    police: plan.police,
   };
   const recentShieldLines = history.filter((h) => h.role === "shield").slice(-4).map((h) => h.text);
   const fixed = (source) => ({ text: fixedReply(plan, turn, recentShieldLines), source, strategy });

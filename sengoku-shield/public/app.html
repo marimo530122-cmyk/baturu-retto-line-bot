@@ -520,7 +520,7 @@
         ai_replies: history.filter((h) => h.role === "shield").length,
         // 家族が代わりに110番できるよう、日時・場所・金額・相手の口座などの手がかりも送る
         intel: intel
-          .filter((f) => ["datetime", "place", "amount", "visit", "person", "bank", "account", "phone"].includes(f.type))
+          .filter((f) => ["datetime", "place", "amount", "visit", "person", "org", "bank", "account", "phone"].includes(f.type))
           .map((f) => ({ type: f.type, label: f.label, value: f.value })),
       });
     }

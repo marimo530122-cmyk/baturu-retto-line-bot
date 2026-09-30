@@ -273,6 +273,7 @@ const INTEL_LABELS = {
   amount: "金額",
   visit: "自宅に来る話",
   person: "名乗った名前",
+  org: "名乗った所属",
   bank: "金融機関",
   account: "口座番号",
   phone: "相手が言った電話番号",

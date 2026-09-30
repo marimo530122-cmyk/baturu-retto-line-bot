@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { extract, needsPoliceNow } = require("../lib/intel");
+const intel = require("../lib/intel");
+const { extract, needsPoliceNow } = intel;
 
 const scamCall = [
   "担当の佐藤と申します。",
@@ -51,4 +52,18 @@ test("音声認識の漢数字・全角数字も、番号や時刻として読�
   assert.ok(got.includes("datetime:明日の三時"), got.join(","));
   // 「三万円」のような数の言い方は、番号にしない
   assert.ok(extract(["三万円を用意して"]).some((f) => f.type === "amount" && f.value === "三万円"));
+});
+
+test("名乗った所属(警察署・課・県警・金融庁)を拾い、110番の台本に入れる", () => {
+  const found = intel.extract(["藤枝警察署の生活安全課の田中と申します"]);
+  assert.ok(found.some((f) => f.type === "org" && f.value === "藤枝警察署の生活安全課"));
+  assert.ok(intel.extract(["私は静岡県警の者です"]).some((f) => f.type === "org" && f.value === "静岡県警"));
+  assert.ok(!intel.extract(["警察の者です"]).some((f) => f.type === "org"));
+  const script = intel.policeScript({ found }).join("\n");
+  assert.match(script, /「藤枝警察署の生活安全課の田中」/);
+});
+
+test("「銀行の人にも話さないで」のような言い回しを銀行名として拾わない", () => {
+  assert.ok(!extract(["ご家族にも銀行の人にも話さないでください"]).some((f) => f.type === "bank"));
+  assert.ok(extract(["しずおか銀行藤枝支店です"]).some((f) => f.type === "bank" && f.value === "しずおか銀行藤枝支店"));
 });
