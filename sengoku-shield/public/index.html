@@ -75,7 +75,7 @@
     </p>
 
     <div class="mt-8 grid gap-3 sm:flex">
-      <a href="#line" data-line-link class="inline-flex items-center justify-center gap-2 rounded-2xl bg-jade-500 px-6 py-4 text-base font-bold text-white shadow-lg shadow-jade-600/30 transition hover:bg-jade-600">
+      <a href="#" data-line-link class="inline-flex items-center justify-center gap-2 rounded-2xl bg-jade-500 px-6 py-4 text-base font-bold text-white shadow-lg shadow-jade-600/30 transition hover:bg-jade-600">
         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.6 7.4 8.4 8 .3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.5s6-3.5 8.2-6.1c1.5-1.6 2.2-3.2 2.2-4.9C22.5 6.6 17.5 3 12 3Z"/></svg>
         LINEで無料相談・登録
       </a>
@@ -241,7 +241,7 @@
     <div class="relative mx-auto max-w-3xl px-5 py-16 text-center sm:py-20">
       <p class="text-sm text-gold-300">離れて暮らす親御さんへの「安心の贈り物」として</p>
       <h2 id="cta" class="mt-3 font-mincho text-[1.7rem] leading-snug [text-wrap:balance]">今日から、<br class="sm:hidden">実家の見守りを始めませんか</h2>
-      <a href="#line" data-line-link class="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-jade-500 px-6 py-4 text-base font-bold text-white shadow-lg shadow-jade-600/30 transition hover:bg-jade-600 sm:w-auto">
+      <a href="#" data-line-link class="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-jade-500 px-6 py-4 text-base font-bold text-white shadow-lg shadow-jade-600/30 transition hover:bg-jade-600 sm:w-auto">
         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.6 7.4 8.4 8 .3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.5s6-3.5 8.2-6.1c1.5-1.6 2.2-3.2 2.2-4.9C22.5 6.6 17.5 3 12 3Z"/></svg>
         LINEで無料相談・登録
       </a>
@@ -267,15 +267,46 @@
 
 <!-- スマホ用: 画面下に固定のLINEボタン -->
 <div class="safe-bottom fixed inset-x-0 bottom-0 z-10 border-t border-navy-100 bg-white/95 px-4 pt-3 backdrop-blur sm:hidden">
-  <a href="#line" data-line-link class="flex items-center justify-center gap-2 rounded-2xl bg-jade-500 py-3.5 font-bold text-white">
+  <a href="#" data-line-link class="flex items-center justify-center gap-2 rounded-2xl bg-jade-500 py-3.5 font-bold text-white">
     <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.6 7.4 8.4 8 .3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.5s6-3.5 8.2-6.1c1.5-1.6 2.2-3.2 2.2-4.9C22.5 6.6 17.5 3 12 3Z"/></svg>
     LINEで無料相談・登録
   </a>
 </div>
 
+<p id="toast" role="status" aria-live="polite" hidden class="fixed inset-x-4 bottom-24 z-20 mx-auto max-w-sm rounded-2xl bg-navy-900 px-5 py-4 text-center text-sm font-bold text-white shadow-2xl sm:bottom-8"></p>
+
 <script>
   // 公式LINEの友だち追加URL(例: https://lin.ee/xxxxxxx)。決まったらここに入れる
   const LINE_ADD_URL = "";
+
+  const toast = document.getElementById("toast");
+  let toastTimer = 0;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 3500);
+  }
+
+  // ページ内のリンク(#steps など)は、URLを書きかえずにその場所までスクロールするだけにする。
+  // URLの「#」を変えると、プレビュー画面によってはページが読み込み直されて最初に戻ってしまうため。
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a[href^='#'], [data-line-link]");
+    if (!a) return;
+    if (a.hasAttribute("data-line-link")) {
+      if (LINE_ADD_URL) return; // 本物のURLなら普通に開く
+      e.preventDefault();
+      showToast("LINEの友だち追加は準備中です。もうしばらくお待ちください。");
+      return;
+    }
+    e.preventDefault();
+    const target = document.getElementById(a.getAttribute("href").slice(1));
+    if (target) {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }
+  });
+
   if (LINE_ADD_URL) {
     for (const a of document.querySelectorAll("[data-line-link]")) {
       a.href = LINE_ADD_URL;
