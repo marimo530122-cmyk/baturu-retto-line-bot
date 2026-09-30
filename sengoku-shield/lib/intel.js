@@ -106,6 +106,7 @@
     atm_operation: "電話でATMを操作させる話",
     keep_on_line: "電話を切らないように言う話",
     transfer_to_police: "警察に電話をつなぐと言われた話",
+    apo_den: "調査を装って一人暮らしや貯金を聞かれた話",
   };
 
   function topicsFromIds(ids) {
