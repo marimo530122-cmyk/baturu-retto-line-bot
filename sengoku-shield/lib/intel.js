@@ -105,6 +105,7 @@
     parcel_trouble: "荷物のトラブルの話",
     atm_operation: "電話でATMを操作させる話",
     keep_on_line: "電話を切らないように言う話",
+    transfer_to_police: "警察に電話をつなぐと言われた話",
   };
 
   function topicsFromIds(ids) {
