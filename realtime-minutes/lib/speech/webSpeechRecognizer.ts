@@ -103,11 +103,35 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
   private lastFinalText = "";
   private lastFinalAt = 0;
 
-  /** 自動再開の直後などに同じ文が再度確定として届いた場合も、短時間内の同一文は1回だけ通知する */
+  /**
+   * 自動再開の直後などに同じ文が再度確定として届いた場合、短時間内の同一文は1回だけ通知する。
+   *
+   * さらに、Android版Chrome等では「確定した」と報告した発言を、少し後により長い
+   * (または短い)テキストで別のindexとして再度 isFinal 通知してくることがある
+   * (例: "とりあえず" → "とりあえず 気をつけます")。これは同一発言の訂正であって
+   * 新しい発言ではないが、テキストが完全一致しないため上の等値チェックでは検出できない。
+   * 放置するとタイムラインに同じ発言が伸びながら何十行も積み重なり、最終的に
+   * ブラウザタブがフリーズ/クラッシュする実害が出ていた。
+   * 直近の確定テキストの前方一致/後方一致(=互いに接頭辞の関係)になっている場合は
+   * 同一発言の訂正とみなし、二重登録を防ぐために再通知はせず内容だけ更新する。
+   */
   private emitFinal(text: string): void {
     if (!text) return;
     const now = Date.now();
-    if (text === this.lastFinalText && now - this.lastFinalAt < DUPLICATE_WINDOW_MS) return;
+    const withinWindow = now - this.lastFinalAt < DUPLICATE_WINDOW_MS;
+    const isCorrectionOfPrevious =
+      withinWindow &&
+      this.lastFinalText !== "" &&
+      (text === this.lastFinalText ||
+        text.startsWith(this.lastFinalText) ||
+        this.lastFinalText.startsWith(text));
+
+    if (isCorrectionOfPrevious) {
+      if (text.length > this.lastFinalText.length) this.lastFinalText = text;
+      this.lastFinalAt = now;
+      return;
+    }
+
     this.lastFinalText = text;
     this.lastFinalAt = now;
     this.finalCallback?.(text);
