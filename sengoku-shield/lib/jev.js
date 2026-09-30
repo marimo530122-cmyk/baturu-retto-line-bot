@@ -82,7 +82,28 @@ const ENGAGEMENT_INSTRUCTIONS =
   "これは、詐欺の疑いがある電話にAIが代わりに応対している会話の文字起こしです。" +
   "caller が電話をかけてきた相手、shield がAIの発言です。最後の caller の発言を中心に、相手の今の様子を選んでください。";
 
-async function judgeEngagement(history, { timeoutMs = 1500 } = {}) {
+// 口止めされているか(「守秘義務がある」「誰にも言うな」「家族や銀行に話すな」「銀行でうその理由を言え」)。
+// 言い換え(「このことはご内密に」「外には漏らさないで」等)は正規表現では拾いきれないので、Jevにも聞く。
+const GAG = {
+  gagging: "最後の caller の発言で、誰にも話さないよう口止めしている、または銀行などでうその理由を言うよう指示している",
+  not_gagging: "口止めや、うその理由を言わせる指示はしていない",
+};
+
+// お金をどう動かさせようとしているか(聞き出す手がかりを、振込先にするか、受け渡しの日時と場所にするかを決める)
+const METHOD = {
+  transfer: "振込・送金・ATMの操作・口座の移し替えなど、口座にお金を送らせようとしている",
+  handover: "キャッシュカード・現金・通帳などを、誰かが受け取りに来る・どこかで渡させようとしている",
+  unknown: "まだどちらとも言えない",
+};
+
+const TURN_INSTRUCTIONS =
+  "これは、詐欺の疑いがある電話にAIが代わりに応対している会話の文字起こしです。" +
+  "caller が電話をかけてきた相手、shield がAIの発言です(shield の発言は判定材料にしない)。";
+
+// AIが代わりに話している間、1回の問い合わせで相手の様子・口止め・お金の動かし方をまとめて聞く
+// (通話中なので、問い合わせを1回にして返事の遅れを増やさない)。
+// 返り値は { engagement, gag, method }(わからない項目は null)。Jevが使えない・失敗したら null。
+async function judgeTurn(history, { timeoutMs = 1500 } = {}) {
   if (!enabled()) return null;
   const transcript = history.slice(-8).map((h) => ({ speaker: h.role, text: h.text }));
   if (!transcript.some((t) => t.speaker === "caller")) return null;
@@ -93,17 +114,29 @@ async function judgeEngagement(history, { timeoutMs = 1500 } = {}) {
       body: JSON.stringify({
         model: process.env.JEV_MODEL || "jev-1.13.0",
         state: { transcript },
-        questions: { engagement: { type: "choice", instructions: ENGAGEMENT_INSTRUCTIONS, criteria: ENGAGEMENT } },
+        questions: {
+          engagement: { type: "choice", instructions: ENGAGEMENT_INSTRUCTIONS, criteria: ENGAGEMENT },
+          gag: { type: "choice", instructions: TURN_INSTRUCTIONS + "最後の caller の発言が口止めかどうかを選んでください。", criteria: GAG },
+          method: { type: "choice", instructions: TURN_INSTRUCTIONS + "会話全体から、相手がお金をどう動かさせようとしているかを選んでください。", criteria: METHOD },
+        },
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) throw new Error(`Jev API error: ${res.status}`);
-    const choice = (await res.json())?.answers?.engagement?.choice;
-    return Object.hasOwn(ENGAGEMENT, choice) ? choice : null;
+    const answers = (await res.json())?.answers ?? {};
+    const pick = (key, allowed) => (Object.hasOwn(allowed, answers?.[key]?.choice) ? answers[key].choice : null);
+    const result = { engagement: pick("engagement", ENGAGEMENT), gag: pick("gag", GAG), method: pick("method", METHOD) };
+    if (!result.engagement && !result.gag && !result.method) throw new Error("Jev の応答に使える答えが無い");
+    return result;
   } catch (err) {
-    console.error("[jev] 相手の様子の判定に失敗(言葉からの判定だけを使います):", err.message);
+    console.error("[jev] 会話中の判定に失敗(言葉からの判定だけを使います):", err.message);
     return null;
   }
+}
+
+// 相手の様子だけを知りたいとき(judgeTurn の一部)
+async function judgeEngagement(history, opts) {
+  return (await judgeTurn(history, opts))?.engagement ?? null;
 }
 
 // 正規表現の判定とJevの判定を合わせて、最終的な疑いレベルを決める
@@ -126,4 +159,4 @@ function combine(detection, jev) {
   return { level: detection.level, label: detection.label, by: "regex+jev" };
 }
 
-module.exports = { judgeCall, judgeEngagement, combine, enabled, VERDICTS, ENGAGEMENT };
+module.exports = { judgeCall, judgeTurn, judgeEngagement, combine, enabled, VERDICTS, ENGAGEMENT, GAG, METHOD };

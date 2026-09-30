@@ -84,10 +84,29 @@ async function checkJev() {
       choice = JSON.parse(body)?.answers?.verdict?.choice;
     } catch {}
     if (choice) row("Jev(TypeSafe)", "ok", `試しの判定: ${choice}(詐欺の例文なので scam_likely が正解)`);
-    else row("Jev(TypeSafe)", "ng", `応答の形が想定と違います: ${body.slice(0, 160)}(lib/jev.js の読み取り方を直す必要があります)`);
+    else return row("Jev(TypeSafe)", "ng", `応答の形が想定と違います: ${body.slice(0, 160)}(lib/jev.js の読み取り方を直す必要があります)`);
+    await checkJevTurn();
   } catch (err) {
     row("Jev(TypeSafe)", "ng", `つながりません(${err.message})`);
   }
+}
+
+// AIが代わりに話している間の判定(様子・口止め・お金の動かし方)も、実際のJevで答えが返るか確かめる
+async function checkJevTurn() {
+  const jev = require("./lib/jev");
+  const judged = await jev.judgeTurn(
+    [
+      { role: "caller", text: "藤枝警察署の者です。あなたの口座が犯罪に使われています。お金を安全な口座に移してください。" },
+      { role: "shield", text: "あらまあ、そうなんですか。" },
+      { role: "caller", text: "この件はご内密に。ご家族にも銀行の人にも話さないでください。" },
+    ],
+    { timeoutMs: 15000 }
+  );
+  if (!judged) return row("Jev(会話中の判定)", "ng", "答えが返りませんでした(上に出たエラーを見て lib/jev.js の judgeTurn を直す必要があります)");
+  const expect = { gag: "gagging", method: "transfer" };
+  const wrong = Object.entries(expect).filter(([k, v]) => judged[k] !== v);
+  const detail = `様子: ${judged.engagement ?? "なし"} / 口止め: ${judged.gag ?? "なし"}(正解 gagging) / お金の動かし方: ${judged.method ?? "なし"}(正解 transfer)`;
+  row("Jev(会話中の判定)", wrong.length ? "ng" : "ok", wrong.length ? `${detail}。答えが無い・違う項目があります` : detail);
 }
 
 async function checkLine() {

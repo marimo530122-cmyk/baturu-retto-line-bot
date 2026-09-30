@@ -114,15 +114,24 @@ function toMessages(history) {
 // 今の作戦(足りない手がかり・相手の様子)を決める。Jevが使えれば相手の様子はJevに聞く
 async function planTurn(history) {
   const callerLines = history.filter((h) => h.role === "caller").map((h) => h.text);
-  const missing = elicit.missingTargets(callerLines);
-  const { police, gagged } = elicit.scene(callerLines);
+  const { police, gagged: gaggedByWords } = elicit.scene(callerLines);
   let suspicious = elicit.looksSuspicious(callerLines[callerLines.length - 1]);
+  let gagged = gaggedByWords;
   let engagement = null;
+  let method = null;
   if (jev.enabled()) {
-    engagement = await jev.judgeEngagement(history, { timeoutMs: JEV_ENGAGEMENT_TIMEOUT_MS });
-    if (engagement === "suspicious" || engagement === "leaving") suspicious = true;
+    // 相手の様子・口止め・お金の動かし方を、Jevに1回でまとめて聞く
+    const judged = await jev.judgeTurn(history, { timeoutMs: JEV_ENGAGEMENT_TIMEOUT_MS });
+    if (judged) {
+      engagement = judged.engagement;
+      method = judged.method;
+      if (engagement === "suspicious" || engagement === "leaving") suspicious = true;
+      // 言い換えの口止め(「ご内密に」など)はJevで拾う。言葉で拾えたものはJevが見逃しても口止めのまま
+      if (judged.gag === "gagging") gagged = true;
+    }
   }
-  return { missing, suspicious, engagement, police, gagged };
+  const missing = elicit.missingTargets(callerLines, { method });
+  return { missing, suspicious, engagement, police, gagged, method };
 }
 
 // 決まった言い方から選ぶ(聞き出し・なだめ・時間稼ぎ)。直前に言ったことは繰り返さない
@@ -144,6 +153,7 @@ async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER }
     engagement: plan.engagement,
     gagged: plan.gagged,
     police: plan.police,
+    method: plan.method,
   };
   const recentShieldLines = history.filter((h) => h.role === "shield").slice(-4).map((h) => h.text);
   const fixed = (source) => ({ text: fixedReply(plan, turn, recentShieldLines), source, strategy });

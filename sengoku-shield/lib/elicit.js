@@ -48,10 +48,11 @@ function isGag(line) {
 
 // 相手の話に出てきたことに合わせて、聞く価値のあるものだけに絞る
 // (振込の話が出ていないのに口座を聞くと不自然なので)
-function relevantTargets(lines) {
+// method: Jevが判定した、お金の動かし方(transfer / handover)。言い換えで言葉に出ていないときの補い
+function relevantTargets(lines, { method = null } = {}) {
   const text = lines.join(" ");
-  const talksTransfer = /振り?込|口座|ATM|送金|入金/.test(text);
-  const talksHandover = /渡し|受け取|取りに|伺|回収|封筒|現金|示談金/.test(text);
+  const talksTransfer = /振り?込|口座|ATM|送金|入金/.test(text) || method === "transfer";
+  const talksHandover = /渡し|受け取|取りに|伺|回収|封筒|現金|示談金/.test(text) || method === "handover";
   const order = claimsAuthority(lines) ? ORDER_AUTHORITY : ORDER_DEFAULT;
   return order
     .map((key) => BY_KEY[key])
@@ -62,9 +63,9 @@ function relevantTargets(lines) {
     });
 }
 
-function missingTargets(callerLines) {
+function missingTargets(callerLines, opts) {
   const types = new Set(intel.extract(callerLines).map((f) => f.type));
-  return relevantTargets(callerLines).filter((t) => !t.has(types));
+  return relevantTargets(callerLines, opts).filter((t) => !t.has(types));
 }
 
 // 相手が怪しみ始めた・いら立っている・切ろうとしている、を言葉から見る(Jevが使えないときの目安)

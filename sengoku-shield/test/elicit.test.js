@@ -138,3 +138,62 @@ test("新しい決まった言い方も、どれも約束や番号を含まな�
     assert.strictEqual(decoy.isSafeReply(p), true, p);
   }
 });
+
+// ---- Jev: 会話中に、相手の様子・口止め・お金の動かし方を1回でまとめて聞く ----
+
+function mockJev(t, answers, seen = []) {
+  process.env.TYPESAFE_API_KEY = "dummy";
+  t.after(() => delete process.env.TYPESAFE_API_KEY);
+  const orig = global.fetch;
+  global.fetch = async (url, init) => {
+    seen.push(JSON.parse(init.body));
+    return Response.json({ answers });
+  };
+  t.after(() => (global.fetch = orig));
+  return seen;
+}
+
+test("Jevには1回の問い合わせで、様子・口止め・お金の動かし方を聞く", async (t) => {
+  const seen = mockJev(t, { engagement: { choice: "cooperating" } });
+  await decoy.reply([{ role: "caller", text: "警察の者です" }], 1);
+  assert.strictEqual(seen.length, 1);
+  assert.deepStrictEqual(Object.keys(seen[0].questions).sort(), ["engagement", "gag", "method"]);
+});
+
+test("言い換えの口止め(ご内密に)は言葉では拾えないが、Jevが口止めと判定したら話を合わせる", async (t) => {
+  const lines = [{ role: "caller", text: "警察の者です。この件はご内密にお願いします" }];
+  assert.strictEqual(elicit.scene(lines.map((l) => l.text)).gagged, false, "言葉だけでは拾えない前提");
+  mockJev(t, { engagement: { choice: "cooperating" }, gag: { choice: "gagging" }, method: { choice: "unknown" } });
+  const r = await decoy.reply(lines, 2);
+  assert.strictEqual(r.strategy.gagged, true);
+  assert.ok(r.text.startsWith(elicit.GAG_CALM), r.text);
+  assert.ok(r.text.includes("お名前と所属"), r.text);
+});
+
+test("言葉で口止めを拾えたら、Jevが見逃しても口止めとして扱う", async (t) => {
+  mockJev(t, { engagement: { choice: "cooperating" }, gag: { choice: "not_gagging" } });
+  const r = await decoy.reply([{ role: "caller", text: "守秘義務がありますので、誰にも言わないでください" }], 2);
+  assert.strictEqual(r.strategy.gagged, true);
+});
+
+test("「お金を安全な所へ移す」のような言い換えでも、Jevが振込と判定したら振込先を聞く", async (t) => {
+  const text = "あなたのお金が狙われています。安全な所へ移す手続きをします";
+  assert.ok(!elicit.missingTargets([text]).some((m) => m.key === "bank"), "言葉だけでは振込先を聞かない前提");
+  mockJev(t, { engagement: { choice: "cooperating" }, gag: { choice: "not_gagging" }, method: { choice: "transfer" } });
+  const r = await decoy.reply([{ role: "caller", text }], 1);
+  assert.strictEqual(r.strategy.method, "transfer");
+  assert.ok(r.strategy.missing.includes("銀行名と支店"), r.strategy.missing.join(","));
+});
+
+test("Jevが受け渡しと判定したら、受け渡しの日時と場所を聞く対象に入れる", () => {
+  const keys = elicit.missingTargets(["大事な物をお預かりする手続きです"], { method: "handover" }).map((m) => m.key);
+  assert.ok(keys.includes("meeting"), keys.join(","));
+});
+
+test("Jevが失敗・おかしな答えでも、言葉の判定だけで続ける", async (t) => {
+  mockJev(t, { gag: { choice: "maybe" }, method: { choice: "???" } });
+  const r = await decoy.reply([{ role: "caller", text: "振込の手続きです" }], 1);
+  assert.strictEqual(r.strategy.gagged, false);
+  assert.strictEqual(r.strategy.method, null);
+  assert.ok(r.text);
+});
