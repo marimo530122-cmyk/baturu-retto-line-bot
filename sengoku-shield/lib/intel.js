@@ -103,6 +103,8 @@
     safe_account: "安全な口座へお金を移す話",
     accomplice: "共犯や逮捕の話",
     parcel_trouble: "荷物のトラブルの話",
+    atm_operation: "電話でATMを操作させる話",
+    keep_on_line: "電話を切らないように言う話",
   };
 
   function topicsFromIds(ids) {

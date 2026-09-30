@@ -1,17 +1,17 @@
 {
   "passed": true,
   "failures": [],
-  "ranAt": "2026-09-30T22:15:41.970Z",
+  "ranAt": "2026-09-30T22:16:58.824Z",
   "inputs": {
     "benign": {
       "file": "benign-samples.json",
-      "count": 81,
-      "sha256": "56532efbbeba281408f677057dc14d63eac26b4941c67c97c8f22461cb9e6dbd"
+      "count": 83,
+      "sha256": "4907aae211d08588983165d5cf59b67e0b74050bd5d6de35426f34edd6f62e50"
     },
     "scam": {
       "file": "scam-samples.json",
-      "count": 41,
-      "sha256": "3a96d01cb7dddd6617ad212ef7d5cfb259944a1d0b77412debf5fe9807a976cc"
+      "count": 42,
+      "sha256": "cc1a0585c2acff9d81d7e462724c32f8c3b2cd7b7d2dd4836ab9f89674d6605f"
     },
     "rules": [
       {
@@ -95,20 +95,28 @@
         "source": "(荷物|郵便物|小包)[^。]{0,25}(税関|偽造|不審物|止められ|犯罪に)"
       },
       {
+        "id": "atm_operation",
+        "source": "(画面|ボタン)[^。]{0,10}(振込|振り込み|お振込)|振込ボタン|金額(欄|のところ)に[^。]{0,12}(打|入力|押)|(受取|受け取り|照会|確認|登録)(コード|番号)[^。]{0,12}(入力|打ち込|押)"
+      },
+      {
+        "id": "keep_on_line",
+        "source": "電話を切らず|切らないで(ください|お待ち)|(受話器|携帯|電話)を[^。]{0,4}(耳に当てたまま|持ったまま|つないだまま)|通話(したまま|を続けたまま)"
+      },
+      {
         "id": "card_swap",
         "source": "(封筒|カード)[^。]{0,15}割印|割印[^。]{0,15}(封筒|カード)|(キャッシュ)?カードを?[^。]{0,6}封筒に(入れ|しまっ)"
       }
     ],
-    "rulesSha256": "62b8d1e039e94c8193c95f8aa5be09ab0bcdc850586053e01c35e7fefb57303a"
+    "rulesSha256": "b1efa4b01543da34dd6d198cb354797b568189255c416699ded41a8b2eef32a7"
   },
   "summary": {
-    "benignTotal": 81,
+    "benignTotal": 83,
     "falsePositives": 0,
     "benignTouched": 9,
-    "scamTotal": 41,
+    "scamTotal": 42,
     "dev": {
-      "total": 31,
-      "detected": 31,
+      "total": 32,
+      "detected": 32,
       "rate": 1
     },
     "holdout": {
@@ -164,6 +172,10 @@
         "detected": 1
       },
       "ニセ警察官(安全な口座)": {
+        "total": 1,
+        "detected": 1
+      },
+      "還付金(ATM操作)": {
         "total": 1,
         "detected": 1
       }
