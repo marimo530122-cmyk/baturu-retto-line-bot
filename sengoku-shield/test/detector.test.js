@@ -46,3 +46,10 @@ test("代わりの人がお金を取りに来る話・カードを封筒に入�
   assert.strictEqual(score(["代わりに妻が荷物を取りに行きます"]).level, "none");
   assert.strictEqual(score(["契約書を2部お送りしますので、両方に割印をしてご返送ください。"]).level, "none");
 });
+
+test("警察を名乗ってビデオ通話・LINEに誘う話を拾い、家族のビデオ通話や警察の呼びかけには反応しない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("警察の者です。確認のためビデオ通話に切り替えてください").includes("police_video_call"));
+  assert.ok(!ids("日曜日にビデオ通話しようね").includes("police_video_call"));
+  assert.ok(!ids("警察がビデオ通話をすることは絶対にありません").includes("police_video_call"));
+});

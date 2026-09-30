@@ -30,6 +30,7 @@ const MONEY_IDS = new Set([
   "advance_fee",
   "proxy_pickup",
   "card_swap",
+  "police_video_call",
 ]);
 
 // どの手口に近いか。「警察・役所を名乗った」だけ、「家族を名乗った」だけでは IMPERSONATION にしない

@@ -1,17 +1,17 @@
 {
   "passed": true,
   "failures": [],
-  "ranAt": "2026-09-30T10:00:18.603Z",
+  "ranAt": "2026-09-30T22:09:09.489Z",
   "inputs": {
     "benign": {
       "file": "benign-samples.json",
-      "count": 76,
-      "sha256": "4082aea9f9e570ab98f68dfec971dfd11054ecb2d5763c5463a87c71803eb8d4"
+      "count": 78,
+      "sha256": "98e69e852e0573cd284109737989562d7775de6e42b9bdca37525e91914d2a6d"
     },
     "scam": {
       "file": "scam-samples.json",
-      "count": 38,
-      "sha256": "bcc789ab2d368de03939d706ecff9e6837aa969c7e4d51a20fddf62095bd785e"
+      "count": 39,
+      "sha256": "8fd1940ab4135596c9d949b0e41643b09266c3b648cea62224923f5ce37024bc"
     },
     "rules": [
       {
@@ -75,20 +75,24 @@
         "source": "^(?=.*(お金|現金|キャッシュカード|カード|通帳))(?=.*(代わりに|かわりに|代理|上司|同僚|部下|後輩|会社の(人|者))[^。]{0,20}(取りに|受け取りに|もらいに|預かりに)(行|伺|来|うかが))"
       },
       {
+        "id": "police_video_call",
+        "source": "^(?!.*(ことは|ことなど)(絶対に|決して)?(ありません|ない))(?=.*(警察|刑事|捜査|検察|警視庁))(?=.*(ビデオ通話|テレビ電話|LINE|ライン|スカイプ|ズーム|Zoom))"
+      },
+      {
         "id": "card_swap",
         "source": "(封筒|カード)[^。]{0,15}割印|割印[^。]{0,15}(封筒|カード)|(キャッシュ)?カードを?[^。]{0,6}封筒に(入れ|しまっ)"
       }
     ],
-    "rulesSha256": "587124d2dff7f465b52a2dfefdd834b8b7c52eb4797f7f20d6ac08667b4141c2"
+    "rulesSha256": "2f961f37e1fdc1090ced8b65b75705777ed5cf7ad39246faaaeb2da0210d01f0"
   },
   "summary": {
-    "benignTotal": 76,
+    "benignTotal": 78,
     "falsePositives": 0,
-    "benignTouched": 7,
-    "scamTotal": 38,
+    "benignTouched": 8,
+    "scamTotal": 39,
     "dev": {
-      "total": 28,
-      "detected": 28,
+      "total": 29,
+      "detected": 29,
       "rate": 1
     },
     "holdout": {
@@ -132,6 +136,10 @@
         "detected": 1
       },
       "ニセ警察官(キャッシュカードすり替え)": {
+        "total": 1,
+        "detected": 1
+      },
+      "ニセ警察官(ビデオ通話へ誘導)": {
         "total": 1,
         "detected": 1
       }
@@ -204,6 +212,16 @@
       "split": "dev",
       "category": "役所",
       "text": "市役所です。手続きには印鑑が必要ですので、窓口にお越しの際はお持ちください。",
+      "level": "low",
+      "matched": [
+        "authority"
+      ]
+    },
+    {
+      "id": "b078",
+      "split": "dev",
+      "category": "本物の警察",
+      "text": "藤枝警察署です。防犯のお知らせです。警察がビデオ通話をすることは絶対にありません。電話でお金の話が出たら、まず電話を切って相談してください。",
       "level": "low",
       "matched": [
         "authority"

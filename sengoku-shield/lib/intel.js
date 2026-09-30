@@ -98,6 +98,7 @@
     bank_cover_story: "銀行でうその理由を言うよう指示",
     proxy_pickup: "代わりの人がお金を受け取りに来る話",
     card_swap: "キャッシュカードを封筒に入れさせる話",
+    police_video_call: "警察を名乗ってビデオ通話やLINEに誘う話",
   };
 
   function topicsFromIds(ids) {
