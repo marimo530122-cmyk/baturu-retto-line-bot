@@ -2,16 +2,19 @@ import { SpeechRecognizer } from "./types";
 
 const DUPLICATE_WINDOW_MS = 3000;
 
+// network エラーの再試行を許容する範囲。数時間規模の会議だと通信の瞬断が
+// 何度か起きるのは普通なので、その都度止めてしまうと録音が丸ごと欠けてしまう。
+// 一方 Brave のプライバシーブロック等で恒常的に失敗する場合は、自動再開が
+// 高速ループしてエラーが延々と出るのを防ぐため、短時間に連発した場合だけ諦める。
+const NETWORK_ERROR_BURST_WINDOW_MS = 30000;
+const NETWORK_ERROR_BURST_LIMIT = 5;
+
 /** 自動再開しても直らないエラー(再開し続けるとエラーが延々と出るので止める) */
 const FATAL_ERRORS = new Set([
   "not-allowed",
   "service-not-allowed",
   "audio-capture",
   "language-not-supported",
-  // network エラーは Brave のプライバシーブロックや通信断で発生する。
-  // 自動再開するとエラーがループするため、fatal 扱いにして一度止める。
-  // ユーザーが手動でボタンを押し直せば再試行できる。
-  "network",
 ]);
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -51,6 +54,8 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
       // Android版Chrome等では resultIndex が進まず、確定済みの結果が次のイベントでも
       // 再送されることがある(→同じ発言がタイムラインに2枚並ぶ原因)。
       // resultIndex を信用せず全件を走査し、このセッションで通知済みの index は飛ばす。
+      // 結果を受け取れた = 通信は生きている。network エラーの連発カウントをリセットする
+      this.networkErrorCount = 0;
       for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
         const transcript = result[0].transcript;
@@ -77,6 +82,25 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
       const code: string = event.error ?? "unknown";
       // 無音(no-speech)や停止操作による中断(aborted)はエラー表示しない。自動再開に任せる
       if (code === "no-speech" || code === "aborted") return;
+
+      if (code === "network") {
+        const now = Date.now();
+        if (now - this.networkErrorBurstStart > NETWORK_ERROR_BURST_WINDOW_MS) {
+          this.networkErrorBurstStart = now;
+          this.networkErrorCount = 0;
+        }
+        this.networkErrorCount += 1;
+        if (this.networkErrorCount <= NETWORK_ERROR_BURST_LIMIT) {
+          // 一時的な通信の瞬断とみなし、onend の自動再開に任せて録音を継続する
+          return;
+        }
+        // 短時間に繰り返し失敗する場合はBrave等による恒常的なブロックとみなし、
+        // 高速な再試行ループを避けるためここで諦める
+        this.shouldRestart = false;
+        this.errorCallback?.(ERROR_MESSAGES.network, true);
+        return;
+      }
+
       const fatal = FATAL_ERRORS.has(code);
       if (fatal) this.shouldRestart = false;
       this.errorCallback?.(ERROR_MESSAGES[code] ?? `音声認識でエラーが発生しました(${code})`, fatal);
@@ -102,6 +126,8 @@ export class WebSpeechRecognizer implements SpeechRecognizer {
   private emittedFinalIndices = new Set<number>();
   private lastFinalText = "";
   private lastFinalAt = 0;
+  private networkErrorCount = 0;
+  private networkErrorBurstStart = 0;
 
   /**
    * 自動再開の直後などに同じ文が再度確定として届いた場合、短時間内の同一文は1回だけ通知する。

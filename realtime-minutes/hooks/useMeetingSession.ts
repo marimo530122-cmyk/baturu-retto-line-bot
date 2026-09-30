@@ -19,6 +19,35 @@ export function useMeetingSession(mode: Mode = "meeting") {
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const utterancesRef = useRef<ClassifiedUtterance[]>([]);
   const isRecordingRef = useRef(false);
+  const wakeLockRef = useRef<any>(null);
+
+  // 長時間(数時間規模)の会議中に画面が自動消灯してタブがバックグラウンド扱いになると、
+  // 録音・音声認識が止まってしまう端末があるため、録音中は画面消灯を防止する。
+  const acquireWakeLock = useCallback(async () => {
+    const nav = navigator as any;
+    if (!("wakeLock" in nav)) return;
+    try {
+      wakeLockRef.current = await nav.wakeLock.request("screen");
+    } catch {
+      // 端末側の制限等で取得できなくても録音自体は継続できるため無視
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release?.().catch(() => {});
+    wakeLockRef.current = null;
+  }, []);
+
+  // WakeLockはタブが非表示になると自動解除されるため、録音中にタブへ戻ったら再取得する
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isRecordingRef.current) {
+        void acquireWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [acquireWakeLock]);
 
   const classifyAndAppend = useCallback(async (text: string) => {
     const recentContext = utterancesRef.current.slice(-CONTEXT_WINDOW).map((u) => u.summary || u.text);
@@ -57,8 +86,9 @@ export function useMeetingSession(mode: Mode = "meeting") {
     return () => {
       recognizerRef.current?.dispose?.();
       recognizerRef.current = null;
+      releaseWakeLock();
     };
-  }, []);
+  }, [releaseWakeLock]);
 
   const submitText = useCallback(
     (text: string) => {
@@ -127,7 +157,8 @@ export function useMeetingSession(mode: Mode = "meeting") {
     recognizerRef.current.start();
     isRecordingRef.current = true;
     setIsRecording(true);
-  }, [attachRecognizer]);
+    void acquireWakeLock();
+  }, [attachRecognizer, acquireWakeLock]);
 
   const stop = useCallback(() => {
     recognizerRef.current?.stop();
@@ -135,7 +166,8 @@ export function useMeetingSession(mode: Mode = "meeting") {
     setIsRecording(false);
     setInterimText("");
     setStatus(null);
-  }, []);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
 
   const toggleTodo = useCallback((id: string) => {
     utterancesRef.current = utterancesRef.current.map((u) => (u.id === id ? { ...u, done: !u.done } : u));
