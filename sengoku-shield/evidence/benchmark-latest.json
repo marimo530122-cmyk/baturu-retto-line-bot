@@ -1,7 +1,7 @@
 {
   "passed": true,
   "failures": [],
-  "ranAt": "2026-09-30T23:33:31.809Z",
+  "ranAt": "2026-10-01T03:02:55.698Z",
   "inputs": {
     "benign": {
       "file": "benign-samples.json",
@@ -10,8 +10,8 @@
     },
     "scam": {
       "file": "scam-samples.json",
-      "count": 63,
-      "sha256": "8cc2b2d846e616c4056c325dfb2df95dda563f458ba3e1df3922aee5dd43e742"
+      "count": 64,
+      "sha256": "1fe61b626de11ed604dd92d187dfebba4fe6bc5ff07210cfc84dcef94806c137"
     },
     "rules": [
       {
@@ -121,16 +121,16 @@
     "benignTotal": 87,
     "falsePositives": 0,
     "benignTouched": 10,
-    "scamTotal": 63,
+    "scamTotal": 64,
     "dev": {
       "total": 43,
       "detected": 41,
       "rate": 0.9534883720930233
     },
     "holdout": {
-      "total": 20,
-      "detected": 6,
-      "rate": 0.3
+      "total": 21,
+      "detected": 7,
+      "rate": 0.3333333333333333
     },
     "detectionRate": 0.9534883720930233,
     "minDetectionRate": 0.8,
