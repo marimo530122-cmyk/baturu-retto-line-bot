@@ -1,4 +1,4 @@
-// 戦国シールド: Twilio の電話番号にかかってきた電話にAIが応対するWebサーバー
+// 鮮刻シールド: Twilio の電話番号にかかってきた電話にAIが応対するWebサーバー
 //
 // Twilio 側の設定(電話番号の Voice Configuration):
 //   A call comes in  → POST  <SHIELD_PUBLIC_URL>/voice/incoming
@@ -410,7 +410,7 @@ if (require.main === module) {
   }
   if (!APP_TOKEN) console.log("SHIELD_APP_TOKEN が空なので、見守り画面の判定(/api/*)は使えません。");
   server.listen(PORT, () => {
-    console.log(`戦国シールド起動: port ${PORT}(電話の受け口: ${VOICE_ENABLED ? "ON" : "OFF"} / AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
+    console.log(`鮮刻シールド起動: port ${PORT}(電話の受け口: ${VOICE_ENABLED ? "ON" : "OFF"} / AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
   });
 }
 

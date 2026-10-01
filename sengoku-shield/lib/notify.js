@@ -36,7 +36,7 @@ function familyTargets() {
 function familyMessage(judgment, utterance) {
   const excerpt = maskText(utterance).slice(0, 40);
   return [
-    "【戦国シールド】見守り中の電話で、詐欺の疑いが「高」になりました",
+    "【鮮刻シールド】見守り中の電話で、詐欺の疑いが「高」になりました",
     `手口: ${judgment.reason_short}`,
     `相手の発言(一部): 「${excerpt}${utterance.length > 40 ? "…" : ""}」`,
     "",
@@ -59,7 +59,7 @@ async function notifyFamily(judgment, utterance) {
 function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
   if (type === "handoff") {
     return [
-      "【戦国シールド】本人が「AIに代わってもらう」を押しました",
+      "【鮮刻シールド】本人が「AIに代わってもらう」を押しました",
       "今、AIが相手と話して時間をかせいでいます。本人は電話のそばで待っています。",
       "電話が終わったら、もう一度お知らせします。",
     ].join("\n");
@@ -71,7 +71,7 @@ function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
     const types = new Set(intel.map((f) => f.type));
     const meeting = types.has("visit") || (types.has("datetime") && types.has("place"));
     return [
-      "【戦国シールド】見守っていた電話が終わりました" + (parts.length ? `(${parts.join("・")})` : ""),
+      "【鮮刻シールド】見守っていた電話が終わりました" + (parts.length ? `(${parts.join("・")})` : ""),
       ...(intel.length
         ? ["", "相手が言っていたこと:", ...intel.map((f) => `・${f.label}: ${f.value}`), ""]
         : []),
@@ -103,7 +103,7 @@ function familyCallMessage(call) {
   const ids = (call.detection?.matches || []).map((m) => m.id);
   const script = intel.policeScript({ found, topics: intel.topicsFromIds(ids), startedAt: call.startedAt, forFamily: true });
   return [
-    "【戦国シールド】実家の電話に、AIが代わりに出ました。詐欺の疑いが高い電話でした",
+    "【鮮刻シールド】実家の電話に、AIが代わりに出ました。詐欺の疑いが高い電話でした",
     `相手の番号: ${maskPhone(call.from)}`,
     ...(found.length ? ["", "相手が言っていたこと:", ...found.map((f) => `・${f.label}: ${f.value}`)] : []),
     "",
@@ -129,7 +129,7 @@ async function notifyFamilyCall(call) {
 // 口座番号は相手(詐欺の疑いがある側)のもので、登録済みの家族にだけ送る。
 function familyAccountMessage({ bank, account, phone } = {}) {
   return [
-    "【戦国シールド・急ぎ】見守り中の電話で、相手が振込先の口座を言いました",
+    "【鮮刻シールド・急ぎ】見守り中の電話で、相手が振込先の口座を言いました",
     "",
     ...(bank ? [`金融機関: ${bank}`] : []),
     ...(account ? [`口座番号: ${account}`] : []),
@@ -155,7 +155,7 @@ async function notifyOwner(call) {
   if (!token || !to) return false;
 
   const text = [
-    "【戦国シールド】詐欺の疑いがある電話に自動応答しました",
+    "【鮮刻シールド】詐欺の疑いがある電話に自動応答しました",
     `相手: ${maskPhone(call.from)}`,
     `通話時間: 約${call.durationSec || "?"}秒`,
     `判定: ${call.verdict.label}`,

@@ -98,6 +98,15 @@
     bank_cover_story: "銀行でうその理由を言うよう指示",
     proxy_pickup: "代わりの人がお金を受け取りに来る話",
     card_swap: "キャッシュカードを封筒に入れさせる話",
+    police_video_call: "警察を名乗ってビデオ通話やLINEに誘う話",
+    auto_voice_push: "郵便や電話会社をかたる自動音声",
+    safe_account: "安全な口座へお金を移す話",
+    accomplice: "共犯や逮捕の話",
+    parcel_trouble: "荷物のトラブルの話",
+    atm_operation: "電話でATMを操作させる話",
+    keep_on_line: "電話を切らないように言う話",
+    transfer_to_police: "警察に電話をつなぐと言われた話",
+    apo_den: "調査を装って一人暮らしや貯金を聞かれた話",
   };
 
   function topicsFromIds(ids) {

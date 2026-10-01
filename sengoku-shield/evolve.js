@@ -82,7 +82,7 @@ const PROPOSAL_SCHEMA = {
   additionalProperties: false,
 };
 
-const SYSTEM_PROMPT = `あなたは詐欺電話対策ツール「戦国シールド」の検知ルール担当です。
+const SYSTEM_PROMPT = `あなたは詐欺電話対策ツール「鮮刻シールド」の検知ルール担当です。
 既存の検知ルール(JavaScriptの正規表現)と、疑いが中以上だった通話の文字起こし(相手側の発話のみ)を渡します。
 既存ルールでは拾えていない「詐欺によくある言い回し」を見つけ、新しいルールを最大5件提案してください。
 

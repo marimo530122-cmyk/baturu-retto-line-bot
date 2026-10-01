@@ -149,7 +149,7 @@ async function checkTwilio() {
 }
 
 (async () => {
-  console.log("戦国シールド 接続チェック\n");
+  console.log("鮮刻シールド 接続チェック\n");
   await checkRequired();
   await checkPublicUrl();
   await checkClaude();

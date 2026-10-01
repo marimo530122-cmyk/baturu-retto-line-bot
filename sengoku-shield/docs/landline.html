@@ -60,14 +60,14 @@
 <main>
   <header style="display:grid;gap:6px">
     <h1>固定電話の見守り設定</h1>
-    <p class="lead">表示画面のない家の固定電話でも、戦国シールドのAIが「受付係」として先に電話に出られるようにする手順です。ご家族が見ながら設定する前提で書いています。</p>
+    <p class="lead">表示画面のない家の固定電話でも、鮮刻シールドのAIが「受付係」として先に電話に出られるようにする手順です。ご家族が見ながら設定する前提で書いています。</p>
   </header>
 
   <section aria-labelledby="what">
     <h2 id="what">この設定でできること</h2>
     <div class="panel">
       <ol class="flow">
-        <li><b>1</b><span>家の固定電話にかかってきた電話を、NTTの「ボイスワープ」(着信転送)で戦国シールドのAIの番号に回します。</span></li>
+        <li><b>1</b><span>家の固定電話にかかってきた電話を、NTTの「ボイスワープ」(着信転送)で鮮刻シールドのAIの番号に回します。</span></li>
         <li><b>2</b><span>AIが「この電話は、詐欺電話対策のため自動応答システムが応対しており、通話内容は記録されます」と伝えます。これだけで切れる詐欺電話が多くあります。</span></li>
         <li><b>3</b><span>粘る相手には、AIが話を合わせて時間をかせぎながら、名前・振込先の口座・受け渡しの日時と場所を聞き出します。お金を払う・渡すといった約束はしません。</span></li>
         <li><b>4</b><span>相手が口座や会う日時・場所を言った瞬間に、登録したご家族のLINEに知らせ、自動音声の電話もかけます。ご家族から110番や銀行に伝えてもらいます。</span></li>
@@ -81,7 +81,7 @@
     <div class="panel">
       <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
         <li><strong>NTTの固定電話</strong>(加入電話、またはひかり電話)と、オプションの<strong>「ボイスワープ」</strong>の契約。月額は数百円ほどです(最新の料金はNTTで確認してください)。</li>
-        <li><strong>戦国シールドのサーバー</strong>と、AIが電話に出るための<strong>Twilioの電話番号</strong>。日本の番号を取るには、Twilioでの住所確認(本人確認書類)が必要です。</li>
+        <li><strong>鮮刻シールドのサーバー</strong>と、AIが電話に出るための<strong>Twilioの電話番号</strong>。日本の番号を取るには、Twilioでの住所確認(本人確認書類)が必要です。</li>
         <li>知らせてほしい<strong>ご家族のLINE登録</strong>(見守り画面の招待番号をLINEで送る)。自動電話を受けたい人は、電話番号もLINEで送っておきます。</li>
       </ul>
     </div>
@@ -94,7 +94,7 @@
       <h3>行く前に、自分の家で(準備)</h3>
       <ul class="check">
         <li><label><input type="checkbox" data-id="p1"><span>NTT(<span class="num">116</span>)でボイスワープを申し込んだ(実家の電話の契約者名で。ひかり電話も同じ窓口)</span></label></li>
-        <li><label><input type="checkbox" data-id="p2"><span>戦国シールドのサーバーとTwilioの番号が動いている(自分の携帯からTwilioの番号にかけて、AIが出る)</span></label></li>
+        <li><label><input type="checkbox" data-id="p2"><span>鮮刻シールドのサーバーとTwilioの番号が動いている(自分の携帯からTwilioの番号にかけて、AIが出る)</span></label></li>
         <li><label><input type="checkbox" data-id="p3"><span>自分を見守り家族としてLINEに登録し、電話番号も送った(見守り画面に「電話 末尾〇〇〇〇」と出る)</span></label></li>
         <li><label><input type="checkbox" data-id="p4"><span>Twilioの番号をメモした(実家で転送先として入れる)</span></label></li>
       </ul>
@@ -168,7 +168,7 @@
         </li>
         <li>
           <p><strong>ご家族をLINEで登録する</strong></p>
-          <p>見守り画面の「家族を登録する」で出る6桁の番号を、ご家族が戦国シールドのLINEに送ります。自動電話を受けたい人は、続けて携帯電話の番号も送ります。</p>
+          <p>見守り画面の「家族を登録する」で出る6桁の番号を、ご家族が鮮刻シールドのLINEに送ります。自動電話を受けたい人は、続けて携帯電話の番号も送ります。</p>
         </li>
         <li>
           <p><strong>試しに電話してみる</strong></p>

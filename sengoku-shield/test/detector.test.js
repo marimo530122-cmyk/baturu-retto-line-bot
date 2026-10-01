@@ -46,3 +46,28 @@ test("代わりの人がお金を取りに来る話・カードを封筒に入�
   assert.strictEqual(score(["代わりに妻が荷物を取りに行きます"]).level, "none");
   assert.strictEqual(score(["契約書を2部お送りしますので、両方に割印をしてご返送ください。"]).level, "none");
 });
+
+test("警察を名乗ってビデオ通話・LINEに誘う話を拾い、家族のビデオ通話や警察の呼びかけには反応しない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("警察の者です。確認のためビデオ通話に切り替えてください").includes("police_video_call"));
+  assert.ok(!ids("日曜日にビデオ通話しようね").includes("police_video_call"));
+  assert.ok(!ids("警察がビデオ通話をすることは絶対にありません").includes("police_video_call"));
+});
+
+test("郵便をかたる自動音声・安全な口座・共犯の脅し・荷物のトラブルを拾い、普通の自動音声や家族の話は疑いにしない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("日本郵便です。お荷物の件は1を押してください").includes("auto_voice_push"));
+  assert.ok(ids("預金を安全な口座へ移してください").includes("safe_account"));
+  assert.ok(ids("あなたにも共犯の容疑がかかっています").includes("accomplice"));
+  assert.ok(ids("お荷物が税関で止められています").includes("parcel_trouble"));
+  assert.strictEqual(score(["明日のご予約の確認です。予約どおりの方は1を押してください。"]).level, "none");
+  assert.ok(!["medium", "high"].includes(score(["テレビで、共犯の疑いがあると言って電話してくる詐欺があるんだって"]).level));
+});
+
+test("電話でATMの画面を操作させる話を拾い、「切らずにお待ちください」だけでは警告しない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("画面の振込ボタンを押してください").includes("atm_operation"));
+  assert.ok(ids("金額欄に受取番号を打ち込んでください").includes("atm_operation"));
+  assert.ok(ids("絶対に電話を切らずにお待ちください").includes("keep_on_line"));
+  assert.ok(!["medium", "high"].includes(score(["担当に代わりますので、このまま切らずにお待ちください。"]).level));
+});

@@ -1,0 +1,62 @@
+# 警察が公開している詐欺電話の録音(静岡県警「サギ電話を聞いてみよう!」など)を文字起こしする。
+# 音声はページから直接取り、リポジトリには保存しない。結果は実行ログとまとめ(Summary)に出すだけ。
+# 鮮刻シールドの例文に使うのは、ここから人が確かめた短い引用だけ(sengoku-shield/docs/police-videos/README.md の決まり)。
+name: transcribe-police-audio
+
+on:
+  workflow_dispatch:
+    inputs:
+      page_url:
+        description: "録音が載っている公式ページのURL"
+        required: true
+        default: "https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html"
+  push:
+    branches: ["claude/**"]
+    paths: [".github/workflows/transcribe-police-audio.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PAGE_URL: ${{ github.event.inputs.page_url || 'https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html' }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install faster-whisper==1.1.1 requests
+      - name: 文字起こし
+        shell: python
+        run: |
+          import os, re, urllib.request, urllib.parse
+          from faster_whisper import WhisperModel
+
+          page = os.environ["PAGE_URL"]
+          ua = {"User-Agent": "Mozilla/5.0 (sengoku-shield transcription)"}
+          html = urllib.request.urlopen(urllib.request.Request(page, headers=ua), timeout=30).read().decode("utf-8", "replace")
+          links = []
+          for m in re.finditer(r'(?:href|src)="([^"]+\.(?:m4a|wav|mp3))"', html, re.I):
+              u = urllib.parse.urljoin(page, m.group(1))
+              if u not in links:
+                  links.append(u)
+          print(f"ページ: {page}\n音声ファイル: {len(links)}件")
+          model = WhisperModel("medium", device="cpu", compute_type="int8")
+          out = [f"# 文字起こし: {page}", "", "自動の文字起こしです。聞き間違いを含みます。", ""]
+          for i, u in enumerate(links, 1):
+              path = f"/tmp/audio{i}" + os.path.splitext(urllib.parse.urlparse(u).path)[1]
+              with open(path, "wb") as f:
+                  f.write(urllib.request.urlopen(urllib.request.Request(u, headers=ua), timeout=60).read())
+              segments, info = model.transcribe(path, language="ja", vad_filter=True, beam_size=5)
+              out += [f"## {i}. {os.path.basename(urllib.parse.urlparse(u).path)}", f"- URL: {u}", f"- 長さ: {info.duration:.0f}秒", ""]
+              for s in segments:
+                  m, sec = divmod(int(s.start), 60)
+                  out.append(f"- [{m}:{sec:02d}] {s.text.strip()}")
+              out.append("")
+              print("\n".join(out[-40:]), flush=True)
+          text = "\n".join(out)
+          print("\n===== 全文 =====\n" + text)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(text + "\n")

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f2a44">
-<title>戦国シールド 見守り</title>
+<title>鮮刻シールド 見守り</title>
 <style>
   :root {
     --bg: #f6f5f1; --fg: #1d1d1f; --muted: #5f6368; --card: #ffffff; --line: #d9d7d0;
@@ -94,7 +94,7 @@
 </head>
 <body>
 <main>
-  <h1>戦国シールド 見守り</h1>
+  <h1>鮮刻シールド 見守り</h1>
 
   <div id="status" class="status IDLE">停止中<small>「聞き取りを始める」を押してください</small></div>
 
@@ -136,6 +136,15 @@
   </div>
 
   <div class="card">
+    <strong>警察からのお約束(志太榛原地区の4つの警察署より)</strong>
+    <ul class="intel">
+      <li>電話でお金の話が出たら、まず電話を切って相談を。</li>
+      <li>身に覚えのないお金の請求は、詐欺を疑いましょう。</li>
+      <li>警察がビデオ通話をすることは、絶対にありません。</li>
+    </ul>
+  </div>
+
+  <div class="card">
     <button id="startBtn" class="primary" type="button">聞き取りを始める</button>
     <button id="stopBtn" class="secondary hidden" type="button">電話が終わったら押してください</button>
     <p class="note" id="support"></p>
@@ -161,7 +170,7 @@
     <div id="invitePanel" class="invite hidden">
       <p>家族のスマホで、次の2つをしてもらってください。</p>
       <ol>
-        <li>戦国シールドのLINEを友だち追加する<span id="lineAdd"></span></li>
+        <li>鮮刻シールドのLINEを友だち追加する<span id="lineAdd"></span></li>
         <li>そのトークに、この番号を送る</li>
       </ol>
       <p id="inviteCode" class="invite-code" aria-live="polite"></p>
@@ -186,7 +195,7 @@
     <p class="note">
       使い方: 家の電話をスピーカーにして、この端末をそばに置きます。相手の声を文字にして判定し、
       怪しいときは警告と「AIに応対を代わる」ボタンを出します。電話を切る・代わるかどうかは、いつもあなたが決めます。<br>
-      ※ 音声の文字起こしにはブラウザの音声認識(Chromeでは Google のサーバー)を使います。判定のため会話の文字が戦国シールドのサーバーに送られます。
+      ※ 音声の文字起こしにはブラウザの音声認識(Chromeでは Google のサーバー)を使います。判定のため会話の文字が鮮刻シールドのサーバーに送られます。
     </p>
   </div>
 </main>
@@ -648,7 +657,7 @@
   $("memoBtn").addEventListener("click", async () => {
     const when = (startedAt || new Date()).toLocaleString("ja-JP");
     const memo = [
-      "【不審な電話の記録(戦国シールド)】",
+      "【不審な電話の記録(鮮刻シールド)】",
       `日時: ${when}ごろ`,
       `自動判定: ${lastRisk === "HIGH" ? "詐欺の疑い 高" : lastRisk === "MEDIUM" ? "詐欺の疑い 中" : "該当なし"}`,
       `気になった点: ${[...reasons].join(" / ") || "なし"}`,
