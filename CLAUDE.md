@@ -117,7 +117,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   声の見本を集めて保存すること自体も漏洩時の被害が大きいため。AIの声は、性別を合わせた汎用の合成音声のみ。
   Twilio は無くても起動する(電話の受け口 `/voice/*` だけ閉じる)。スマホだけで置くときはリポジトリ直下の
   `render.yaml`(Render Blueprint、家族の名簿を残すためディスク付き)を使う。鍵は Render の画面に直接入れ、チャットや Git に書かない。
-  詳細は `sengoku-shield/README.md`。
+  詳細は `sengoku-shield/README.md`。別の会話で続けるときの引き継ぎ書は `sengoku-shield/docs/HANDOFF.md`。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。
