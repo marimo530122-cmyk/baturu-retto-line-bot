@@ -76,4 +76,6 @@ test("名義で携帯電話が契約されているという話を拾い、本�
   const ids = (t) => score([t]).matches.map((m) => m.id);
   assert.ok(ids("ご名義で携帯電話の契約をしたという履歴になっていますが、お間違いはないですか").includes("phone_contract_misuse"));
   assert.strictEqual(score(["ご名義で携帯電話のご契約手続きが完了しました。本日はご来店ありがとうございました。"]).level, "none");
+  assert.ok(ids("では、福岡県警察本部のほうに、あの緊急通報として、お繋ぎいたしますので、お電話切らずにこのままお待ちください。").includes("transfer_to_police"));
+  assert.ok(ids("お電話切らずにお待ちください").includes("keep_on_line"));
 });
