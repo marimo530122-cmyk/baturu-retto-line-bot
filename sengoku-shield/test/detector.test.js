@@ -71,3 +71,9 @@ test("電話でATMの画面を操作させる話を拾い、「切らずにお�
   assert.ok(ids("絶対に電話を切らずにお待ちください").includes("keep_on_line"));
   assert.ok(!["medium", "high"].includes(score(["担当に代わりますので、このまま切らずにお待ちください。"]).level));
 });
+
+test("名義で携帯電話が契約されているという話を拾い、本当の契約手続きの連絡には反応しない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("ご名義で携帯電話の契約をしたという履歴になっていますが、お間違いはないですか").includes("phone_contract_misuse"));
+  assert.strictEqual(score(["ご名義で携帯電話のご契約手続きが完了しました。本日はご来店ありがとうございました。"]).level, "none");
+});

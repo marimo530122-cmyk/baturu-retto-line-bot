@@ -1,17 +1,17 @@
 {
   "passed": true,
   "failures": [],
-  "ranAt": "2026-10-01T22:23:02.843Z",
+  "ranAt": "2026-10-02T07:55:10.528Z",
   "inputs": {
     "benign": {
       "file": "benign-samples.json",
-      "count": 87,
-      "sha256": "b3c2221fc9db9fdc3e64ff72f664935d204799f2ff1224e80200c38bb164ce26"
+      "count": 88,
+      "sha256": "9a7ada51536a7c67dcc04af70c7604f5f5bdd40122943607570f50ed0321224b"
     },
     "scam": {
       "file": "scam-samples.json",
-      "count": 64,
-      "sha256": "1fe61b626de11ed604dd92d187dfebba4fe6bc5ff07210cfc84dcef94806c137"
+      "count": 65,
+      "sha256": "b048f01ce62f1d4c2b5403a757ce1bc23782ecaa27a125d483da80121d278bb1"
     },
     "rules": [
       {
@@ -111,28 +111,32 @@
         "source": "電話を切らず|切らないで(ください|お待ち)|(受話器|携帯|電話)を[^。]{0,4}(耳に当てたまま|持ったまま|つないだまま)|通話(したまま|を続けたまま)"
       },
       {
+        "id": "phone_contract_misuse",
+        "source": "^(?=.*名義で[^。]{0,12}(携帯|スマホ|スマートフォン|回線)[^。]{0,8}契約)(?=.*(履歴|お間違い|間違いない|心当たり|身に覚え|ご存[じ知]))"
+      },
+      {
         "id": "card_swap",
         "source": "(封筒|カード)[^。]{0,15}割印|割印[^。]{0,15}(封筒|カード)|(キャッシュ)?カードを?[^。]{0,6}封筒に(入れ|しまっ)"
       }
     ],
-    "rulesSha256": "7264d7142d490af21c3b2afd2ebc70b4e818147fdb4d247f8c4f20b6663b56ee"
+    "rulesSha256": "5fb06fa38b83ff98dd24d2663b39a7fa754e62857af864e952a58f2039e31159"
   },
   "summary": {
-    "benignTotal": 87,
+    "benignTotal": 88,
     "falsePositives": 0,
     "benignTouched": 10,
-    "scamTotal": 64,
+    "scamTotal": 65,
     "dev": {
-      "total": 43,
-      "detected": 41,
-      "rate": 0.9534883720930233
+      "total": 44,
+      "detected": 42,
+      "rate": 0.9545454545454546
     },
     "holdout": {
       "total": 21,
       "detected": 7,
       "rate": 0.3333333333333333
     },
-    "detectionRate": 0.9534883720930233,
+    "detectionRate": 0.9545454545454546,
     "minDetectionRate": 0.8,
     "byCategory": {
       "還付金詐欺": {
@@ -204,6 +208,10 @@
         "detected": 1
       },
       "架空請求詐欺(再現)(確認済み)": {
+        "total": 1,
+        "detected": 1
+      },
+      "ニセ警察詐欺(通信会社かたり)": {
         "total": 1,
         "detected": 1
       }

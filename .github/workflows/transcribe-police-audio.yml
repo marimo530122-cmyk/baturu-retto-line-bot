@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       page_url:
-        description: "録音が載っている公式ページのURL"
+        description: "録音が載っている公式ページのURL(警察の公式 YouTube 動画のURLも可)"
         required: true
         default: "https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html"
   push:
@@ -27,11 +27,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install faster-whisper==1.1.1 requests
+      - run: pip install faster-whisper==1.1.1 requests yt-dlp
       - name: 文字起こし
         shell: python
         run: |
-          import os, re, urllib.request, urllib.parse
+          import os, re, subprocess, urllib.request, urllib.parse
           from faster_whisper import WhisperModel
 
           page = os.environ["PAGE_URL"]
@@ -47,8 +47,12 @@ jobs:
                   yield urllib.parse.urljoin(base, m.group(1).replace("\\/", "/"))
 
           media_re = re.compile(r"\.(?:m4a|wav|mp3|mp4|aac)(?:\?|$)", re.I)
-          html = get(page)
           links, subpages = [], []
+          if re.search(r"(?:^|\.)(?:youtube\.com|youtu\.be)$", host):
+              # YouTube は動画の音声だけを取る(はじかれたらここで止まる)
+              subprocess.run(["yt-dlp", "-f", "bestaudio[ext=m4a]/bestaudio", "-o", "/tmp/yt.%(ext)s", "--print", "title", "--no-simulate", page], check=True)
+              links = ["file:///tmp/" + f for f in os.listdir("/tmp") if f.startswith("yt.")]
+          html = "" if links else get(page)
           for u in refs(page, html):
               if media_re.search(u) and u not in links:
                   links.append(u)
