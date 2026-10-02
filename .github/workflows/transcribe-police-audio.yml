@@ -1,6 +1,7 @@
-# 警察が公開している詐欺電話の録音(静岡県警「サギ電話を聞いてみよう!」など)を文字起こしする。
+# 警察が公開している詐欺電話の録音(静岡県警「サギ電話を聞いてみよう!」、警視庁「犯人の音声」など)を文字起こしする。
 # 音声はページから直接取り、リポジトリには保存しない。結果は実行ログとまとめ(Summary)に出すだけ。
 # 鮮刻シールドの例文に使うのは、ここから人が確かめた短い引用だけ(sengoku-shield/docs/police-videos/README.md の決まり)。
+# 音声が多いページ(警視庁は60本以上)でも時間内に終わるよう、見つけた音声を最大10個の作業に分けて同時に文字起こしする。
 name: transcribe-police-audio
 
 on:
@@ -10,6 +11,10 @@ on:
         description: "録音が載っている公式ページのURL"
         required: true
         default: "https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html"
+      max_minutes:
+        description: "1本あたり先頭から何分まで文字起こしするか(長い録音で時間切れにならないように)"
+        required: false
+        default: "15"
   push:
     branches: ["claude/**"]
     paths: [".github/workflows/transcribe-police-audio.yml"]
@@ -17,22 +22,23 @@ on:
 permissions:
   contents: read
 
+env:
+  PAGE_URL: ${{ github.event.inputs.page_url || 'https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html' }}
+  MAX_MINUTES: ${{ github.event.inputs.max_minutes || '15' }}
+
 jobs:
-  transcribe:
+  find:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      PAGE_URL: ${{ github.event.inputs.page_url || 'https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html' }}
+    timeout-minutes: 10
+    outputs:
+      links: ${{ steps.find.outputs.links }}
+      chunks: ${{ steps.find.outputs.chunks }}
     steps:
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install faster-whisper==1.1.1 requests
-      - name: 文字起こし
+      - name: 音声ファイルを探す
+        id: find
         shell: python
         run: |
-          import os, re, urllib.request, urllib.parse
-          from faster_whisper import WhisperModel
+          import json, os, re, urllib.request, urllib.parse
 
           page = os.environ["PAGE_URL"]
           ua = {"User-Agent": "Mozilla/5.0 (sengoku-shield transcription)"}
@@ -48,10 +54,10 @@ jobs:
 
           media_re = re.compile(r"\.(?:m4a|wav|mp3|mp4|aac)(?:\?|$)", re.I)
           html = get(page)
-          links, subpages = [], []
+          links, subpages = [], []  # links は [音声URL, 載っていたページ]
           for u in refs(page, html):
-              if media_re.search(u) and u not in links:
-                  links.append(u)
+              if media_re.search(u) and u not in [l[0] for l in links]:
+                  links.append([u, page])
           for m in re.finditer(r'href=["\']([^"\']+)["\']', html, re.I):
               u = urllib.parse.urljoin(page, m.group(1)).split("#")[0]
               if urllib.parse.urlparse(u).netloc == host and u.rstrip("/") != page.rstrip("/") \
@@ -64,9 +70,8 @@ jobs:
               for sp in subpages[:60]:
                   try:
                       for u in refs(sp, get(sp)):
-                          if media_re.search(u) and u not in links:
-                              links.append(u)
-                              print(f"  {sp} -> {u}")
+                          if media_re.search(u) and u not in [l[0] for l in links]:
+                              links.append([u, sp])
                   except Exception as e:
                       print(f"  読めない: {sp} ({e})")
           if not links:
@@ -77,20 +82,63 @@ jobs:
               print("YouTube:", sorted(set(re.findall(r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)[\w-]{11}", html))))
               print("ページの先頭:", html[:1500])
           print(f"ページ: {page}\n音声ファイル: {len(links)}件")
+          for i, (u, sp) in enumerate(links, 1):
+              print(f"  {i}. {u}  (ページ: {sp})")
+          n = max(1, min(10, len(links)))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("links=" + json.dumps(links) + "\n")
+              f.write("chunks=" + json.dumps(list(range(n))) + "\n")
+
+  transcribe:
+    needs: find
+    if: needs.find.outputs.links != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: ${{ fromJSON(needs.find.outputs.chunks) }}
+    env:
+      LINKS: ${{ needs.find.outputs.links }}
+      CHUNK: ${{ matrix.chunk }}
+      CHUNKS: ${{ needs.find.outputs.chunks }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install faster-whisper==1.1.1 requests
+      - name: 文字起こし
+        shell: python
+        run: |
+          import json, os, urllib.request, urllib.parse
+          from faster_whisper import WhisperModel, decode_audio
+
+          links = json.loads(os.environ["LINKS"])
+          chunk, n = int(os.environ["CHUNK"]), len(json.loads(os.environ["CHUNKS"]))
+          max_sec = float(os.environ["MAX_MINUTES"]) * 60
+          ua = {"User-Agent": "Mozilla/5.0 (sengoku-shield transcription)"}
           model = WhisperModel("medium", device="cpu", compute_type="int8")
-          out = [f"# 文字起こし: {page}", "", "自動の文字起こしです。聞き間違いを含みます。", ""]
-          for i, u in enumerate(links, 1):
+          summary = open(os.environ["GITHUB_STEP_SUMMARY"], "a")
+          # 番号は find の一覧と同じ(全体の何本目か)。作業ごとに n 本おきに受け持つ
+          for i in range(chunk, len(links), n):
+              u, src = links[i]
               path = f"/tmp/audio{i}" + os.path.splitext(urllib.parse.urlparse(u).path)[1]
-              with open(path, "wb") as f:
-                  f.write(urllib.request.urlopen(urllib.request.Request(u, headers=ua), timeout=60).read())
-              segments, info = model.transcribe(path, language="ja", vad_filter=True, beam_size=5)
-              out += [f"## {i}. {os.path.basename(urllib.parse.urlparse(u).path)}", f"- URL: {u}", f"- 長さ: {info.duration:.0f}秒", ""]
-              for s in segments:
-                  m, sec = divmod(int(s.start), 60)
-                  out.append(f"- [{m}:{sec:02d}] {s.text.strip()}")
-              out.append("")
-              print("\n".join(out[-40:]), flush=True)
-          text = "\n".join(out)
-          print("\n===== 全文 =====\n" + text)
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
-              f.write(text + "\n")
+              try:
+                  with open(path, "wb") as f:
+                      f.write(urllib.request.urlopen(urllib.request.Request(u, headers=ua), timeout=120).read())
+                  audio = decode_audio(path, sampling_rate=16000)
+                  duration = len(audio) / 16000
+                  segments, _ = model.transcribe(audio[: int(max_sec * 16000)], language="ja", vad_filter=True, beam_size=5)
+                  lines = [f"## {i + 1}. {os.path.basename(urllib.parse.urlparse(u).path)}", f"- URL: {u}",
+                           f"- ページ: {src}", f"- 長さ: {duration:.0f}秒"
+                           + (f"(先頭 {max_sec / 60:.0f}分だけ)" if duration > max_sec else ""), ""]
+                  for s in segments:
+                      m, sec = divmod(int(s.start), 60)
+                      lines.append(f"- [{m}:{sec:02d}] {s.text.strip()}")
+              except Exception as e:
+                  lines = [f"## {i + 1}. {u}", f"- 失敗: {e}"]
+              text = "\n".join(lines) + "\n"
+              # 1本終わるごとに全文を出す(途中で時間切れになっても、終わった分は残る)
+              print(text, flush=True)
+              summary.write(text + "\n")
+              summary.flush()
