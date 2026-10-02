@@ -79,3 +79,26 @@ test("名義で携帯電話が契約されているという話を拾い、本�
   assert.ok(ids("では、福岡県警察本部のほうに、あの緊急通報として、お繋ぎいたしますので、お電話切らずにこのままお待ちください。").includes("transfer_to_police"));
   assert.ok(ids("お電話切らずにお待ちください").includes("keep_on_line"));
 });
+
+test("警視庁・千葉県警の実際の録音(dev)にある言い方を拾い、家族や役所のふつうの電話は疑いにしない", () => {
+  const ids = (t) => score([t]).matches.map((m) => m.id);
+  assert.ok(ids("累積医療費のご案内と書かれた封筒が届いているかと思うんです").includes("medical_refund"));
+  assert.ok(ids("期限外のお手続きに関しましては、指定の銀行でお手続きできるようになっております").includes("past_deadline"));
+  assert.ok(ids("銀行さんの本店営業部の方から、ご自宅にお電話入りますので").includes("bank_will_call"));
+  assert.ok(ids("先ほど区役所様の方から、手続きのご案内が来ておりまして").includes("office_to_bank"));
+  assert.ok(ids("名簿というものが発見されたんですけども、そのうちの一件にお名前を確認できたんですよ").includes("arrest_list"));
+  assert.ok(ids("携帯電話落とすとさ、今悪用被害が多いから、連絡しない方がいいって").includes("dont_call_phone"));
+  assert.ok(ids("本人確認で生年月日とか聞かれると思うんだけど、それを答えちゃってもらって大丈夫だからさ").includes("answer_for_me"));
+  assert.ok(ids("100万とかでも借りれない?").includes("borrow_money"));
+  assert.ok(ids("できたら下ろして家で待ってもらうことできない?").includes("withdraw_wait"));
+  assert.ok(ids("会社で盗んだお金だったんだ").includes("embezzle"));
+  assert.ok(ids("金曜日には全部返せるんだけど").includes("repay_soon"));
+  for (const t of [
+    "携帯落としちゃってさ、今公衆電話からかけてる。夜には帰るね。",
+    "今一人?お父さん帰ってきたら、晩ご飯先に食べててって伝えて。",
+    "この前借りた5万円、来週返すね。本当に助かったよ。",
+    "市役所の保険課です。国民健康保険の納付書を再送しましたので、ご確認ください。",
+    "病院の会計です。先日の医療費の領収書をお渡しし忘れていましたので、次回お渡しします。",
+    "交番の者です。落とし物の財布が届いておりますので、身分証を持って交番までお越しください。",
+  ]) assert.ok(!["medium", "high"].includes(score([t]).level), t);
+});
