@@ -36,12 +36,46 @@ jobs:
 
           page = os.environ["PAGE_URL"]
           ua = {"User-Agent": "Mozilla/5.0 (sengoku-shield transcription)"}
-          html = urllib.request.urlopen(urllib.request.Request(page, headers=ua), timeout=30).read().decode("utf-8", "replace")
-          links = []
-          for m in re.finditer(r'(?:href|src)="([^"]+\.(?:m4a|wav|mp3))"', html, re.I):
-              u = urllib.parse.urljoin(page, m.group(1))
-              if u not in links:
+          host = urllib.parse.urlparse(page).netloc
+
+          def get(u):
+              return urllib.request.urlopen(urllib.request.Request(u, headers=ua), timeout=30).read().decode("utf-8", "replace")
+
+          def refs(base, html):
+              # href/src のほか、JSON や JS の中に書かれたパスも拾う(引用符の種類を問わない)
+              for m in re.finditer(r'["\'(]([^"\'()<>\s]+)["\')]', html):
+                  yield urllib.parse.urljoin(base, m.group(1).replace("\\/", "/"))
+
+          media_re = re.compile(r"\.(?:m4a|wav|mp3|mp4|aac)(?:\?|$)", re.I)
+          html = get(page)
+          links, subpages = [], []
+          for u in refs(page, html):
+              if media_re.search(u) and u not in links:
                   links.append(u)
+          for m in re.finditer(r'href=["\']([^"\']+)["\']', html, re.I):
+              u = urllib.parse.urljoin(page, m.group(1)).split("#")[0]
+              if urllib.parse.urlparse(u).netloc == host and u.rstrip("/") != page.rstrip("/") \
+                      and not re.search(r"\.(?:css|js|png|jpe?g|gif|svg|ico|woff2?|pdf)(?:\?|$)", u, re.I) \
+                      and u not in subpages:
+                  subpages.append(u)
+          # 一覧ページに音声が無ければ、同じサイトの個別ページを1段だけたどる(多すぎるときは先頭の60ページ)
+          if not links:
+              print(f"一覧に音声なし。同じサイトのページ {len(subpages)}件 をたどります")
+              for sp in subpages[:60]:
+                  try:
+                      for u in refs(sp, get(sp)):
+                          if media_re.search(u) and u not in links:
+                              links.append(u)
+                              print(f"  {sp} -> {u}")
+                  except Exception as e:
+                      print(f"  読めない: {sp} ({e})")
+          if not links:
+              # 画面をあとから組み立てるサイトだと、ここに手がかりが出る
+              print("音声ファイルが見つかりませんでした。ページ内のリンク(先頭80件):")
+              for u in subpages[:80]:
+                  print("  " + u)
+              print("YouTube:", sorted(set(re.findall(r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)[\w-]{11}", html))))
+              print("ページの先頭:", html[:1500])
           print(f"ページ: {page}\n音声ファイル: {len(links)}件")
           model = WhisperModel("medium", device="cpu", compute_type="int8")
           out = [f"# 文字起こし: {page}", "", "自動の文字起こしです。聞き間違いを含みます。", ""]
