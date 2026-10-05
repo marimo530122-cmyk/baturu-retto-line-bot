@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { extractTextFromFile, OcrProgress } from "@/lib/ocr";
+import { savePhotoHistoryEntry } from "@/lib/photoHistory";
 
 /**
  * 写真/PDFの文字を読み取り、テキストとして親に渡す(親側の入力欄にセットする想定)。
@@ -25,14 +26,18 @@ export function DocumentScanInput({ onExtractedText }: { onExtractedText: (text:
     try {
       const text = await extractTextFromFile(file, (p: OcrProgress) => setProgress(p.progress));
       if (!text) {
+        savePhotoHistoryEntry("empty", "");
         setErrorMessage("文字を読み取れませんでした。別の写真で試してください。");
         setStatus("error");
         return;
       }
+      savePhotoHistoryEntry("success", text);
       onExtractedText(text);
       setStatus("idle");
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "読み取りに失敗しました");
+      const message = e instanceof Error ? e.message : "読み取りに失敗しました";
+      savePhotoHistoryEntry("error", message);
+      setErrorMessage(message);
       setStatus("error");
     }
   };
