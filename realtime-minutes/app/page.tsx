@@ -5,6 +5,7 @@ import { Mic, Square, RotateCcw, AlertTriangle, MessagesSquare, LayoutGrid, Hist
 import { Timeline } from "@/components/Timeline";
 import { InsightPanel } from "@/components/InsightPanel";
 import { HistoryView } from "@/components/HistoryView";
+import { PrivacyNotice } from "@/components/PrivacyNotice";
 import { DocumentScanInput } from "@/components/DocumentScanInput";
 import { QrCodeButton } from "@/components/QrCodeButton";
 import { InAppBrowserBanner, InAppBrowserOverlay, useInAppBrowser } from "@/components/InAppBrowserNotice";
@@ -97,6 +98,8 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+      <PrivacyNotice />
 
       {error && (
         <div className="flex shrink-0 items-center gap-2 bg-amber-50 px-4 py-2 text-xs text-amber-800">

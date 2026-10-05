@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClassifier } from "@/lib/classify";
+import { isRateLimited } from "@/lib/rateLimit";
 import { Mode } from "@/lib/types";
 
 const VALID_MODES: Mode[] = ["meeting", "karte"];
 
+function getClientIp(req: NextRequest): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return req.headers.get("x-real-ip") || "unknown";
+}
+
 export async function POST(req: NextRequest) {
+  if (isRateLimited(getClientIp(req))) {
+    return NextResponse.json(
+      { error: "リクエストが多すぎます。しばらく待ってから再度お試しください。" },
+      { status: 429 }
+    );
+  }
+
   let body: { text?: string; context?: string[]; mode?: string };
   try {
     body = await req.json();
