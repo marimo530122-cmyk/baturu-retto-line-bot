@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { reportError } from "@/lib/monitoring";
 import type { ConsultationSession } from "@/lib/types";
 import TranscriptPanel from "@/components/TranscriptPanel";
 import SoapEditor from "@/components/SoapEditor";
@@ -28,15 +29,23 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true);
   const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [liveUpdateNotice, setLiveUpdateNotice] = useState<string | null>(null);
   const refreshDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveUpdateNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  const loadSession = useCallback(() => {
+    setLoading(true);
+    setError(null);
     api
       .getSession(sessionId)
       .then(setSession)
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
 
   // 対話中に処方オーダ・アンビエントスクライブのライブプレビューを自動構築する
   // （発言追加のたびにデバウンスして再抽出。手動入力は一切不要）
@@ -47,27 +56,44 @@ export default function SessionPage() {
         await api.refreshPrescription(sessionId);
         const updated = await api.refreshLiveDraft(sessionId);
         setSession(updated);
-      } catch {
-        // ライブ更新の失敗は致命的ではないため握りつぶす（finalize時に再生成される）
+      } catch (e) {
+        // ライブ更新の失敗自体は致命的ではない（次の発言で自動的に再試行される・
+        // finalize時にも再生成される）ため会話は止めないが、記録と軽い通知は行う
+        reportError(e, { sessionId, action: "live-update" });
+        setLiveUpdateNotice("自動更新に失敗しました(次の発言で自動的に再試行します)");
+        if (liveUpdateNoticeTimer.current) clearTimeout(liveUpdateNoticeTimer.current);
+        liveUpdateNoticeTimer.current = setTimeout(() => setLiveUpdateNotice(null), 4000);
       }
     }, 2500);
   }, [sessionId]);
 
   async function handleFinalize() {
     setFinalizing(true);
+    setError(null);
     try {
       const updated = await api.finalizeSession(sessionId);
       setSession(updated);
     } catch (e) {
-      setError(String(e));
+      setError(String(e instanceof Error ? e.message : e));
     } finally {
       setFinalizing(false);
     }
   }
 
   if (loading) return <p className="text-gray-500">読み込み中...</p>;
-  if (error || !session)
-    return <p className="text-clinic-danger">エラー: {error}</p>;
+  if (error && !session)
+    return (
+      <div className="max-w-md mx-auto mt-12 text-center space-y-3">
+        <p className="text-clinic-danger">エラー: {error}</p>
+        <button
+          onClick={loadSession}
+          className="bg-clinic-accent text-white font-medium px-4 py-2 rounded-md"
+        >
+          再試行
+        </button>
+      </div>
+    );
+  if (!session) return null;
 
   const canHandoff = session.status === "review" || session.status === "sent";
   const liveUpdating = session.status === "in_progress" && !session.prescription.edited;
@@ -84,6 +110,12 @@ export default function SessionPage() {
       </div>
 
       {session.status === "in_progress" && <PhysicianProfileEditor />}
+
+      {liveUpdateNotice && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+          {liveUpdateNotice}
+        </p>
+      )}
 
       <div className="grid md:grid-cols-2 gap-4">
         <TranscriptPanel
@@ -104,13 +136,24 @@ export default function SessionPage() {
       )}
 
       {session.status === "in_progress" && (
-        <button
-          onClick={handleFinalize}
-          disabled={finalizing}
-          className="w-full bg-clinic-accent text-white font-semibold py-3 rounded-md disabled:opacity-50"
-        >
-          {finalizing ? "議事録・カルテ・紹介状を生成中..." : "診察を終了してカルテ一式を生成"}
-        </button>
+        <div className="space-y-2">
+          {error && (
+            <p className="text-sm text-clinic-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {error}
+            </p>
+          )}
+          <button
+            onClick={handleFinalize}
+            disabled={finalizing}
+            className="w-full bg-clinic-accent text-white font-semibold py-3 rounded-md disabled:opacity-50"
+          >
+            {finalizing
+              ? "議事録・カルテ・紹介状を生成中..."
+              : error
+                ? "再試行: カルテ一式を生成"
+                : "診察を終了してカルテ一式を生成"}
+          </button>
+        </div>
       )}
 
       {(session.status === "review" || session.status === "sent") && (

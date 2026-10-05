@@ -47,6 +47,11 @@ class RealtimeTranscriber(ABC):
     async def poll_deltas(self) -> list[TranscriptDelta]:
         """音声認識サービスから届いた新規デルタを取り出す（ノンブロッキング）。"""
 
+    def has_fatal_error(self) -> bool:
+        """上流の音声認識接続が切れて復旧不能な場合に True を返す。
+        呼び出し側(audio_ws)はこれを見て、ブラウザ側に再接続を促すエラーを送る。"""
+        return False
+
     @abstractmethod
     async def close(self) -> None: ...
 
@@ -98,6 +103,7 @@ class OpenAIRealtimeTranscriber(RealtimeTranscriber):
         self._ws = None
         self._deltas: list[TranscriptDelta] = []
         self._recv_task = None
+        self._fatal_error = False
 
     async def start(self) -> None:
         try:
@@ -112,19 +118,25 @@ class OpenAIRealtimeTranscriber(RealtimeTranscriber):
             "Authorization": f"Bearer {self._settings.openai_api_key}",
             "OpenAI-Beta": "realtime=v1",
         }
-        self._ws = await websockets.connect(url, extra_headers=headers, max_size=None)
-        await self._ws.send(
-            json.dumps(
-                {
-                    "type": "session.update",
-                    "session": {
-                        "input_audio_format": "pcm16",
-                        "input_audio_transcription": {"model": "whisper-1"},
-                        "turn_detection": {"type": "server_vad"},
-                    },
-                }
+        try:
+            self._ws = await websockets.connect(url, extra_headers=headers, max_size=None)
+            await self._ws.send(
+                json.dumps(
+                    {
+                        "type": "session.update",
+                        "session": {
+                            "input_audio_format": "pcm16",
+                            "input_audio_transcription": {"model": "whisper-1"},
+                            "turn_detection": {"type": "server_vad"},
+                        },
+                    }
+                )
             )
-        )
+        except Exception as exc:
+            logger.exception("Realtime API への接続に失敗しました")
+            self._fatal_error = True
+            raise RuntimeError("音声認識サービスへの接続に失敗しました") from exc
+
         self._recv_task = asyncio.create_task(self._recv_loop())
 
     async def _recv_loop(self) -> None:
@@ -141,15 +153,26 @@ class OpenAIRealtimeTranscriber(RealtimeTranscriber):
                     text = event.get("delta", "")
                     if text:
                         self._deltas.append(TranscriptDelta(text=text, is_final=False))
+            # ループが例外無く終了した場合も、サーバー側が接続を閉じたということなので
+            # 復旧不能な切断として扱う(呼び出し側が再接続を促せるように)。
+            self._fatal_error = True
         except Exception:  # noqa: BLE001
             logger.exception("Realtime API 受信ループでエラーが発生しました")
+            self._fatal_error = True
+
+    def has_fatal_error(self) -> bool:
+        return self._fatal_error
 
     async def feed_audio_chunk(self, audio_b64: str) -> None:
         if not self._ws:
             return
-        await self._ws.send(
-            json.dumps({"type": "input_audio_buffer.append", "audio": audio_b64})
-        )
+        try:
+            await self._ws.send(
+                json.dumps({"type": "input_audio_buffer.append", "audio": audio_b64})
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("音声チャンクの送信に失敗しました")
+            self._fatal_error = True
 
     async def feed_manual_text(self, text: str) -> AsyncIterator[TranscriptDelta]:
         # OpenAI Realtime 接続時も、開発用の手動テキスト入力はローカルで即時反映する。

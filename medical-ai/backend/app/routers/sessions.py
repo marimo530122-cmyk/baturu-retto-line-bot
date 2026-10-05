@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.config import get_settings
 from app.data import store
+from app.errors import LlmGenerationError
 from app.models import (
     ConsultationSession,
     ManualTranscriptIn,
@@ -46,7 +47,10 @@ async def refresh_prescription(session_id: str) -> ConsultationSession:
         return session
 
     settings = get_settings()
-    session.prescription = await llm_pipeline.extract_prescription(settings, session)
+    try:
+        session.prescription = await llm_pipeline.extract_prescription(settings, session)
+    except LlmGenerationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     store.save_session(session)
     return session
 
@@ -62,9 +66,12 @@ async def refresh_live_draft(session_id: str) -> ConsultationSession:
     physician_profile = store.get_physician_profile()
     style_examples = store.list_recent_finalized_sessions(limit=2)
 
-    session.live_draft = await llm_pipeline.generate_live_draft(
-        settings, session, physician_profile, style_examples
-    )
+    try:
+        session.live_draft = await llm_pipeline.generate_live_draft(
+            settings, session, physician_profile, style_examples
+        )
+    except LlmGenerationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     store.save_session(session)
     return session
 
@@ -76,7 +83,13 @@ async def finalize_session(session_id: str) -> ConsultationSession:
     store.save_session(session)
 
     settings = get_settings()
-    await llm_pipeline.run_full_pipeline(settings, session)
+    try:
+        await llm_pipeline.run_full_pipeline(settings, session)
+    except LlmGenerationError as exc:
+        # 生成中状態のまま固まらないよう、医師が再試行できる状態に戻してから保存する
+        session.status = SessionStatus.IN_PROGRESS
+        store.save_session(session)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     session.status = SessionStatus.REVIEW
     store.save_session(session)
@@ -99,44 +112,91 @@ async def audio_ws(websocket: WebSocket, session_id: str) -> None:
     try:
         session = store.get_session(session_id)
     except Exception:  # noqa: BLE001
-        await websocket.send_json({"type": "error", "message": "セッションが見つかりません"})
+        await websocket.send_json({"type": "error", "message": "セッションが見つかりません", "fatal": True})
         await websocket.close()
         return
 
     settings = get_settings()
     transcriber = create_transcriber(settings)
-    await transcriber.start()
+    try:
+        await transcriber.start()
+    except Exception:  # noqa: BLE001
+        logger.exception("音声認識の初期化に失敗しました: session=%s", session_id)
+        await websocket.send_json(
+            {
+                "type": "error",
+                "fatal": True,
+                "message": "音声認識サービスに接続できませんでした。少し待ってから「マイク開始」を押し直してください。",
+            }
+        )
+        await websocket.close()
+        return
 
     try:
         while True:
             message = await websocket.receive_json()
             msg_type = message.get("type")
 
-            if msg_type == "audio_chunk":
-                await transcriber.feed_audio_chunk(message.get("audio", ""))
-                for delta in await transcriber.poll_deltas():
-                    if delta.is_final:
-                        session.transcript.append(TranscriptSegment(text=delta.text, is_final=True))
-                        store.save_session(session)
-                    await websocket.send_json(
-                        {"type": "transcript_delta", "text": delta.text, "is_final": delta.is_final}
-                    )
+            try:
+                if msg_type == "audio_chunk":
+                    await transcriber.feed_audio_chunk(message.get("audio", ""))
+                    for delta in await transcriber.poll_deltas():
+                        if delta.is_final:
+                            session.transcript.append(TranscriptSegment(text=delta.text, is_final=True))
+                            store.save_session(session)
+                        await websocket.send_json(
+                            {"type": "transcript_delta", "text": delta.text, "is_final": delta.is_final}
+                        )
 
-            elif msg_type == "manual_text":
-                speaker = message.get("speaker", "unknown")
-                text = message.get("text", "")
-                if not text.strip():
-                    continue
-                async for delta in transcriber.feed_manual_text(text):
-                    session.transcript.append(
-                        TranscriptSegment(speaker=speaker, text=delta.text, is_final=delta.is_final)
-                    )
-                    store.save_session(session)
+                    # 上流の音声認識接続が裏で切れていた場合、黙って文字起こしが止まるのを
+                    # 防ぐため、ブラウザ側に再接続が必要であることを明示的に伝える。
+                    if transcriber.has_fatal_error():
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "fatal": True,
+                                "message": "音声認識との接続が切れました。「マイク開始」を押し直してください。",
+                            }
+                        )
+                        break
+
+                elif msg_type == "manual_text":
+                    speaker = message.get("speaker", "unknown")
+                    text = message.get("text", "")
+                    if not text.strip():
+                        continue
+                    async for delta in transcriber.feed_manual_text(text):
+                        session.transcript.append(
+                            TranscriptSegment(speaker=speaker, text=delta.text, is_final=delta.is_final)
+                        )
+                        store.save_session(session)
+                        await websocket.send_json(
+                            {
+                                "type": "transcript_delta",
+                                "text": delta.text,
+                                "is_final": delta.is_final,
+                                "speaker": speaker,
+                            }
+                        )
+                else:
                     await websocket.send_json(
-                        {"type": "transcript_delta", "text": delta.text, "is_final": delta.is_final, "speaker": speaker}
+                        {"type": "error", "fatal": False, "message": f"不明なメッセージタイプ: {msg_type}"}
                     )
-            else:
-                await websocket.send_json({"type": "error", "message": f"不明なメッセージタイプ: {msg_type}"})
+            except WebSocketDisconnect:
+                raise
+            except Exception:  # noqa: BLE001
+                # 1メッセージの処理に失敗しても接続自体は切らず、エラーを通知して継続する
+                # (例: 音声チャンク1件の中継失敗で録音全体を止めない)。
+                logger.exception("audio_ws メッセージ処理中にエラー: session=%s", session_id)
+                try:
+                    import sentry_sdk
+
+                    sentry_sdk.capture_exception()
+                except ImportError:
+                    pass
+                await websocket.send_json(
+                    {"type": "error", "fatal": False, "message": "音声処理中に一時的なエラーが発生しました。"}
+                )
 
     except WebSocketDisconnect:
         logger.info("audio_ws disconnected: session=%s", session_id)

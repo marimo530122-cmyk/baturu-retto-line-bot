@@ -5,4 +5,6 @@ __pycache__/
 *.pyc
 .venv/
 medical-ai/frontend/.next/
+medical-ai/frontend/*.tsbuildinfo
+medical-ai/backend/.pytest_cache/
 medical-ai-local/certs/

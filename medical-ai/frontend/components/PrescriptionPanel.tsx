@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { reportError } from "@/lib/monitoring";
 import type { ComplianceCheckResult, PrescriptionItem, PrescriptionOrder } from "@/lib/types";
 import ComplianceSuggestionModal from "./ComplianceSuggestionModal";
 
@@ -28,6 +29,7 @@ export default function PrescriptionPanel({
   const [requestedDays, setRequestedDays] = useState<number | "">("");
   const [checking, setChecking] = useState(false);
   const [complianceResult, setComplianceResult] = useState<ComplianceCheckResult | null>(null);
+  const [complianceError, setComplianceError] = useState<string | null>(null);
 
   async function persist(next: PrescriptionOrder) {
     onChange(next);
@@ -54,12 +56,16 @@ export default function PrescriptionPanel({
 
   async function runComplianceCheck() {
     setChecking(true);
+    setComplianceError(null);
     try {
       const result = await api.checkCompliance(
         sessionId,
         requestedDays === "" ? undefined : Number(requestedDays)
       );
       setComplianceResult(result);
+    } catch (e) {
+      reportError(e, { sessionId, action: "compliance-check" });
+      setComplianceError(e instanceof Error ? e.message : String(e));
     } finally {
       setChecking(false);
     }
@@ -166,6 +172,15 @@ export default function PrescriptionPanel({
           {checking ? "確認中..." : "処方適正化チェック"}
         </button>
       </div>
+
+      {complianceError && (
+        <div className="mt-2 flex items-center gap-2">
+          <p className="text-xs text-clinic-danger flex-1">{complianceError}</p>
+          <button onClick={runComplianceCheck} className="text-xs font-medium text-clinic-accent underline">
+            再試行
+          </button>
+        </div>
+      )}
 
       {complianceResult && complianceResult.triggered && (
         <ComplianceSuggestionModal

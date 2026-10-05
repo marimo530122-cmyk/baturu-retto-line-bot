@@ -9,19 +9,61 @@ import type {
   ReferralLetter,
   SoapNote,
 } from "./types";
+import { reportError } from "./monitoring";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// サーバー側が「一時的に混雑/不安定」と明示しているステータス(503=AI生成の一時失敗, 429=レート制限)
+// に限り、1回だけ静かに再試行する。それ以外(400/404等)は再試行しても無駄なので即座に失敗させる。
+const SILENTLY_RETRYABLE_STATUSES = new Set([429, 503]);
+const SILENT_RETRY_DELAY_MS = 1500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`API error ${res.status}: ${body}`);
+    let message = body;
+    try {
+      const parsed = JSON.parse(body);
+      message = parsed.detail || parsed.error || body;
+    } catch {
+      // JSONでなければそのままの本文を使う
+    }
+    throw new ApiError(res.status, message || `API error ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await requestOnce<T>(path, init);
+  } catch (e) {
+    if (e instanceof ApiError && SILENTLY_RETRYABLE_STATUSES.has(e.status)) {
+      await sleep(SILENT_RETRY_DELAY_MS);
+      try {
+        return await requestOnce<T>(path, init);
+      } catch (e2) {
+        reportError(e2, { path, retried: true });
+        throw e2;
+      }
+    }
+    reportError(e, { path, retried: false });
+    throw e;
+  }
 }
 
 export const api = {

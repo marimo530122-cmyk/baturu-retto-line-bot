@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { reportError } from "@/lib/monitoring";
 import type { Speaker, TranscriptSegment } from "@/lib/types";
 import { useAudioCapture } from "@/lib/useAudioCapture";
 
@@ -11,6 +12,8 @@ const speakerLabel: Record<Speaker, string> = {
   staff: "スタッフ",
   unknown: "話者不明",
 };
+
+const MAX_AUTO_RECONNECT_ATTEMPTS = 3;
 
 export default function TranscriptPanel({
   sessionId,
@@ -23,15 +26,28 @@ export default function TranscriptPanel({
 }) {
   const [segments, setSegments] = useState<TranscriptSegment[]>(initialTranscript);
   const [connected, setConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [manualSpeaker, setManualSpeaker] = useState<Speaker>("patient");
   const [manualText, setManualText] = useState("");
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intentionalCloseRef = useRef(false);
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    setConnectionError(null);
     const ws = new WebSocket(api.wsUrl(sessionId));
     wsRef.current = ws;
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
+
+    ws.onopen = () => {
+      setConnected(true);
+      reconnectAttemptsRef.current = 0;
+    };
+
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.type === "transcript_delta" && msg.is_final) {
@@ -46,11 +62,50 @@ export default function TranscriptPanel({
           },
         ]);
         onNewFinalSegment?.();
+      } else if (msg.type === "error") {
+        // サーバーからの音声処理エラー通知。fatal時は接続が切られる前提で再接続を促す
+        reportError(new Error(msg.message), { sessionId, fatal: msg.fatal, source: "audio_ws" });
+        setConnectionError(msg.message);
       }
     };
-    return () => ws.close();
+
+    ws.onerror = (event) => {
+      reportError(new Error("WebSocket error"), { sessionId, event: String(event) });
+    };
+
+    ws.onclose = () => {
+      setConnected(false);
+      wsRef.current = null;
+      if (intentionalCloseRef.current) return;
+
+      // 意図しない切断は、短い間隔で自動再接続を試みる。それでも繋がらない場合は
+      // ユーザーが「再接続」ボタンで手動再試行できるようにする（下のUIで表示）。
+      if (reconnectAttemptsRef.current < MAX_AUTO_RECONNECT_ATTEMPTS) {
+        reconnectAttemptsRef.current += 1;
+        const delay = 1000 * reconnectAttemptsRef.current;
+        reconnectTimerRef.current = setTimeout(connect, delay);
+      } else {
+        setConnectionError("音声認識サーバーとの接続が切れました。手動で再接続してください。");
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  useEffect(() => {
+    intentionalCloseRef.current = false;
+    connect();
+    return () => {
+      intentionalCloseRef.current = true;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      wsRef.current?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
+
+  const handleManualReconnect = useCallback(() => {
+    reconnectAttemptsRef.current = 0;
+    connect();
+  }, [connect]);
 
   const { isRecording, error: micError, start, stop } = useAudioCapture((base64) => {
     wsRef.current?.readyState === WebSocket.OPEN &&
@@ -64,10 +119,13 @@ export default function TranscriptPanel({
         JSON.stringify({ type: "manual_text", speaker: manualSpeaker, text: manualText })
       );
     } else {
-      api.addManualTranscript(sessionId, manualSpeaker, manualText).then((s) => {
-        setSegments(s.transcript);
-        onNewFinalSegment?.();
-      });
+      api
+        .addManualTranscript(sessionId, manualSpeaker, manualText)
+        .then((s) => {
+          setSegments(s.transcript);
+          onNewFinalSegment?.();
+        })
+        .catch((e) => reportError(e, { sessionId, action: "manual-transcript-fallback" }));
     }
     setManualText("");
   }
@@ -84,6 +142,20 @@ export default function TranscriptPanel({
           {connected ? "接続中" : "未接続"}
         </span>
       </div>
+
+      {connectionError && (
+        <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+          <p className="text-xs text-amber-800 flex-1">{connectionError}</p>
+          {!connected && (
+            <button
+              onClick={handleManualReconnect}
+              className="text-xs font-medium text-clinic-accent underline shrink-0"
+            >
+              再接続
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto space-y-2 mb-3 max-h-80 min-h-[10rem] border border-gray-100 rounded-md p-2 bg-gray-50">
         {segments.length === 0 && (

@@ -11,6 +11,7 @@ import logging
 from datetime import datetime
 
 from app.config import Settings
+from app.errors import call_with_retry
 from app.models import (
     ConsultationSession,
     LiveDraft,
@@ -46,23 +47,29 @@ def _transcript_text(session: ConsultationSession) -> str:
     return "\n".join(lines)
 
 
-async def _chat_json(settings: Settings, system_prompt: str, user_content: str, schema_name: str, schema: dict) -> dict:
+async def _chat_json(
+    settings: Settings, system_prompt: str, user_content: str, schema_name: str, schema: dict, *, stage: str
+) -> dict:
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=settings.openai_api_key)
-    response = await client.chat.completions.create(
-        model=settings.chat_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {"name": schema_name, "schema": schema, "strict": True},
-        },
-    )
-    content = response.choices[0].message.content
-    return json.loads(content)
+
+    async def _call() -> dict:
+        response = await client.chat.completions.create(
+            model=settings.chat_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {"name": schema_name, "schema": schema, "strict": True},
+            },
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
+
+    return await call_with_retry(_call, stage=stage)
 
 
 async def generate_minutes(settings: Settings, session: ConsultationSession) -> str:
@@ -74,14 +81,18 @@ async def generate_minutes(settings: Settings, session: ConsultationSession) -> 
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=settings.openai_api_key)
-    response = await client.chat.completions.create(
-        model=settings.chat_model,
-        messages=[
-            {"role": "system", "content": MINUTES_SYSTEM_PROMPT},
-            {"role": "user", "content": transcript},
-        ],
-    )
-    return response.choices[0].message.content or ""
+
+    async def _call() -> str:
+        response = await client.chat.completions.create(
+            model=settings.chat_model,
+            messages=[
+                {"role": "system", "content": MINUTES_SYSTEM_PROMPT},
+                {"role": "user", "content": transcript},
+            ],
+        )
+        return response.choices[0].message.content or ""
+
+    return await call_with_retry(_call, stage="議事録生成")
 
 
 SOAP_SCHEMA = {
@@ -108,7 +119,7 @@ async def generate_soap(settings: Settings, session: ConsultationSession) -> Soa
             generated_at=datetime.utcnow(),
             is_mock=True,
         )
-    data = await _chat_json(settings, SOAP_SYSTEM_PROMPT, transcript, "soap_note", SOAP_SCHEMA)
+    data = await _chat_json(settings, SOAP_SYSTEM_PROMPT, transcript, "soap_note", SOAP_SCHEMA, stage="SOAPカルテ生成")
     return SoapNote(**data, generated_at=datetime.utcnow(), is_mock=False)
 
 
@@ -148,7 +159,9 @@ async def generate_referral(settings: Settings, session: ConsultationSession) ->
             is_mock=True,
         )
     user_content = f"# 議事録\n{transcript}\n\n# SOAPカルテ\n{session.soap.model_dump_json()}"
-    data = await _chat_json(settings, REFERRAL_SYSTEM_PROMPT, user_content, "referral_letter", REFERRAL_SCHEMA)
+    data = await _chat_json(
+        settings, REFERRAL_SYSTEM_PROMPT, user_content, "referral_letter", REFERRAL_SCHEMA, stage="紹介状生成"
+    )
     return ReferralLetter(**data, generated_at=datetime.utcnow(), is_mock=False)
 
 
@@ -198,7 +211,14 @@ async def extract_prescription(settings: Settings, session: ConsultationSession)
             generated_at=datetime.utcnow(),
             is_mock=True,
         )
-    data = await _chat_json(settings, PRESCRIPTION_SYSTEM_PROMPT, transcript, "prescription_order", PRESCRIPTION_SCHEMA)
+    data = await _chat_json(
+        settings,
+        PRESCRIPTION_SYSTEM_PROMPT,
+        transcript,
+        "prescription_order",
+        PRESCRIPTION_SCHEMA,
+        stage="処方データ抽出",
+    )
     items = [PrescriptionItem(**item) for item in data.get("items", [])]
     return PrescriptionOrder(
         diagnosis=data.get("diagnosis", ""),
@@ -263,7 +283,9 @@ async def generate_live_draft(
 
     style_block = _style_reference_block(physician_profile, style_examples)
     user_content = f"{style_block}\n\n# 今回の診察会話（ここまでの全文）\n{transcript}"
-    data = await _chat_json(settings, LIVE_DRAFT_SYSTEM_PROMPT, user_content, "live_draft", LIVE_DRAFT_SCHEMA)
+    data = await _chat_json(
+        settings, LIVE_DRAFT_SYSTEM_PROMPT, user_content, "live_draft", LIVE_DRAFT_SCHEMA, stage="ライブドラフト更新"
+    )
     return LiveDraft(**data, updated_at=datetime.utcnow(), is_mock=False)
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { reportError } from "./monitoring";
 
 /**
  * マイク音声を 16kHz mono PCM16 にダウンサンプルし、base64 チャンクとして
@@ -33,15 +34,21 @@ export function useAudioCapture(onChunk: (base64Pcm16: string) => void) {
       processorRef.current = processor;
 
       processor.onaudioprocess = (event) => {
-        const input = event.inputBuffer.getChannelData(0);
-        const pcm16 = downsampleAndEncode(input, audioCtx.sampleRate, 16000);
-        onChunk(pcm16);
+        try {
+          const input = event.inputBuffer.getChannelData(0);
+          const pcm16 = downsampleAndEncode(input, audioCtx.sampleRate, 16000);
+          onChunk(pcm16);
+        } catch (e) {
+          // 1フレームの処理失敗で録音全体を止めない。繰り返し発生する場合に備えて記録だけする
+          reportError(e, { stage: "audio-processing" });
+        }
       };
 
       source.connect(processor);
       processor.connect(audioCtx.destination);
       setIsRecording(true);
     } catch (e) {
+      reportError(e, { stage: "audio-capture-start" });
       setError("マイクにアクセスできませんでした: " + String(e));
     }
   }, [onChunk]);
