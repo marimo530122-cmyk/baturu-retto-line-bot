@@ -1,7 +1,7 @@
 import { CATEGORY_LABEL, ClassifiedUtterance, Mode } from "@/lib/types";
 
 const MINDMAP_ORDER_BY_MODE: Record<Mode, Array<ClassifiedUtterance["category"]>> = {
-  meeting: ["decision", "todo", "concern", "important", "question", "request"],
+  meeting: ["decision", "todo", "problem", "solution", "concern", "important", "concept", "question", "request"],
   karte: ["symptom", "decision", "treatment", "appointment", "worry"],
 };
 

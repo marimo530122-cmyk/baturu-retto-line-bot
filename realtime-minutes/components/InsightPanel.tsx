@@ -1,23 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Network, ListTodo, Pin, FileText, CalendarClock } from "lucide-react";
+import { Network, ListTodo, Pin, FileText, CalendarClock, Lightbulb } from "lucide-react";
 import { ClassifiedUtterance, Mode } from "@/lib/types";
 import { MindMapView } from "./MindMapView";
 import { TodoList } from "./TodoList";
 import { DecisionLog } from "./DecisionLog";
+import { IssueLog } from "./IssueLog";
 import { AppointmentList } from "./AppointmentList";
 import { SummaryView } from "./SummaryView";
 import { utterancesToMarkdown } from "@/lib/markmapTransform";
 import { utterancesToSummaryMarkdown } from "@/lib/summaryTransform";
 
-type InsightTab = "mindmap" | "todo" | "appointment" | "decisions" | "summary";
+type InsightTab = "mindmap" | "todo" | "appointment" | "decisions" | "issues" | "summary";
 
 const TABS_BY_MODE: Record<Mode, Array<{ id: InsightTab; label: string; icon: typeof Network }>> = {
   meeting: [
     { id: "mindmap", label: "マインドマップ", icon: Network },
     { id: "todo", label: "ToDo/宿題", icon: ListTodo },
     { id: "decisions", label: "決定事項", icon: Pin },
+    { id: "issues", label: "概念/問題点/解決策", icon: Lightbulb },
     { id: "summary", label: "サマリー", icon: FileText },
   ],
   karte: [
@@ -66,6 +68,7 @@ export function InsightPanel({
         {tab === "todo" && <TodoList utterances={utterances} onToggle={onToggleTodo} />}
         {tab === "appointment" && <AppointmentList utterances={utterances} />}
         {tab === "decisions" && <DecisionLog utterances={utterances} />}
+        {tab === "issues" && <IssueLog utterances={utterances} />}
         {tab === "summary" && (
           <SummaryView
             markdown={utterancesToSummaryMarkdown(utterances, mode)}

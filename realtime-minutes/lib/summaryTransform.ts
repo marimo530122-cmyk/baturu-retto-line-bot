@@ -21,6 +21,27 @@ function meetingSummary(utterances: ClassifiedUtterance[]): string {
     lines.push("");
   }
 
+  const problems = utterances.filter((u) => u.category === "problem");
+  if (problems.length) {
+    lines.push("## 問題点");
+    problems.forEach((u) => lines.push(`- ${u.summary || u.text}`));
+    lines.push("");
+  }
+
+  const solutions = utterances.filter((u) => u.category === "solution");
+  if (solutions.length) {
+    lines.push("## 解決策");
+    solutions.forEach((u) => lines.push(`- ${u.summary || u.text}`));
+    lines.push("");
+  }
+
+  const concepts = utterances.filter((u) => u.category === "concept");
+  if (concepts.length) {
+    lines.push("## 概念・用語");
+    concepts.forEach((u) => lines.push(`- ${u.summary || u.text}`));
+    lines.push("");
+  }
+
   lines.push("## タイムライン(全発言)");
   utterances.forEach((u) => {
     lines.push(`- \`${formatTime(u.timestamp)}\` [${CATEGORY_LABEL[u.category]}] ${u.text}`);
