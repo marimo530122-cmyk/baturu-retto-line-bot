@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import json
 import logging
+import unicodedata
 from datetime import datetime
 
 from app.config import Settings
 from app.errors import call_with_retry
 from app.models import (
     ConsultationSession,
+    DrugSuggestion,
+    DrugSuggestionResult,
     LiveDraft,
     PhysicianProfile,
     PrescriptionItem,
@@ -22,6 +25,7 @@ from app.models import (
     SoapNote,
 )
 from app.prompts import (
+    DRUG_SUGGESTION_SYSTEM_PROMPT,
     LIVE_DRAFT_SYSTEM_PROMPT,
     MINUTES_SYSTEM_PROMPT,
     PRESCRIPTION_SYSTEM_PROMPT,
@@ -227,6 +231,137 @@ async def extract_prescription(settings: Settings, session: ConsultationSession)
         generated_at=datetime.utcnow(),
         is_mock=False,
     )
+
+
+DRUG_SUGGESTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "suggestions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "drug_name": {"type": "string"},
+                    "suggestion_text": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "grounding_quote": {"type": "string"},
+                    "cautions": {"type": "string"},
+                },
+                "required": ["drug_name", "suggestion_text", "rationale", "grounding_quote", "cautions"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["suggestions"],
+    "additionalProperties": False,
+}
+
+MAX_DRUG_SUGGESTIONS = 3
+# これより短い引用は「の」「痛み」のように何にでも一致してしまい根拠確認にならないため認めない
+MIN_GROUNDING_QUOTE_CHARS = 4
+
+
+def _normalize_for_grounding(text: str) -> str:
+    """全角/半角・空白・改行の違いだけは吸収して照合する(言い換えは吸収しない)。"""
+    normalized = unicodedata.normalize("NFKC", text)
+    return "".join(normalized.split())
+
+
+def is_grounded(quote: str, source_texts: list[str]) -> bool:
+    """AIが根拠として引用した文言が、SOAPのS/Aのどちらかに実際に書かれているかを機械的に確認する。
+    S末尾とA先頭をまたぐ「つぎはぎ引用」を通さないよう、S/Aは別々に照合する。"""
+    q = _normalize_for_grounding(quote)
+    if len(q) < MIN_GROUNDING_QUOTE_CHARS:
+        return False
+    return any(q in _normalize_for_grounding(text) for text in source_texts)
+
+
+def _is_already_prescribed(drug_name: str, prescribed_names: list[str]) -> bool:
+    d = _normalize_for_grounding(drug_name)
+    return any(p and (p in d or d in p) for p in (_normalize_for_grounding(n) for n in prescribed_names))
+
+
+def _filter_drug_suggestions(
+    raw: list[dict], source_texts: list[str], prescribed_names: list[str]
+) -> tuple[list[DrugSuggestion], int]:
+    """根拠を原文で確認できない提案・既に処方済みの薬剤の重複提案を捨てる。"""
+    kept: list[DrugSuggestion] = []
+    discarded = 0
+    for item in raw:
+        suggestion = DrugSuggestion(**item)
+        if (
+            not suggestion.drug_name.strip()
+            or not is_grounded(suggestion.grounding_quote, source_texts)
+            or _is_already_prescribed(suggestion.drug_name, prescribed_names)
+        ):
+            discarded += 1
+            continue
+        kept.append(suggestion)
+    if len(kept) > MAX_DRUG_SUGGESTIONS:
+        discarded += len(kept) - MAX_DRUG_SUGGESTIONS
+        kept = kept[:MAX_DRUG_SUGGESTIONS]
+    return kept, discarded
+
+
+async def suggest_drugs(settings: Settings, session: ConsultationSession) -> DrugSuggestionResult:
+    """SOAPのS/Aから薬剤候補の「提案文」を生成する。
+
+    処方適正化アドバイザーと同じく安全側の設計:
+    - 結果は表示用に返すだけで、session.prescription には一切書き込まない(自動入力しない)。
+    - 用量・日数は生成させない(用量決定は医師が行う)。
+    - S/Aからの一字一句の引用(grounding_quote)を必須とし、原文に無い引用の提案は捨てる
+      (議事録に無い症状・診断を創作して根拠にすることを機械的に防ぐ)。
+    - 診断名の提案・変更はさせない(プロンプトで禁止)。
+    """
+    subjective = session.soap.subjective.strip()
+    assessment = session.soap.assessment.strip()
+    base = DrugSuggestionResult(
+        basis_subjective=subjective,
+        basis_assessment=assessment,
+        generated_at=datetime.utcnow(),
+        is_mock=settings.mock_mode,
+    )
+    if not subjective and not assessment:
+        base.notice = "SOAPカルテのS(主観的情報)・A(評価)が空のため、提案できません。先にSOAPカルテを作成してください。"
+        return base
+
+    source_texts = [subjective, assessment]
+    prescribed_names = [item.drug_name for item in session.prescription.items]
+
+    if settings.mock_mode:
+        quote = (subjective or assessment)[:20]
+        raw = [
+            {
+                "drug_name": "[MOCK] 候補薬剤名",
+                "suggestion_text": "[MOCK] ○○(一般名)はいかがでしょうか。",
+                "rationale": "[MOCK] 引用した症状・診断と薬剤を結びつける一般的な理由がここに入ります。",
+                "grounding_quote": quote,
+                "cautions": "[MOCK] 薬物アレルギー・併用薬の有無を確認",
+            }
+        ]
+    else:
+        prescribed = "、".join(n for n in prescribed_names if n.strip()) or "なし"
+        user_content = (
+            f"# S(主観的情報)\n{subjective or '(記載なし)'}\n\n"
+            f"# A(評価)\n{assessment or '(記載なし)'}\n\n"
+            f"# 既に処方済みの薬剤\n{prescribed}"
+        )
+        data = await _chat_json(
+            settings,
+            DRUG_SUGGESTION_SYSTEM_PROMPT,
+            user_content,
+            "drug_suggestions",
+            DRUG_SUGGESTION_SCHEMA,
+            stage="薬剤候補の提案",
+        )
+        raw = data.get("suggestions", [])
+
+    base.suggestions, base.discarded_count = _filter_drug_suggestions(raw, source_texts, prescribed_names)
+    if base.discarded_count:
+        logger.info("薬剤候補の提案のうち %d 件を除外しました(根拠の引用が原文に無い/処方済み等)", base.discarded_count)
+    if not base.suggestions:
+        base.notice = "S/Aの記載から根拠を確認できる薬剤候補はありませんでした。"
+    return base
 
 
 LIVE_DRAFT_SCHEMA = {

@@ -111,6 +111,25 @@ export interface ComplianceCheckResult {
   suggestions: ComplianceSuggestion[];
 }
 
+export interface DrugSuggestion {
+  drug_name: string;
+  suggestion_text: string;
+  rationale: string;
+  grounding_quote: string;
+  cautions: string;
+}
+
+export interface DrugSuggestionResult {
+  disclaimer: string;
+  suggestions: DrugSuggestion[];
+  basis_subjective: string;
+  basis_assessment: string;
+  notice: string;
+  discarded_count: number;
+  generated_at: string | null;
+  is_mock: boolean;
+}
+
 export type HandoffTarget = "nurse" | "pharmacy";
 
 export interface HandoffRecord {
