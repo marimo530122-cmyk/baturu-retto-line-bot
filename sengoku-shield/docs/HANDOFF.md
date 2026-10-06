@@ -68,7 +68,11 @@
    環境変数は NODE_VERSION=22 と SHIELD_APP_TOKEN(Generate)だけ。合言葉を入れて見守り画面が動くところまで確認した。
    2026-10-06: Anthropic(platform.claude.com)で前払いし、ANTHROPIC_API_KEY を Render に入れて再デプロイした(利用者が自分で操作)。
    まだ確認していないこと: Render の Logs に「AI応答: ON」と出るか。次はそこを確かめ、家族に犯人役を頼んで試す。
-   Jev は利用者が入れたがっている(判断を Jev、話すのを Claude に任せる分担)。TypeSafe のキーを持っているかはまだ聞けていない。Jev の応答の形も未確認(置いたあと `npm run check`)。
+   Jev は利用者が入れたがっている(判断を Jev、話すのを Claude に任せる分担)。TypeSafe のキーを持っているかはまだ聞けていない。
+   見守り画面に「声を選ぶ」欄を追加(このブランチ、まだ main・Render に入っていない)。家族が候補3つを聞き比べて選ぶ。本人の声には似せない。
+   お金: 利用者は手持ちが少なく、削れるところは削りたい。今かかるのは Claude の使った分だけ(5ドル前払い済み)。
+   有料プラン(②)・Twilio(③)は急がない。モデルは Render の SHIELD_AI_MODEL で切り替えられる(今は既定の claude-opus-5。
+   claude-opus-5-5 は2割安く、claude-sonnet-5-5 は6割安い。試し電話で聞き比べてから利用者が決める)。Jev の応答の形も未確認(置いたあと `npm run check`)。
 3. **本物のデータを増やす**: 確認済みの本物は 87件(holdout 43件)になった。目標は holdout 50件。
    ほかの県警の音声ページ(埼玉・大阪・愛知など)を同じワークフローで回す。YouTube(福島県警の続き・藤枝防犯チャンネル)はスクリーンショットで。
 4. holdout で見逃しているもの(dev に同じ種類の本物が入ったら、それを見て直す。中身は `node benchmark.js` の出力で):
