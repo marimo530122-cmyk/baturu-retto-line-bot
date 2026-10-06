@@ -111,6 +111,10 @@ export interface ComplianceCheckResult {
   suggestions: ComplianceSuggestion[];
 }
 
+export interface FeatureFlags {
+  drug_suggestions: boolean;
+}
+
 export interface DrugSuggestion {
   drug_name: string;
   suggestion_text: string;

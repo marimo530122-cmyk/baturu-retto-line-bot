@@ -63,3 +63,9 @@ app.include_router(physician.router)
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "mock_mode": settings.mock_mode}
+
+
+@app.get("/api/features")
+def features() -> dict:
+    """画面側が、設定で「切」になっている機能のボタン等を出さないようにするための一覧。"""
+    return {"drug_suggestions": get_settings().enable_drug_suggestions}

@@ -94,7 +94,7 @@ async def test_suggestions_are_capped(monkeypatch):
     assert len(result.suggestions) == llm_pipeline.MAX_DRUG_SUGGESTIONS
 
 
-def test_endpoint_does_not_modify_prescription():
+def test_endpoint_does_not_modify_prescription(drug_suggestions_enabled):
     session = store.create_session(store.list_patients()[0].id)
     client.patch(f"/api/sessions/{session.id}/soap", json={"subjective": "咳と微熱が続いている", "assessment": "急性上気道炎"})
     before = client.get(f"/api/sessions/{session.id}/prescription").json()
@@ -107,3 +107,24 @@ def test_endpoint_does_not_modify_prescription():
 
     after = client.get(f"/api/sessions/{session.id}/prescription").json()
     assert after == before
+
+
+def test_endpoint_is_disabled_by_default(monkeypatch):
+    from app.config import Settings, get_settings
+
+    # 手元の .env で有効にしていても、「設定が無ければ無効」であることを確かめる
+    assert Settings.model_fields["enable_drug_suggestions"].default is False
+    monkeypatch.setenv("ENABLE_DRUG_SUGGESTIONS", "false")
+    get_settings.cache_clear()
+
+    session = store.create_session(store.list_patients()[0].id)
+    client.patch(f"/api/sessions/{session.id}/soap", json={"subjective": "咳と微熱が続いている"})
+
+    res = client.post(f"/api/sessions/{session.id}/prescription/drug-suggestions")
+    assert res.status_code == 404
+    assert client.get("/api/features").json() == {"drug_suggestions": False}
+    get_settings.cache_clear()
+
+
+def test_features_reports_enabled_switch(drug_suggestions_enabled):
+    assert client.get("/api/features").json() == {"drug_suggestions": True}

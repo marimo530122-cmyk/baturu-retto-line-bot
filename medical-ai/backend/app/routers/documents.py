@@ -79,8 +79,11 @@ async def drug_suggestions(session_id: str) -> DrugSuggestionResult:
     結果は画面表示用に返すだけで、セッション(処方オーダ)には保存・反映しない。
     候補を採用するかどうか・用量は、医師が処方欄へ自分で入力して決める。
     """
+    settings = get_settings()
+    if not settings.enable_drug_suggestions:
+        raise HTTPException(status_code=404, detail="薬剤候補の提案機能は無効になっています。")
     session = store.get_session(session_id)
     try:
-        return await llm_pipeline.suggest_drugs(get_settings(), session)
+        return await llm_pipeline.suggest_drugs(settings, session)
     except LlmGenerationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
