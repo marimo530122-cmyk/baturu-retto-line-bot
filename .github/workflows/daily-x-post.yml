@@ -25,6 +25,8 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
           # 設定されていれば投稿本文をClaudeが毎日書き直す(未設定・失敗時は固定文面)
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 任意。設定されていればAIの本文をJevで安全チェックしてから投稿する
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           X_API_SECRET: ${{ secrets.X_API_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
@@ -34,3 +36,5 @@ jobs:
           GAME_URL: ${{ vars.GAME_URL }}
           MIKUCHIWARI_URL: ${{ vars.MIKUCHIWARI_URL }}
           AFFILIATE_URL: ${{ vars.AFFILIATE_URL }}
+          # 1 にするとトレンドをJevでふるい分けて本文に織り込む(要 ANTHROPIC_API_KEY と TYPESAFE_API_KEY)
+          USE_TRENDS: ${{ vars.USE_TRENDS }}

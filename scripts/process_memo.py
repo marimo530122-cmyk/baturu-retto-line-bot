@@ -20,6 +20,8 @@ import sys
 
 import anthropic
 
+import ai_router
+
 MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(REPO_ROOT, "docs", "daily-logs")
@@ -39,6 +41,13 @@ SYSTEM_PROMPT = """\
   "primary_doc": "事実(何が起きたか)と感情(何を感じたか)を分けて書いた一次ドキュメント。Markdownの小見出し(#### 事実 / #### 感情)を使ってよい。",
   "stock_summary": "検索・再利用しやすい箇条書きの要約。Markdownの箇条書き(- )形式。"
 }
+"""
+
+# Geminiに回すのは「まだ形になっていないアイデア・相談」。壁打ち相手として論点も出させる
+GEMINI_ADDENDUM = """
+このメモはまだ形になっていないアイデアや相談ごとです。stock_summary の最後に \
+「#### 壁打ちメモ」という小見出しを付け、検討すべき論点と次に試せることを箇条書きで \
+3つ程度加えてください。
 """
 
 
@@ -74,12 +83,43 @@ def classify_memo(raw_text: str) -> dict:
     return json.loads(text)
 
 
+def structure_without_ai(raw_text: str) -> dict:
+    """テスト送信など中身のないメモ用。LLMを呼ばずに最低限の形だけ作る。"""
+    first_line = raw_text.strip().splitlines()[0] if raw_text.strip() else "memo"
+    return {
+        "hook_titles": [first_line[:30]],
+        "tags": ["未整形"],
+        "primary_doc": "(中身の少ないメモと判定されたため、AI整形はスキップしました)",
+        "stock_summary": "- 元メモを参照",
+    }
+
+
+def structure_memo(raw_text: str) -> tuple[dict, str]:
+    """Jevの判定に従ってClaude / Gemini / AIなしに振り分ける。戻り値は(整形結果, route表記)。"""
+    route = ai_router.route_memo(raw_text)
+    print(f"Route: {route.label} (confidence {route.confidence:.2f}) - {route.reason}")
+
+    if route.engine == "skip":
+        return structure_without_ai(raw_text), route.label
+    if route.engine == "gemini":
+        try:
+            return (
+                ai_router.gemini_generate_json(SYSTEM_PROMPT + GEMINI_ADDENDUM, raw_text),
+                route.label,
+            )
+        except Exception as err:
+            print(f"Gemini整形に失敗したためClaudeで処理します: {err}", file=sys.stderr)
+    return classify_memo(raw_text), f"{route.kind} → claude"
+
+
 def slugify(title: str, max_len: int = 40) -> str:
     slug = re.sub(r"[^\w\-]+", "-", title, flags=re.UNICODE).strip("-")
     return slug[:max_len] if slug else "memo"
 
 
-def render_markdown(raw_text: str, parsed: dict, timestamp: datetime.datetime) -> str:
+def render_markdown(
+    raw_text: str, parsed: dict, timestamp: datetime.datetime, route: str
+) -> str:
     hook_titles = parsed.get("hook_titles") or ["(タイトル未生成)"]
     tags = parsed.get("tags") or []
     primary_doc = parsed.get("primary_doc", "").strip()
@@ -91,6 +131,7 @@ def render_markdown(raw_text: str, parsed: dict, timestamp: datetime.datetime) -
 
 - date: {timestamp.strftime("%Y-%m-%d %H:%M")} UTC
 - tags: {", ".join(tags)}
+- route: {route}
 
 ## ① ショート動画・フック用タイトル
 {hook_list}
@@ -143,9 +184,9 @@ def main() -> None:
     args = parser.parse_args()
 
     raw_text = get_memo_text(args)
-    parsed = classify_memo(raw_text)
+    parsed, route = structure_memo(raw_text)
     timestamp = datetime.datetime.now(datetime.timezone.utc)
-    content = render_markdown(raw_text, parsed, timestamp)
+    content = render_markdown(raw_text, parsed, timestamp, route)
     hook_title = (parsed.get("hook_titles") or ["memo"])[0]
     path = write_log_file(content, hook_title, timestamp)
     print(f"Wrote {path}")
