@@ -1,7 +1,10 @@
-# 鮮刻シールドを Render(クラウド)に置くための設定。パソコンなしでスマホから置ける。
-# 手順は sengoku-shield/docs/cloud-setup.html。
-# 鍵(APIキー・トークン)はここに書かない。Render の画面の入力欄に直接入れる(sync: false の項目)。
+# このリポジトリには複数の独立したアプリが同居しているため、Renderの1つのBlueprintに
+# それぞれのサービスをまとめて定義してある。Render側では必要なサービスだけ選んで
+# デプロイできる(他のサービスは無視してよい)。
 services:
+  # --- 鮮刻シールド(詐欺電話対策ツール) ---
+  # パソコンなしでスマホから置ける。手順は sengoku-shield/docs/cloud-setup.html。
+  # 鍵(APIキー・トークン)はここに書かない。Render の画面の入力欄に直接入れる(sync: false の項目)。
   - type: web
     name: sengoku-shield
     runtime: node
@@ -37,3 +40,33 @@ services:
         sync: false
       - key: SHIELD_LINE_ADD_URL
         sync: false
+
+  # --- 医療AI診察支援アプリ(プロトタイプ) ---
+  # 手順は medical-ai/README.md の「スマホ・どこからでも開けるURLを作る」を参照。
+  - type: web
+    name: medical-ai-backend
+    runtime: python
+    rootDir: medical-ai/backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: OPENAI_API_KEY
+        sync: false
+
+  - type: web
+    name: medical-ai-frontend
+    runtime: node
+    rootDir: medical-ai/frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start -- -p $PORT
+    envVars:
+      # medical-ai-backend の名前が他のRenderユーザーと重複していなければ
+      # このURLで一致するはずです。デプロイ後にバックエンドの実際のURLが
+      # 異なっていた場合は、このダッシュボードの環境変数を実際のURLに
+      # 書き換えて再デプロイしてください（詳細は medical-ai/README.md 参照）。
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://medical-ai-backend.onrender.com

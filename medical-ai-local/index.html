@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>お話しするだけカルテ</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #f4f7f6;
+    color: #1f2937;
+  }
+  .topbar {
+    background: #0f766e;
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar h1 { margin: 0; font-size: 17px; }
+  .link-btn {
+    background: none;
+    border: none;
+    color: #d1fae5;
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+
+  /* ---- メインの操作エリア ---- */
+  .mic-area {
+    text-align: center;
+    padding: 28px 16px 20px;
+  }
+  #mic-btn {
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 56px;
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  #mic-btn:active { transform: scale(0.96); }
+  #mic-btn.recording {
+    background: #dc2626;
+    box-shadow: 0 0 0 10px rgba(220, 38, 38, 0.15);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+    70% { box-shadow: 0 0 0 22px rgba(220, 38, 38, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  }
+  #mic-label {
+    margin-top: 16px;
+    font-size: 19px;
+    font-weight: 700;
+  }
+  #mic-sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #6b7280;
+    min-height: 20px;
+  }
+
+  .engine-banner {
+    text-align: center;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 0 0 8px;
+  }
+  .engine-banner.ok { background: #d1fae5; color: #065f46; }
+  .engine-banner.warn { background: #fef3c7; color: #92400e; }
+
+  /* ---- カルテカード ---- */
+  #draft-fields { display: grid; gap: 10px; margin-top: 22px; }
+  .field {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-left: 5px solid #0f766e;
+    border-radius: 8px;
+    padding: 12px 14px;
+    animation: fadein 0.4s ease;
+  }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .field-label { font-size: 12px; font-weight: 700; color: #0f766e; margin-bottom: 4px; }
+  .field-value { font-size: 15px; white-space: pre-wrap; line-height: 1.5; }
+  .empty-hint {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+    margin-top: 28px;
+    line-height: 1.7;
+  }
+
+  /* ---- 認識した会話（控えめに表示） ---- */
+  #transcript-wrap { margin-top: 28px; }
+  #transcript-wrap summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: #6b7280;
+    outline: none;
+  }
+  #transcript {
+    margin-top: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+    background: #f9fafb;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 13px;
+    color: #4b5563;
+  }
+
+  /* ---- その他の入力方法（折りたたみ） ---- */
+  #other-input summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 18px;
+  }
+  #other-input .row { display: flex; gap: 8px; margin-top: 10px; }
+  #other-input input[type="text"] {
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  #other-input button, #reset-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+  #reset-btn { margin-top: 18px; width: 100%; }
+
+  .detail-box {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>🩺 お話しするだけカルテ</h1>
+  <button class="link-btn" onclick="toggleDetail()">詳細情報</button>
+</div>
+
+<main>
+  <div id="engine-banner" class="engine-banner warn" style="display:none;"></div>
+
+  <div class="mic-area">
+    <button id="mic-btn" onclick="toggleMic()">🎤</button>
+    <div id="mic-label">タップして話しかけてください</div>
+    <div id="mic-sub"></div>
+  </div>
+
+  <div id="draft-fields"></div>
+
+  <details id="transcript-wrap">
+    <summary>認識した会話を見る</summary>
+    <div id="transcript"></div>
+  </details>
+
+  <details id="other-input">
+    <summary>マイクが使えない場合（キーボードで入力）</summary>
+    <div class="row">
+      <input id="manual-text" type="text" placeholder="話した内容をここに入力..." />
+      <button onclick="sendManualText()">追加</button>
+    </div>
+  </details>
+
+  <button id="reset-btn" onclick="resetSession()">🆕 次の患者さん（内容をリセット）</button>
+
+  <div id="detail-box" class="detail-box" style="display:none;"></div>
+</main>
+
+<script>
+const CHUNK_MS = 6000; // マイク録音のチャンク長（ミリ秒）
+const LIVE_DRAFT_DEBOUNCE_MS = 1500;
+
+let mediaStream = null;
+let mediaRecorder = null;
+let recording = false;
+let liveDraftTimer = null;
+let pendingChunks = 0;
+let wakeLock = null;
+
+// 録音中に画面が自動スリープ（消灯）してしまい、聞いている最中に画面が消える不具合の対策。
+// 対応ブラウザ（Chrome/Edge、Android、Safari 16.4+等）では、録音中は画面をスリープさせない。
+async function acquireWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+  } catch (e) {
+    console.warn("画面スリープ防止を取得できませんでした（録音自体は継続します）:", e);
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    wakeLock.release().catch(() => {});
+    wakeLock = null;
+  }
+}
+
+// スリープ防止は、タブが非表示になると自動的に解除される仕様のため、
+// 録音中に画面へ戻ってきたタイミングで再取得する。
+document.addEventListener("visibilitychange", () => {
+  if (recording && document.visibilityState === "visible" && !wakeLock) {
+    acquireWakeLock();
+  }
+});
+
+const fieldLabels = {
+  chief_complaint: "🗣️ 主訴・症状の要約",
+  clinical_reasoning: "🧭 治療方針・提案",
+  prescription_draft: "💊 処方内容・アドバイス",
+  referral_letter: "✉️ 紹介状・診療情報提供書",
+};
+
+function appendTranscriptUI(text) {
+  const box = document.getElementById("transcript");
+  const div = document.createElement("div");
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderDraft(draft) {
+  const container = document.getElementById("draft-fields");
+  container.innerHTML = "";
+  let any = false;
+  for (const key of Object.keys(fieldLabels)) {
+    const value = (draft[key] || "").trim();
+    if (!value) continue;
+    any = true;
+    const div = document.createElement("div");
+    div.className = "field";
+    div.innerHTML = `<div class="field-label">${fieldLabels[key]}</div><div class="field-value"></div>`;
+    div.querySelector(".field-value").textContent = value;
+    container.appendChild(div);
+  }
+  if (!any) {
+    container.innerHTML =
+      '<p class="empty-hint">マイクのボタンを押して話しかけると、<br>ここに自動でカルテの下書きが表示されます。</p>';
+  }
+}
+
+function setMicState(state) {
+  // state: "idle" | "recording" | "busy"
+  const btn = document.getElementById("mic-btn");
+  const label = document.getElementById("mic-label");
+  const sub = document.getElementById("mic-sub");
+  if (state === "recording") {
+    btn.classList.add("recording");
+    label.textContent = "🔴 聞いています…（もう一度タップで終了）";
+  } else {
+    btn.classList.remove("recording");
+    label.textContent = "タップして話しかけてください";
+  }
+  sub.textContent = pendingChunks > 0 ? "文字起こし中…" : "";
+}
+
+function scheduleLiveDraftRefresh() {
+  if (liveDraftTimer) clearTimeout(liveDraftTimer);
+  liveDraftTimer = setTimeout(async () => {
+    document.getElementById("mic-sub").textContent = "カルテを作成しています…";
+    try {
+      const res = await fetch("/api/live-draft/refresh", { method: "POST" });
+      const draft = await res.json();
+      renderDraft(draft);
+    } finally {
+      setMicState(recording ? "recording" : "idle");
+    }
+  }, LIVE_DRAFT_DEBOUNCE_MS);
+}
+
+async function sendManualText() {
+  const input = document.getElementById("manual-text");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  await fetch("/api/manual-text", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ speaker: "unknown", text }),
+  });
+  appendTranscriptUI(text);
+  scheduleLiveDraftRefresh();
+}
+
+function pickMimeType() {
+  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+  return candidates.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+}
+
+async function toggleMic() {
+  if (recording) {
+    stopMicCycle();
+  } else {
+    await startMicCycle();
+  }
+}
+
+async function startMicCycle() {
+  const mimeType = pickMimeType();
+  if (!mimeType) {
+    alert("このブラウザではマイク録音に対応していません。Chrome・Edgeでお試しいただくか、下の「マイクが使えない場合」からキーボード入力をご利用ください。");
+    return;
+  }
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert("マイクを使う許可が必要です。ブラウザの設定でマイクへのアクセスを許可してください。");
+    return;
+  }
+  recording = true;
+  setMicState("recording");
+  await acquireWakeLock();
+  recordOneChunk(mimeType);
+}
+
+function recordOneChunk(mimeType) {
+  if (!recording || !mediaStream) return;
+  const chunks = [];
+  mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: mimeType });
+    await sendAudioChunk(blob);
+    if (recording) recordOneChunk(mimeType);
+  };
+  mediaRecorder.start();
+  setTimeout(() => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  }, CHUNK_MS);
+}
+
+function stopMicCycle() {
+  recording = false;
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  releaseWakeLock();
+  setMicState("idle");
+}
+
+async function sendAudioChunk(blob) {
+  if (blob.size < 800) return; // 極端に短い/無音チャンクは送らない
+  pendingChunks++;
+  setMicState(recording ? "recording" : "idle");
+  const form = new FormData();
+  form.append("audio", blob, "chunk.webm");
+  form.append("speaker", "unknown");
+  try {
+    const res = await fetch("/api/transcribe-chunk", { method: "POST", body: form });
+    const data = await res.json();
+    if (data.text && data.text.trim()) {
+      appendTranscriptUI(data.text.trim());
+      scheduleLiveDraftRefresh();
+    }
+  } catch (e) {
+    console.error("文字起こしエラー", e);
+  } finally {
+    pendingChunks = Math.max(0, pendingChunks - 1);
+    setMicState(recording ? "recording" : "idle");
+  }
+}
+
+async function resetSession() {
+  if (recording) stopMicCycle();
+  await fetch("/api/reset", { method: "POST" });
+  document.getElementById("transcript").innerHTML = "";
+  renderDraft({});
+}
+
+function toggleDetail() {
+  const box = document.getElementById("detail-box");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+  if (box.style.display === "block") refreshStatus();
+}
+
+async function refreshStatus() {
+  try {
+    const res = await fetch("/api/status");
+    const s = await res.json();
+
+    const banner = document.getElementById("engine-banner");
+    if (s.ollama_reachable) {
+      banner.style.display = "none";
+    } else {
+      banner.style.display = "block";
+      banner.className = "engine-banner warn";
+      banner.textContent = "⚠️ AIエンジン未接続のため、動作確認用のダミー内容を表示しています（README参照）";
+    }
+
+    document.getElementById("detail-box").textContent =
+      `音声認識モデル: ${s.whisper_model}${s.whisper_loaded ? "（読込済み）" : "（初回発話時に読込）"} / ` +
+      `ローカルAI: ${s.ollama_reachable ? "接続済み (" + s.ollama_model + ")" : "未接続"}`;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+renderDraft({});
+refreshStatus();
+setInterval(refreshStatus, 8000);
+</script>
+</body>
+</html>

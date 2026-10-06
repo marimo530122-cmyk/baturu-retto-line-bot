@@ -1,7 +1,13 @@
 .env
+.env.local
 node_modules/
 __pycache__/
 *.pyc
 output/
 logs/
 freelance/.debug/
+.venv/
+medical-ai/frontend/.next/
+medical-ai/frontend/*.tsbuildinfo
+medical-ai/backend/.pytest_cache/
+medical-ai-local/certs/
