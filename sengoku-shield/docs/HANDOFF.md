@@ -66,7 +66,9 @@
    進み具合(2026-10-04): Render の無料プランに置けた(https://sengoku-shield.onrender.com 、見守り画面は /app 。トップ / は 404 で正常)。
    公開リポジトリとして「Public Git Repository」でつないだ(GitHub 連携はしていないので、main を更新したら Render の画面で「Manual Deploy」が要る)。
    環境変数は NODE_VERSION=22 と SHIELD_APP_TOKEN(Generate)だけ。合言葉を入れて見守り画面が動くところまで確認した。
-   次は ANTHROPIC_API_KEY を入れる(Anthropic のサイトで少額前払い・上限設定 → Render の Environment に入れる)。まだ Claude なし(正規表現だけ)で動いている。Jev の応答の形も未確認(置いたあと `npm run check`)。
+   2026-10-06: Anthropic(platform.claude.com)で前払いし、ANTHROPIC_API_KEY を Render に入れて再デプロイした(利用者が自分で操作)。
+   まだ確認していないこと: Render の Logs に「AI応答: ON」と出るか。次はそこを確かめ、家族に犯人役を頼んで試す。
+   Jev は利用者が入れたがっている(判断を Jev、話すのを Claude に任せる分担)。TypeSafe のキーを持っているかはまだ聞けていない。Jev の応答の形も未確認(置いたあと `npm run check`)。
 3. **本物のデータを増やす**: 確認済みの本物は 87件(holdout 43件)になった。目標は holdout 50件。
    ほかの県警の音声ページ(埼玉・大阪・愛知など)を同じワークフローで回す。YouTube(福島県警の続き・藤枝防犯チャンネル)はスクリーンショットで。
 4. holdout で見逃しているもの(dev に同じ種類の本物が入ったら、それを見て直す。中身は `node benchmark.js` の出力で):
