@@ -169,6 +169,18 @@ export function useMeetingSession(mode: Mode = "meeting") {
     releaseWakeLock();
   }, [releaseWakeLock]);
 
+  /**
+   * 写真撮影でカメラアプリが前面に出ると、録音中でも音声認識(特にオンデバイスWhisperの
+   * マイクストリーム)が気づかれないまま止まってしまう端末があるため、カメラから戻った
+   * タイミングで軽く再始動して復旧する。同じ認識器インスタンスのstop→startのみなので、
+   * Whisperのモデル再読み込みは発生しない(録音中でなければ何もしない)。
+   */
+  const recoverRecording = useCallback(() => {
+    if (!isRecordingRef.current) return;
+    recognizerRef.current?.stop();
+    recognizerRef.current?.start();
+  }, []);
+
   const toggleTodo = useCallback((id: string) => {
     utterancesRef.current = utterancesRef.current.map((u) => (u.id === id ? { ...u, done: !u.done } : u));
     setUtterances(utterancesRef.current);
@@ -190,6 +202,7 @@ export function useMeetingSession(mode: Mode = "meeting") {
     supported,
     start,
     stop,
+    recoverRecording,
     toggleTodo,
     reset,
     submitText,

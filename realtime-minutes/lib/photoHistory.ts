@@ -1,3 +1,5 @@
+import { deletePhotoBlob, pruneOrphanedPhotoBlobs } from "./photoStore";
+
 export interface PhotoHistoryEntry {
   id: string;
   capturedAt: number;
@@ -13,9 +15,8 @@ const PREVIEW_LENGTH = 40;
 /**
  * 「いつ写真を撮って読み取ったか」の記録。このアプリには永続化DBが無いため、
  * lib/history.ts の会議記録と同じく、ブラウザのlocalStorageだけを使う
- * (端末・ブラウザをまたいでは共有されない)。写真そのものは保存せず、
- * 読み取り結果のプレビュー文字列だけを残す(ストレージ圧迫と、写真という
- * 個人情報を増やさないため)。
+ * (端末・ブラウザをまたいでは共有されない)。写真本体は容量が大きいため
+ * lib/photoStore.ts(IndexedDB)が別途担当し、ここではメタデータのみを扱う。
  */
 export function loadPhotoHistory(): PhotoHistoryEntry[] {
   try {
@@ -28,10 +29,14 @@ export function loadPhotoHistory(): PhotoHistoryEntry[] {
   }
 }
 
-export function savePhotoHistoryEntry(status: PhotoHistoryEntry["status"], text: string): void {
+/**
+ * id は呼び出し側で発行する(写真本体をphotoStore.tsへ保存するときと同じidを
+ * 使い、あとから紐付けられるようにするため)。
+ */
+export function savePhotoHistoryEntry(id: string, status: PhotoHistoryEntry["status"], text: string): void {
   try {
     const entry: PhotoHistoryEntry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id,
       capturedAt: Date.now(),
       status,
       preview: text.slice(0, PREVIEW_LENGTH),
@@ -39,6 +44,8 @@ export function savePhotoHistoryEntry(status: PhotoHistoryEntry["status"], text:
     const existing = loadPhotoHistory();
     const next = [entry, ...existing].slice(0, MAX_ENTRIES);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    // 上限を超えて一覧から落ちた古い写真のBlobも一緒に消し、容量が際限なく増えないようにする
+    void pruneOrphanedPhotoBlobs(next.map((e) => e.id));
   } catch {
     // 保存に失敗しても撮影自体は成功しているので無視
   }
@@ -51,4 +58,5 @@ export function deletePhotoHistoryEntry(id: string): void {
   } catch {
     // 保存に失敗しても致命的ではないので無視
   }
+  void deletePhotoBlob(id);
 }

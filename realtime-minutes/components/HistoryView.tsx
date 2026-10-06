@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Trash2, ChevronLeft, Camera, AlertCircle } from "lucide-react";
 import { HistoryEntry, deleteHistoryEntry, loadHistory } from "@/lib/history";
 import { PhotoHistoryEntry, deletePhotoHistoryEntry, loadPhotoHistory } from "@/lib/photoHistory";
+import { getPhotoBlob } from "@/lib/photoStore";
 import { Mode } from "@/lib/types";
 import { utterancesToSummaryMarkdown } from "@/lib/summaryTransform";
 import { SummaryView } from "./SummaryView";
@@ -12,6 +13,33 @@ type HistoryTab = "sessions" | "photos";
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString("ja-JP", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** 撮った写真そのもの(縮小サムネイル)をIndexedDBから読み込んで表示する */
+function PhotoThumbnail({ id }: { id: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    getPhotoBlob(id).then((blob) => {
+      if (cancelled || !blob) return;
+      objectUrl = URL.createObjectURL(blob);
+      setUrl(objectUrl);
+    });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id]);
+
+  if (!url) {
+    return <div className="h-14 w-14 shrink-0 rounded-md bg-gray-100" />;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt="" className="h-14 w-14 shrink-0 rounded-md border border-gray-200 object-cover" />
+  );
 }
 
 function PhotoHistoryList() {
@@ -42,14 +70,13 @@ function PhotoHistoryList() {
           key={e.id}
           className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
         >
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            {e.status === "success" ? (
-              <Camera className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-            ) : (
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-            )}
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <PhotoThumbnail id={e.id} />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900">{formatDate(e.capturedAt)}</p>
+              <div className="flex items-center gap-1.5">
+                {e.status !== "success" && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                <p className="text-sm font-medium text-gray-900">{formatDate(e.capturedAt)}</p>
+              </div>
               <p className="truncate text-xs text-gray-400">
                 {e.status === "success"
                   ? e.preview || "(読み取り成功)"

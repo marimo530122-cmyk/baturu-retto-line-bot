@@ -18,8 +18,20 @@ type MobileTab = "timeline" | "insight";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("meeting");
-  const { utterances, interimText, isRecording, error, status, supported, start, stop, toggleTodo, reset, submitText } =
-    useMeetingSession(mode);
+  const {
+    utterances,
+    interimText,
+    isRecording,
+    error,
+    status,
+    supported,
+    start,
+    stop,
+    recoverRecording,
+    toggleTodo,
+    reset,
+    submitText,
+  } = useMeetingSession(mode);
   const [mobileTab, setMobileTab] = useState<MobileTab>("timeline");
   const [showHistory, setShowHistory] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
@@ -167,7 +179,7 @@ export default function Home() {
 
           {/* 写真を撮って読み取る機能は、録音ボタンの隣に大きめのボタンで置くことで
               ワンタップで使えるようにしている(以前はキーボード入力の横の小さな文字リンクだった) */}
-          <DocumentScanInput onExtractedText={handleExtractedText} />
+          <DocumentScanInput onExtractedText={handleExtractedText} onReturnFromCapture={recoverRecording} />
         </div>
 
         <div className="flex w-full max-w-sm flex-wrap items-start justify-center gap-x-4 gap-y-1">
