@@ -1,6 +1,11 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# 既定の保存先: backend/storage/medical_ai.sqlite3 (どこから起動しても同じ場所になるよう絶対パスにする)
+DEFAULT_DATABASE_PATH = str(Path(__file__).resolve().parent.parent / "storage" / "medical_ai.sqlite3")
 
 
 class Settings(BaseSettings):
@@ -16,6 +21,8 @@ class Settings(BaseSettings):
     # 薬剤候補の提案(AI)。患者ごとの薬剤選択を支援する機能は、販売時に「医療機器プログラム」
     # (薬機法)に該当し得るため、該当性を専門家・PMDAに確認できるまで既定で「切」にしておく。
     enable_drug_suggestions: bool = False
+    # データの保存先(SQLiteファイル)。":memory:" を指定すると保存せずメモリ上だけで動く(テスト用)。
+    database_path: str = DEFAULT_DATABASE_PATH
 
     @property
     def mock_mode(self) -> bool:
