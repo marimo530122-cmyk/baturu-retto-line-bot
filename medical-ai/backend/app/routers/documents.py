@@ -1,9 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+
+from app.config import get_settings
 
 from app.data import store
+from app.errors import LlmGenerationError
 from app.models import (
     ComplianceCheckIn,
     ComplianceCheckResult,
+    DrugSuggestionResult,
     PrescriptionOrder,
     PrescriptionUpdate,
     ReferralLetter,
@@ -11,6 +15,7 @@ from app.models import (
     SoapNote,
     SoapUpdate,
 )
+from app.services import llm_pipeline
 from app.services.prescription_compliance import check_prescription
 
 router = APIRouter(prefix="/api/sessions", tags=["documents"])
@@ -65,3 +70,20 @@ def update_prescription(session_id: str, body: PrescriptionUpdate) -> Prescripti
 def compliance_check(session_id: str, body: ComplianceCheckIn) -> ComplianceCheckResult:
     session = store.get_session(session_id)
     return check_prescription(session.prescription, body.requested_days_supply)
+
+
+@router.post("/{session_id}/prescription/drug-suggestions", response_model=DrugSuggestionResult)
+async def drug_suggestions(session_id: str) -> DrugSuggestionResult:
+    """SOAPのS/Aから薬剤候補の提案文を生成して返す。
+
+    結果は画面表示用に返すだけで、セッション(処方オーダ)には保存・反映しない。
+    候補を採用するかどうか・用量は、医師が処方欄へ自分で入力して決める。
+    """
+    settings = get_settings()
+    if not settings.enable_drug_suggestions:
+        raise HTTPException(status_code=404, detail="薬剤候補の提案機能は無効になっています。")
+    session = store.get_session(session_id)
+    try:
+        return await llm_pipeline.suggest_drugs(settings, session)
+    except LlmGenerationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

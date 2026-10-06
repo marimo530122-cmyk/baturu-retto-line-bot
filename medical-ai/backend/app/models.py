@@ -119,6 +119,40 @@ class ComplianceCheckResult(BaseModel):
     suggestions: list[ComplianceSuggestion] = Field(default_factory=list)
 
 
+DRUG_SUGGESTION_DISCLAIMER = (
+    "これはAIによる薬剤候補の参考提案であり、処方の決定ではありません。"
+    "AIは患者の薬物アレルギー・併用薬との相互作用(併用禁忌)・腎機能/肝機能・妊娠授乳の有無・年齢・"
+    "添付文書上の禁忌や注意など、カルテに書かれていない個別事情を把握できません。"
+    "採用する場合は、医師が添付文書等で確認したうえで、薬剤名・用量・日数を自ら入力してください。"
+    "AIは用量を提案しません。"
+)
+
+
+class DrugSuggestion(BaseModel):
+    """AIによる薬剤候補の提案1件。用量・日数はあえて持たせない(用量決定は医師が行うため)。"""
+
+    drug_name: str
+    suggestion_text: str
+    rationale: str
+    # 提案の根拠として、SOAPのS/Aから「そのまま」引用した文言。
+    # サーバー側で原文に含まれるかを機械的に照合し、含まれない(=創作の疑い)提案は捨てる。
+    grounding_quote: str
+    cautions: str = ""
+
+
+class DrugSuggestionResult(BaseModel):
+    disclaimer: str = DRUG_SUGGESTION_DISCLAIMER
+    suggestions: list[DrugSuggestion] = Field(default_factory=list)
+    # 提案の材料にしたSOAPのS/A(医師が後から「何を根拠にした提案か」を確認できるように返す)
+    basis_subjective: str = ""
+    basis_assessment: str = ""
+    # 提案が0件になった理由(S/Aが空、根拠を確認できない提案を除外した 等)
+    notice: str = ""
+    discarded_count: int = 0
+    generated_at: datetime | None = None
+    is_mock: bool = False
+
+
 class HandoffTarget(str, Enum):
     NURSE = "nurse"
     PHARMACY = "pharmacy"

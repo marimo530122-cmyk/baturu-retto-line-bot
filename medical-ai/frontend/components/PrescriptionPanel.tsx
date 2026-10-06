@@ -8,6 +8,7 @@ import { useFieldDebouncer } from "@/lib/useFieldDebouncer";
 import type { ComplianceCheckResult, PrescriptionItem, PrescriptionOrder } from "@/lib/types";
 import ComplianceSuggestionModal from "./ComplianceSuggestionModal";
 import CopyButton from "./CopyButton";
+import DrugSuggestionPanel from "./DrugSuggestionPanel";
 
 const emptyItem: PrescriptionItem = {
   drug_name: "",
@@ -40,6 +41,15 @@ export default function PrescriptionPanel({
     setLocal(prescription);
     latestRef.current = prescription;
   }, [prescription]);
+
+  // 薬剤候補の提案は設定で「切」にできる(既定は切)。確認できない間も出さない側に倒す。
+  const [drugSuggestionsEnabled, setDrugSuggestionsEnabled] = useState(false);
+  useEffect(() => {
+    api
+      .getFeatures()
+      .then((f) => setDrugSuggestionsEnabled(f.drug_suggestions))
+      .catch(() => setDrugSuggestionsEnabled(false));
+  }, []);
 
   const [requestedDays, setRequestedDays] = useState<number | "">("");
   const [checking, setChecking] = useState(false);
@@ -244,6 +254,9 @@ export default function PrescriptionPanel({
           院内ルールの投薬日数上限の範囲内です。特に代替案の提示はありません。
         </p>
       )}
+
+      {/* key: 別の患者のセッションに切り替えたら前の患者の提案を残さない */}
+      {drugSuggestionsEnabled && <DrugSuggestionPanel key={sessionId} sessionId={sessionId} />}
 
       <div className="mt-4 pt-3 border-t border-gray-100">
         <CopyButton getText={() => formatPrescriptionForCopy(local)} label="処方内容をコピー" />

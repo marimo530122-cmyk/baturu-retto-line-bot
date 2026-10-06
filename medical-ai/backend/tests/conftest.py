@@ -18,3 +18,15 @@ def session_with_transcript() -> ConsultationSession:
         TranscriptSegment(speaker=Speaker.DOCTOR, text="風邪ですね。お薬を出しておきます", is_final=True),
     ]
     return session
+
+
+@pytest.fixture
+def drug_suggestions_enabled(monkeypatch):
+    """薬剤候補の提案は既定で無効なので、そのAPIを試すテストではこれで有効にする。"""
+    from app.config import get_settings
+
+    monkeypatch.setenv("ENABLE_DRUG_SUGGESTIONS", "true")
+    get_settings.cache_clear()
+    yield
+    monkeypatch.delenv("ENABLE_DRUG_SUGGESTIONS")
+    get_settings.cache_clear()

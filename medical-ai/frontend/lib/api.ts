@@ -1,6 +1,8 @@
 import type {
   ComplianceCheckResult,
   ConsultationSession,
+  DrugSuggestionResult,
+  FeatureFlags,
   HandoffRecord,
   HandoffTarget,
   Patient,
@@ -132,6 +134,14 @@ export const api = {
         body: JSON.stringify({ requested_days_supply: requestedDaysSupply ?? null }),
       }
     ),
+
+  getFeatures: () => request<FeatureFlags>("/api/features"),
+
+  // 表示専用。処方オーダには保存・反映されない(採用するかは医師が手入力で決める)
+  suggestDrugs: (sessionId: string) =>
+    request<DrugSuggestionResult>(`/api/sessions/${sessionId}/prescription/drug-suggestions`, {
+      method: "POST",
+    }),
 
   sendHandoff: (sessionId: string, targets: HandoffTarget[], note: string) =>
     request<HandoffRecord>(`/api/sessions/${sessionId}/handoff`, {
