@@ -13,11 +13,13 @@
 3. 分割処方（複数回来院）
 4. 自費（自由診療）処方
 
-ルール（日数上限・特例診断名リスト）はデモ用のサンプルであり、本番では院内・保険者の
-正式なマスタデータに置き換えること。
+ルール（日数上限・特例診断名リスト）は app/medical_rules.py に集約してある。
+現場のローカルルールに合わせたチューニングは、このファイルではなく medical_rules.py を
+編集すること。
 """
 from __future__ import annotations
 
+from app.medical_rules import DEFAULT_MAX_DAYS_SUPPLY, EXCEPTION_DIAGNOSES, RESTRICTED_DRUG_KEYWORDS
 from app.models import (
     COMPLIANCE_DISCLAIMER,
     ComplianceCheckResult,
@@ -25,26 +27,6 @@ from app.models import (
     ComplianceSuggestionKind,
     PrescriptionOrder,
 )
-
-# サンプル: 標準的な投薬日数上限（デモ用）。本番は院内マスタ・診療報酬点数表に準拠させる。
-DEFAULT_MAX_DAYS_SUPPLY = 30
-
-# サンプル: 一部の新薬・向精神薬等は投薬日数に上限がある（デモ用の簡易版）。
-RESTRICTED_DRUG_KEYWORDS: dict[str, int] = {
-    "睡眠導入剤": 30,
-    "向精神薬": 30,
-    "新薬": 14,
-}
-
-# サンプル: 長期処方の正規の特例要件に該当し得る「慢性疾患」の診断名リスト（デモ用）。
-# 実運用では厚生局・保険者が定める正式な特例要件マスタに差し替えること。
-EXCEPTION_DIAGNOSES = {
-    "高血圧症",
-    "糖尿病",
-    "脂質異常症",
-    "慢性心不全",
-    "甲状腺機能低下症",
-}
 
 
 def _max_days_for_drug(drug_name: str) -> int:

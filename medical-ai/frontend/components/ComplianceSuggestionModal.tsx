@@ -1,6 +1,8 @@
 "use client";
 
 import type { ComplianceCheckResult } from "@/lib/types";
+import { formatComplianceForCopy } from "@/lib/formatForCopy";
+import CopyButton from "./CopyButton";
 
 const kindLabel: Record<string, string> = {
   existing_diagnosis_exception: "既存診断の特例該当チェック",
@@ -48,12 +50,15 @@ export default function ComplianceSuggestionModal({
           ))}
         </div>
 
-        <button
-          onClick={onClose}
-          className="mt-4 w-full bg-clinic-primary text-white rounded-md py-2 text-sm font-medium"
-        >
-          閉じる
-        </button>
+        <div className="mt-4 space-y-2">
+          <CopyButton getText={() => formatComplianceForCopy(result)} label="提案内容をコピー" />
+          <button
+            onClick={onClose}
+            className="w-full bg-clinic-primary text-white rounded-md py-2 text-sm font-medium"
+          >
+            閉じる
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { reportError } from "@/lib/monitoring";
+import { formatPrescriptionForCopy } from "@/lib/formatForCopy";
+import { useFieldDebouncer } from "@/lib/useFieldDebouncer";
 import type { ComplianceCheckResult, PrescriptionItem, PrescriptionOrder } from "@/lib/types";
 import ComplianceSuggestionModal from "./ComplianceSuggestionModal";
+import CopyButton from "./CopyButton";
 
 const emptyItem: PrescriptionItem = {
   drug_name: "",
@@ -26,32 +29,73 @@ export default function PrescriptionPanel({
   liveUpdating: boolean;
   onChange: (order: PrescriptionOrder) => void;
 }) {
+  // 以前はフィールドを1文字打つたびにAPIへ保存していたため編集がもっさりしていた。
+  // ローカル表示は即座に更新しつつ、実際の保存は入力が止まってから(or 確定操作時に)行う。
+  const [local, setLocal] = useState(prescription);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const latestRef = useRef(prescription);
+  const { schedule, flush } = useFieldDebouncer();
+
+  useEffect(() => {
+    setLocal(prescription);
+    latestRef.current = prescription;
+  }, [prescription]);
+
   const [requestedDays, setRequestedDays] = useState<number | "">("");
   const [checking, setChecking] = useState(false);
   const [complianceResult, setComplianceResult] = useState<ComplianceCheckResult | null>(null);
   const [complianceError, setComplianceError] = useState<string | null>(null);
 
   async function persist(next: PrescriptionOrder) {
+    setStatus("saving");
+    try {
+      const updated = await api.updatePrescription(sessionId, {
+        diagnosis: next.diagnosis,
+        items: next.items,
+        patient_request_note: next.patient_request_note,
+      });
+      onChange(updated);
+      setStatus("saved");
+      setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 1500);
+    } catch (e) {
+      reportError(e, { sessionId, action: "update-prescription" });
+      setStatus("idle");
+    }
+  }
+
+  function reflect(next: PrescriptionOrder) {
+    setLocal(next);
+    latestRef.current = next;
     onChange(next);
-    const updated = await api.updatePrescription(sessionId, {
-      diagnosis: next.diagnosis,
-      items: next.items,
-      patient_request_note: next.patient_request_note,
-    });
-    onChange(updated);
   }
 
   function updateItem(index: number, patch: Partial<PrescriptionItem>) {
-    const items = prescription.items.map((it, i) => (i === index ? { ...it, ...patch } : it));
-    persist({ ...prescription, items });
+    const items = local.items.map((it, i) => (i === index ? { ...it, ...patch } : it));
+    const next = { ...local, items };
+    reflect(next);
+    schedule("items", () => persist(latestRef.current));
+  }
+
+  function flushItems() {
+    flush("items", () => persist(latestRef.current));
   }
 
   function addItem() {
-    persist({ ...prescription, items: [...prescription.items, { ...emptyItem }] });
+    const next = { ...local, items: [...local.items, { ...emptyItem }] };
+    reflect(next);
+    flush("items", () => persist(next));
   }
 
   function removeItem(index: number) {
-    persist({ ...prescription, items: prescription.items.filter((_, i) => i !== index) });
+    const next = { ...local, items: local.items.filter((_, i) => i !== index) };
+    reflect(next);
+    flush("items", () => persist(next));
+  }
+
+  function handleDiagnosisChange(value: string) {
+    const next = { ...local, diagnosis: value };
+    reflect(next);
+    schedule("diagnosis", () => persist(latestRef.current));
   }
 
   async function runComplianceCheck() {
@@ -76,6 +120,8 @@ export default function PrescriptionPanel({
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">処方オーダ</h3>
         <div className="flex items-center gap-2">
+          {status === "saving" && <span className="text-xs text-gray-400">保存中...</span>}
+          {status === "saved" && <span className="text-xs text-emerald-600">✓ 保存済み</span>}
           {liveUpdating && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 animate-pulse">
               会話から自動構築中...
@@ -92,53 +138,58 @@ export default function PrescriptionPanel({
       <div className="mb-3">
         <label className="text-sm font-medium text-gray-600">診断名（医師の発言に基づく）</label>
         <input
-          value={prescription.diagnosis}
-          onChange={(e) => onChange({ ...prescription, diagnosis: e.target.value })}
-          onBlur={(e) => persist({ ...prescription, diagnosis: e.target.value })}
-          className="w-full mt-1 border border-gray-300 rounded-md text-sm p-2"
+          value={local.diagnosis}
+          onChange={(e) => handleDiagnosisChange(e.target.value)}
+          onBlur={() => flush("diagnosis", () => persist(latestRef.current))}
+          className="w-full mt-1 border border-gray-300 rounded-md text-sm p-2 focus:border-clinic-accent focus:ring-1 focus:ring-clinic-accent"
         />
       </div>
 
-      {prescription.patient_request_note && (
+      {local.patient_request_note && (
         <div className="mb-3 text-sm bg-gray-50 border border-gray-200 rounded-md p-2">
           <span className="font-medium text-gray-600">患者の要望: </span>
-          {prescription.patient_request_note}
+          {local.patient_request_note}
         </div>
       )}
 
       <div className="space-y-2 mb-3">
-        {prescription.items.map((item, i) => (
+        {local.items.map((item, i) => (
           <div key={i} className="grid grid-cols-12 gap-1 items-center border border-gray-100 rounded-md p-2 bg-gray-50">
             <input
-              className="col-span-3 border border-gray-300 rounded px-1 py-1 text-xs"
+              className="col-span-3 border border-gray-300 rounded px-1 py-1 text-xs focus:border-clinic-accent"
               placeholder="薬剤名"
               value={item.drug_name}
               onChange={(e) => updateItem(i, { drug_name: e.target.value })}
+              onBlur={flushItems}
             />
             <input
-              className="col-span-2 border border-gray-300 rounded px-1 py-1 text-xs"
+              className="col-span-2 border border-gray-300 rounded px-1 py-1 text-xs focus:border-clinic-accent"
               placeholder="用量"
               value={item.dosage}
               onChange={(e) => updateItem(i, { dosage: e.target.value })}
+              onBlur={flushItems}
             />
             <input
-              className="col-span-2 border border-gray-300 rounded px-1 py-1 text-xs"
+              className="col-span-2 border border-gray-300 rounded px-1 py-1 text-xs focus:border-clinic-accent"
               placeholder="頻度"
               value={item.frequency}
               onChange={(e) => updateItem(i, { frequency: e.target.value })}
+              onBlur={flushItems}
             />
             <input
               type="number"
-              className="col-span-1 border border-gray-300 rounded px-1 py-1 text-xs"
+              className="col-span-1 border border-gray-300 rounded px-1 py-1 text-xs focus:border-clinic-accent"
               placeholder="日数"
               value={item.days_supply}
               onChange={(e) => updateItem(i, { days_supply: Number(e.target.value) })}
+              onBlur={flushItems}
             />
             <input
-              className="col-span-2 border border-gray-300 rounded px-1 py-1 text-xs"
+              className="col-span-2 border border-gray-300 rounded px-1 py-1 text-xs focus:border-clinic-accent"
               placeholder="数量"
               value={item.quantity}
               onChange={(e) => updateItem(i, { quantity: e.target.value })}
+              onBlur={flushItems}
             />
             <button
               onClick={() => removeItem(i)}
@@ -193,6 +244,10 @@ export default function PrescriptionPanel({
           院内ルールの投薬日数上限の範囲内です。特に代替案の提示はありません。
         </p>
       )}
+
+      <div className="mt-4 pt-3 border-t border-gray-100">
+        <CopyButton getText={() => formatPrescriptionForCopy(local)} label="処方内容をコピー" />
+      </div>
     </div>
   );
 }
