@@ -62,6 +62,8 @@
   .intel li { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; overflow-wrap: anywhere; }
   .intel .k { color: var(--muted); font-size: 15px; }
   .intel .v { font-weight: 700; }
+  /* 警察からのお約束: 文だけの箇条書き(.intel の「項目名|中身」の2列を使うと文が左の細い列に押し込まれるため分ける) */
+  .pledge { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
   .family-note { text-align: center; font-weight: 700; color: var(--safe); margin: 4px 0; }
   .bridge-text { font-size: 24px; font-weight: 700; margin: 6px 0 0; line-height: 1.5; }
   input[type="text"], input[type="password"] {
@@ -137,7 +139,7 @@
 
   <div class="card">
     <strong>警察からのお約束(志太榛原地区の4つの警察署より)</strong>
-    <ul class="intel">
+    <ul class="pledge">
       <li>電話でお金の話が出たら、まず電話を切って相談を。</li>
       <li>身に覚えのないお金の請求は、詐欺を疑いましょう。</li>
       <li>警察がビデオ通話をすることは、絶対にありません。</li>
