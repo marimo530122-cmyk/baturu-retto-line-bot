@@ -67,7 +67,7 @@
    公開リポジトリとして「Public Git Repository」でつないだ(GitHub 連携はしていないので、main を更新したら Render の画面で「Manual Deploy」が要る)。
    環境変数は NODE_VERSION=22 と SHIELD_APP_TOKEN(Generate)だけ。合言葉を入れて見守り画面が動くところまで確認した。
    2026-10-06: Anthropic(platform.claude.com)で前払いし、ANTHROPIC_API_KEY を Render に入れて再デプロイした(利用者が自分で操作)。
-   まだ確認していないこと: Render の Logs に「AI応答: ON」と出るか。次はそこを確かめ、家族に犯人役を頼んで試す。
+   2026-10-07: Render の Logs で「AI応答: ON」を利用者が確認した。次は「文字で試す」か家族の犯人役で、AIの返事を本物の Claude で試す。
    Jev は利用者が入れたがっている(判断を Jev、話すのを Claude に任せる分担)。TypeSafe のキーを持っているかはまだ聞けていない。
    見守り画面に「声を選ぶ」欄を追加(このブランチ、まだ main・Render に入っていない)。家族が候補3つを聞き比べて選ぶ。本人の声には似せない。
    お金: 利用者は手持ちが少なく、削れるところは削りたい。今かかるのは Claude の使った分だけ(5ドル前払い済み)。
