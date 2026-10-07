@@ -1,0 +1,314 @@
+<title>鮮刻シールド ご家族の手引き</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+  /* レイアウト: 1本の縦の流れ。電話がかかってから終わるまでを「時間の順」で読ませ、スマホの画面見本を横(狭い画面では下)に置く */
+  :root {
+    --bg: #f5f7f6;
+    --surface: #ffffff;
+    --ink: #1c2a33;
+    --muted: #55656e;
+    --line: #d5dde0;
+    --indigo: #1f4e6b;       /* 藍: 見出し・信頼 */
+    --signal: #c98a00;       /* 山吹: 「ポーン」と注意 */
+    --signal-soft: #fff4d6;
+    --safe: #2f7a4f;
+    --line-green: #06c755;
+    --line-green-ink: #06a346;
+    --warn-ink: #7a4b00;
+    --display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
+    --body: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10181d; --surface: #182329; --ink: #e6edf0; --muted: #9fb0b8; --line: #2c3a42;
+      --indigo: #8cc3e6; --signal: #f0b632; --signal-soft: #2e2510; --safe: #6fcf97; --warn-ink: #f6d58a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10181d; --surface: #182329; --ink: #e6edf0; --muted: #9fb0b8; --line: #2c3a42;
+    --indigo: #8cc3e6; --signal: #f0b632; --signal-soft: #2e2510; --safe: #6fcf97; --warn-ink: #f6d58a;
+    color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.85; }
+  .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 64px; }
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.35; margin: 0; }
+  h2 { font-size: 1.6rem; color: var(--indigo); }
+  h3 { font-size: 1.15rem; }
+  p { margin: 0; }
+  .lead { color: var(--muted); max-width: 40em; }
+  section { display: grid; gap: 22px; }
+  .eyebrow { font-size: 0.82rem; letter-spacing: 0.12em; color: var(--muted); font-weight: 700; }
+
+  /* はじめに */
+  .hero { display: grid; gap: 28px; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; }
+  .hero h1 { font-size: clamp(1.9rem, 5vw, 2.8rem); font-weight: 900; }
+  .hero h1 .name { color: var(--indigo); }
+  .hero .ruby { display: block; font-size: 0.9rem; font-family: var(--body); color: var(--muted); font-weight: 400; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .hero-text { display: grid; gap: 18px; min-width: 0; }
+  .note-box { border-left: 4px solid var(--signal); background: var(--signal-soft); padding: 14px 18px; border-radius: 0 10px 10px 0; color: var(--warn-ink); font-size: 0.95rem; }
+
+  /* スマホの画面見本 */
+  .phone { justify-self: center; width: 100%; max-width: 300px; background: var(--surface); border: 2px solid var(--line); border-radius: 34px; padding: 18px 14px 22px; box-shadow: 0 18px 40px rgba(20, 40, 55, 0.12); display: grid; gap: 12px; }
+  .phone .notch { width: 70px; height: 6px; border-radius: 3px; background: var(--line); justify-self: center; }
+  .phone .status { background: var(--signal-soft); border: 2px solid var(--signal); border-radius: 14px; padding: 12px; font-family: var(--display); font-weight: 700; font-size: 1.05rem; color: var(--warn-ink); line-height: 1.5; }
+  .phone .status small { display: block; font-family: var(--body); font-weight: 400; font-size: 0.78rem; margin-top: 4px; }
+  .phone .bridge { border: 2px dashed var(--line); border-radius: 14px; padding: 10px 12px; font-size: 0.85rem; line-height: 1.6; }
+  .phone .bridge b { display: block; font-size: 0.75rem; color: var(--muted); }
+  .phone .btn { background: var(--indigo); color: var(--surface); border-radius: 14px; padding: 12px; text-align: center; font-family: var(--display); font-weight: 700; line-height: 1.45; }
+  .phone .btn small { display: block; font-size: 0.75rem; font-weight: 500; opacity: 0.9; }
+  .chime { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--signal); font-weight: 700; justify-self: start; }
+  .chime::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 4px var(--signal-soft); }
+
+  /* 電話の流れ(時間の順) */
+  .flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; }
+  .flow li { counter-increment: step; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 16px; padding-bottom: 26px; position: relative; }
+  .flow li::before { content: counter(step); width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--indigo); color: var(--indigo); font-family: var(--display); font-weight: 900; font-size: 1.15rem; z-index: 1; }
+  .flow li:not(:last-child)::after { content: ""; position: absolute; left: 21px; top: 44px; bottom: 0; width: 2px; background: var(--line); }
+  .flow li.alert::before { border-color: var(--signal); color: var(--surface); background: var(--signal); }
+  .flow .body { display: grid; gap: 6px; padding-top: 6px; min-width: 0; }
+  .flow .body p { color: var(--muted); }
+  .say { font-family: var(--display); font-weight: 700; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; justify-self: start; }
+
+  /* ご家族がすること */
+  .todo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .todo article { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 8px; align-content: start; }
+  .todo .when { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; color: var(--indigo); }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 1px 10px; border-radius: 999px; background: var(--signal-soft); color: var(--warn-ink); margin-left: 6px; vertical-align: 2px; }
+  code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 0.9em; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
+
+  /* やらないこと */
+  .promise { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .promise li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+  .promise li::before { content: "✕"; color: var(--safe); font-weight: 700; font-size: 1.1rem; line-height: 1.6; }
+  .promise b { color: var(--ink); }
+  .promise span { color: var(--muted); }
+
+  /* よくある質問 */
+  .faq { display: grid; gap: 10px; }
+  .faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .faq summary { cursor: pointer; font-weight: 700; font-family: var(--display); }
+  .faq summary:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; border-radius: 6px; }
+  .faq details p { margin-top: 10px; color: var(--muted); }
+
+
+  /* LINEの友だち追加(公式LINEができるまでは押せない) */
+  .cta { display: grid; gap: 10px; justify-items: start; }
+  .line-btn { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 1.1rem; padding: 14px 22px; border-radius: 999px; background: var(--line-green); color: #ffffff; border: none; opacity: 0.55; cursor: not-allowed; }
+  .line-btn .mark { background: #ffffff; color: var(--line-green-ink); border-radius: 8px; padding: 0 7px; font-size: 0.85rem; font-weight: 900; }
+  .cta small { color: var(--muted); font-size: 0.85rem; }
+
+  /* 全体のしくみ(図解): 左から右へ。スマホ幅では上から下へ */
+  .map { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; align-items: stretch; }
+  .node { background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: 16px 14px; display: grid; gap: 6px; align-content: start; text-align: center; min-width: 0; }
+  .node .who { font-family: var(--display); font-weight: 900; font-size: 1.1rem; }
+  .node .what { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+  .node .pic { font-family: var(--display); font-weight: 900; font-size: 1.5rem; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; justify-self: center; background: var(--bg); color: var(--indigo); border: 2px solid var(--line); }
+  .node.hot { border-color: var(--signal); }
+  .node.hot .pic { background: var(--signal-soft); color: var(--warn-ink); border-color: var(--signal); }
+  .node.end .pic { color: var(--safe); }
+  .arrow { display: grid; place-items: center; color: var(--muted); font-size: 0.8rem; font-weight: 700; text-align: center; padding: 6px; line-height: 1.4; }
+  .arrow::before { content: "→"; font-size: 1.6rem; color: var(--indigo); line-height: 1; }
+  .map-row { display: grid; grid-template-columns: minmax(0,1fr) 64px minmax(0,1fr) 64px minmax(0,1fr) 64px minmax(0,1fr); align-items: stretch; }
+  .map-cap { color: var(--muted); font-size: 0.9rem; }
+
+  /* 警察の方へ */
+  .police { background: var(--surface); border: 2px solid var(--indigo); border-radius: 18px; padding: 22px; display: grid; gap: 12px; }
+  .police ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 18px; }
+    .map-row { grid-template-columns: minmax(0, 1fr); }
+    .arrow { padding: 8px 0; }
+    .arrow::before { content: "↓"; }
+  }
+
+  footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 20px; }
+
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    .wrap { gap: 52px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .phone .status { animation: glow 2.4s ease-in-out 1; }
+    @keyframes glow { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 6px var(--signal-soft); } }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-text">
+      <h1><span class="ruby">せんこくシールド</span><span class="name">鮮刻シールド</span><br>ご家族の手引き</h1>
+      <p class="lead">
+        親御さんが詐欺の電話を取ってしまったとき、そばのスマホが気づいて「ポーン」と知らせ、
+        やさしい言い訳と大きなボタンを出します。ボタンを押せば、AIが代わりに相手と話して時間をかせぎ、
+        振込先などの手がかりを聞き出します。このページは、設定をするご家族の方に向けたものです。
+      </p>
+      <div class="cta">
+        <button class="line-btn" type="button" disabled aria-disabled="true"><span class="mark">LINE</span>友だち追加して見守りに登録</button>
+        <small>公式LINEは準備中です。できあがったら、ここから登録できるようになります。</small>
+      </div>
+      <p class="note-box">
+        電話を切る・AIに代わるのは、いつもご本人が決めます。スマホが勝手に電話を切ったり、警察に連絡したりはしません。
+      </p>
+    </div>
+
+    <div class="phone" aria-label="怪しい電話のときの見守り画面の見本">
+      <span class="notch"></span>
+      <span class="chime">ポーン ポーン</span>
+      <div class="status">大丈夫です。落ち着いてくださいね<small>お金・カード・暗証番号のことは、今は何も答えなくて大丈夫です。</small></div>
+      <div class="bridge"><b>① まず、電話の相手にこう言ってみてください</b>あ、ちょっと待って、メガネ落としちゃった。</div>
+      <div class="btn">② 言えたら、このボタンを押してください<small>あとはAIがお話しします</small></div>
+    </div>
+  </header>
+
+  <section aria-labelledby="map-title">
+    <span class="eyebrow">ひと目でわかる</span>
+    <h2 id="map-title">全体のしくみ</h2>
+    <div class="map-row" role="img" aria-label="ご本人の電話をスマホが聞き、怪しいとポーンと知らせ、AIが代わりに話して手がかりを聞き出し、ご家族のLINEに届き、ご家族が銀行と警察に伝える流れ">
+      <div class="node"><span class="pic">耳</span><span class="who">スマホが聞く</span><span class="what">電話をスピーカーにして、そばに置いたスマホが相手の言葉を聞きます</span></div>
+      <div class="arrow">怪しい<br>言葉</div>
+      <div class="node hot"><span class="pic">鳴</span><span class="who">ポーンと知らせる</span><span class="what">画面に①の言い訳と②の大きなボタン</span></div>
+      <div class="arrow">本人が<br>押す</div>
+      <div class="node"><span class="pic">話</span><span class="who">AIが話す</span><span class="what">時間をかせぎ、名前・口座・日時と場所を聞き出す</span></div>
+      <div class="arrow">口座が<br>出たら</div>
+      <div class="node end"><span class="pic">守</span><span class="who">家族と警察へ</span><span class="what">ご家族のLINEへ。ご家族から銀行と警察に伝えて口座を止める</span></div>
+    </div>
+    <p class="map-cap">ご家族のLINEへの知らせは、公式LINEができてから使えるようになります。</p>
+  </section>
+
+  <section aria-labelledby="flow-title">
+    <span class="eyebrow">電話がかかってから終わるまで</span>
+    <h2 id="flow-title">ご本人に起きること</h2>
+    <ol class="flow">
+      <li>
+        <div class="body">
+          <h3>電話をスピーカーにして、スマホをそばに置く</h3>
+          <p>見守り画面の「聞き取りを始める」を押しておきます。相手の声を文字にして、詐欺の言い回しがないかを見ています。</p>
+        </div>
+      </li>
+      <li class="alert">
+        <div class="body">
+          <h3>怪しい言葉が出たら「ポーン」</h3>
+          <p>「還付金」「ATMに行って」「キャッシュカードを預かる」などが出ると、スマホが小さく鳴って震えます。相手に聞こえても不自然でない、通知音くらいの音です。</p>
+        </div>
+      </li>
+      <li>
+        <div class="body">
+          <h3>① 画面の一言を、相手に言う</h3>
+          <span class="say">「あ、ちょっと待って、メガネ落としちゃった。」</span>
+          <p>ほかに「電波の調子が悪い」「メモ用紙を取ってくる」「お鍋に火をかけてる」「玄関に誰か来た」があります。どれも、電話を保留にする自然な言い訳です。</p>
+        </div>
+      </li>
+      <li>
+        <div class="body">
+          <h3>② 大きなボタンを押すと、AIが代わりに話す</h3>
+          <p>AIは「のんびりした年配の人」として相手と話し、名前・所属・銀行・口座・金額・会う日時と場所を聞き返して、相手に言わせます。お金を渡す約束はしません。</p>
+        </div>
+      </li>
+      <li>
+        <div class="body">
+          <h3>電話が終わったら、110番の台本が出る</h3>
+          <p>「もしもし。詐欺だと思う電話がありました」から始まる、読み上げるだけの台本です。電話の時刻と、相手が話した手口が自動で入ります。ご家族向けの台本もコピーできます。</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="todo-title">
+    <span class="eyebrow">設定は最初の一度だけ</span>
+    <h2 id="todo-title">ご家族にしていただくこと</h2>
+    <div class="todo">
+      <article>
+        <span class="when">1. スマホを用意する</span>
+        <h3>見守り画面を開く</h3>
+        <p>親御さんのスマホか、家に置いておく使わなくなったスマホで、Chrome を開いて次のアドレスを開きます。ホーム画面に追加しておくと、次からすぐ開けます。</p>
+        <p><code>sengoku-shield.onrender.com/app</code></p>
+      </article>
+      <article>
+        <span class="when">2. 合言葉を入れる</span>
+        <h3>画面の下の「合言葉」に入れる</h3>
+        <p>合言葉は、鮮刻シールドを置いた人から直接教えてもらってください。メールやSNSに書いて送らないでください。</p>
+      </article>
+      <article>
+        <span class="when">3. 声を選ぶ</span>
+        <h3>AIが話すときの声を決める<span class="tag">準備中</span></h3>
+        <p>ご本人が男性か女性かを選び、候補の声を聞き比べて「普通のお年寄りが話している」ように聞こえるものを1つ選びます。ご本人の声に似せる必要はありません。</p>
+      </article>
+      <article>
+        <span class="when">4. 一緒に練習する</span>
+        <h3>「文字で試す」で流れを見せる</h3>
+        <p>画面の「文字で試す」に「還付金があります。ATMに行ってください」と入れて「判定する」を押すと、①と②が出ます。ご本人と一緒に、②を押すところまで練習してください。</p>
+      </article>
+      <article>
+        <span class="when">5. 知らせを受け取る</span>
+        <h3>LINEで見守りに登録する<span class="tag">準備中</span></h3>
+        <p>見守り画面の「家族を登録する」で出る6桁の番号を、鮮刻シールドのLINEに送ると登録できます。相手が振込先の口座を言ったら、その場でLINEに届きます。公式LINEは今つくっているところです。</p>
+      </article>
+      <article>
+        <span class="when">6. 知らせが来たら</span>
+        <h3>銀行と警察に伝える</h3>
+        <p>口座の知らせが届いたら、その銀行と警察(110番、急ぎでなければ #9110)に伝えて、口座を止めてもらってください。会う日時や場所が出たときは、すぐ110番です。</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="promise-title">
+    <span class="eyebrow">安心して使っていただくために</span>
+    <h2 id="promise-title">鮮刻シールドがしないこと</h2>
+    <ul class="promise">
+      <li><p><b>勝手に電話を切ったり、AIに代わったりしません。</b><span> 決めるのは、いつもご本人です。</span></p></li>
+      <li><p><b>警察に自動で連絡しません。</b><span> 外から通報を受け付ける公式の窓口がないためです。110番はご本人かご家族がかけます。</span></p></li>
+      <li><p><b>ご本人やご家族の声をまねしません。</b><span> 声をまねる仕組みそのものが、オレオレ詐欺の道具になってしまうからです。AIの声は、性別を合わせた一般的な合成音声だけです。</span></p></li>
+      <li><p><b>AIはお金を渡す約束をしません。</b><span> 「振り込みます」「取りに来てください」とは言わず、うその口座番号も言いません。受け取り役が本当に家に来ないようにするためです。</span></p></li>
+      <li><p><b>相手の口座をSNSなどに出しません。</b><span> 伝える先は、ご家族と銀行・警察だけです。</span></p></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="police-title">
+    <div class="police">
+      <span class="eyebrow">警察・防犯担当の方へ</span>
+      <h2 id="police-title">お伝えしたいこと</h2>
+      <ul>
+        <li>AIは「だまされたふり」で相手の名前・所属・口座・金額・会う日時と場所を聞き返しますが、振り込む・渡す・行く・待つといった約束はせず、架空の口座番号も言いません。</li>
+        <li>会う日時や場所が出たときは、ご本人とご家族に110番を案内します。だまされたふり作戦は、警察の指示に従います。</li>
+        <li>警察への自動送信や実況中継はしません。電話のあと、110番で読み上げる台本と、聞き取れた手がかりのメモを画面に出します。</li>
+        <li>検知の言い回しは、警察や公的機関が公開している注意喚起と実際の録音をもとに育てています。地元の手口の言い回しを教えていただけると助かります。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="faq-title">
+    <h2 id="faq-title">よくある質問</h2>
+    <div class="faq">
+      <details>
+        <summary>お金はかかりますか?</summary>
+        <p>今は試験中で、ご家族の負担はありません。料金のしくみが決まったら、このページでお知らせします。</p>
+      </details>
+      <details>
+        <summary>「ポーン」の音で、相手にばれませんか?</summary>
+        <p>スマホの通知音くらいの短い音にしてあります。サイレンのような音は、相手に気づかれるうえ、ご本人も驚かせてしまうので使っていません。</p>
+      </details>
+      <details>
+        <summary>会話の中身はどこに送られますか?</summary>
+        <p>声を文字にするのにブラウザの音声認識(Chrome では Google のしくみ)を使い、判定のために会話の文字を鮮刻シールドのサーバーに送ります。ご本人の名前や住所は保存しません。</p>
+      </details>
+      <details>
+        <summary>普通の電話で鳴ってしまうことはありますか?</summary>
+        <p>宅配・病院・役所・知り合いなど、普通の電話93件で試して、間違えて鳴ったものは0件でした。それでも機械の判定なので、鳴ったときは画面を見て、落ち着いて判断してください。</p>
+      </details>
+      <details>
+        <summary>スマホを置いていない部屋の電話は?</summary>
+        <p>今は、スマホのそばの電話だけを見守れます。家の固定電話に直接つなぐしくみ(電話の転送)は、これから準備します。</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    鮮刻シールドは、静岡県藤枝市の魚屋が、母が詐欺にあった経験から作っている詐欺電話対策の道具です。「準備中」と書いたものは、まだ使えません。
+  </footer>
+</div>

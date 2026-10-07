@@ -187,6 +187,16 @@
     </div>
     <button id="voiceTestBtn" class="secondary" type="button">声を試しに聞く</button>
     <p class="note" id="voiceNote"></p>
+    <details id="voicePick">
+      <summary>声を選ぶ(ご家族の方が最初に一度だけ)</summary>
+      <p class="note">
+        いくつか聞き比べて、「普通のお年寄りが話している」ように聞こえるものを1つ選んでください。
+        ご本人の声に似せる必要はありません(相手はご本人の声を知らないことがほとんどです)。
+        選んだ声は、この端末に覚えておきます。
+      </p>
+      <div id="voiceList"></div>
+      <button id="voiceAutoBtn" class="secondary" type="button">自動で選ぶ声に戻す</button>
+    </details>
   </div>
 
   <div class="card">
@@ -286,20 +296,86 @@
     return { voice: voices.find((v) => v !== male) || voices[0] || null, pitch: 1.1, exact: false };
   }
 
+  // 家族が聞き比べて選んだ声(性別ごとに端末へ保存)。端末から声が消えていたら自動の選び方に戻る
+  const VOICE_SAMPLE = "はいはい、もしもし。ええと、どちら様でしたかねえ。";
+  function savedVoice() {
+    try {
+      const s = JSON.parse(storage.get(`shieldVoice_${gender}`) || "null");
+      const voice = s && japaneseVoices().find((v) => v.name === s.name);
+      return voice ? { voice, pitch: s.pitch, rate: s.rate } : null;
+    } catch { return null; }
+  }
+
+  // 聞き比べる候補: 性別に合う声(無ければ全部の日本語の声)を、お年寄りらしい高さ・速さで最大3つ
+  function voiceCandidates() {
+    const voices = japaneseVoices();
+    const isMale = (v) => MALE_VOICE.test(v.name) && !/female/i.test(v.name);
+    const fit = voices.filter((v) => (gender === "male" ? isMale(v) : !isMale(v)));
+    const base = fit.length ? fit : voices;
+    const low = gender === "male" ? 0.8 : 0.9;
+    const lower = gender === "male" ? 0.65 : 0.75;
+    const list = base.map((voice) => ({ voice, pitch: fit.length ? low : lower, rate: 0.85 }));
+    // 声が1つしか無い端末でも選べるよう、同じ声の高さ・速さ違いを足す
+    if (base[0]) {
+      list.push({ voice: base[0], pitch: lower, rate: 0.8 });
+      list.push({ voice: base[0], pitch: 1.0, rate: 0.9 });
+    }
+    return list.slice(0, 3);
+  }
+
+  function renderVoiceList() {
+    const box = $("voiceList");
+    box.textContent = "";
+    const chosen = savedVoice();
+    voiceCandidates().forEach((c, i) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const play = document.createElement("button");
+      play.type = "button";
+      play.className = "secondary";
+      play.textContent = `候補${i + 1}を聞く`;
+      play.addEventListener("click", () => {
+        try { speechSynthesis.cancel(); } catch {}
+        speakWith(VOICE_SAMPLE, c);
+      });
+      const pick = document.createElement("button");
+      pick.type = "button";
+      const isChosen = chosen && chosen.voice === c.voice && chosen.pitch === c.pitch && chosen.rate === c.rate;
+      pick.className = isChosen ? "" : "secondary";
+      pick.textContent = isChosen ? "選んだ声" : "これにする";
+      pick.addEventListener("click", () => {
+        storage.set(`shieldVoice_${gender}`, JSON.stringify({ name: c.voice.name, pitch: c.pitch, rate: c.rate }));
+        updateVoiceNote();
+      });
+      row.append(play, pick);
+      box.append(row);
+    });
+  }
+
   function updateVoiceNote() {
     for (const r of document.querySelectorAll('input[name="gender"]')) r.checked = r.value === gender;
     if (!window.speechSynthesis) {
       $("voiceNote").textContent = "この端末は読み上げに対応していません。";
+      $("voicePick").classList.add("hidden");
       return;
     }
+    renderVoiceList();
+    const chosen = savedVoice();
     const v = voiceSetting();
     const label = gender === "male" ? "男性" : "女性";
-    $("voiceNote").textContent = !v.voice
-      ? "日本語の声が見つかりません(端末の設定で日本語の読み上げ音声を入れてください)。"
-      : v.exact
-        ? `使う声: ${v.voice.name}(${label})`
-        : `この端末には${label}の声が入っていないため、「${v.voice.name}」の高さを変えて代用します。端末の設定で${label}の日本語音声を追加すると自然になります。`;
+    $("voiceNote").textContent = chosen
+      ? `ご家族が選んだ声を使います(${chosen.voice.name})`
+      : !v.voice
+        ? "日本語の声が見つかりません(端末の設定で日本語の読み上げ音声を入れてください)。"
+        : v.exact
+          ? `使う声: ${v.voice.name}(${label})`
+          : `この端末には${label}の声が入っていないため、「${v.voice.name}」の高さを変えて代用します。端末の設定で${label}の日本語音声を追加すると自然になります。`;
   }
+
+  $("voiceAutoBtn").addEventListener("click", () => {
+    storage.set(`shieldVoice_${gender}`, "");
+    updateVoiceNote();
+  });
 
   for (const r of document.querySelectorAll('input[name="gender"]')) {
     r.addEventListener("change", () => {
@@ -349,9 +425,42 @@
   // 危険度が上がったときだけ、音と振動で知らせる
   // 危険度が上がったときだけ、やさしく振動で知らせる。
   // 音は鳴らさない(電話がスピーカーなので相手に聞こえる。大きな警告音はお年寄りを慌てさせる)。
+  // 怪しくなったら、本人に画面を見てもらうための合図(振動 + やさしい「ポーン」)。
+  // 電話の相手にも聞こえるかもしれないので、サイレンのような音にはせず、スマホの通知音くらいにする。
+  let audioCtx = null;
+  function unlockAudio() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch {}
+  }
+  function chime(times) {
+    if (!audioCtx) return;
+    try {
+      for (let i = 0; i < times; i++) {
+        const t = audioCtx.currentTime + i * 0.5;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, t);
+        osc.frequency.setValueAtTime(660, t + 0.18);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.5);
+      }
+    } catch {}
+  }
   function alarm(level) {
     try { navigator.vibrate && navigator.vibrate(level === "HIGH" ? [200, 300, 200] : [150]); } catch {}
+    chime(level === "HIGH" ? 2 : 1);
+    // ①の言い訳と②のボタンが見える位置まで戻す(下を見ていると気づけないため)
+    try { $("status").scrollIntoView({ behavior: "smooth", block: "start" }); } catch {}
   }
+  // ブラウザは、画面を一度押すまで音を出させないので、最初に押したときに音の準備をしておく
+  document.addEventListener("pointerdown", unlockAudio, { once: true });
 
   const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
 
@@ -407,14 +516,19 @@
   }
 
   function speak(text) {
+    // 家族が選んだ声があればそれを、無ければ性別から自動で選んだ声を使う
+    const v = savedVoice() || { ...voiceSetting(), rate: 0.9 }; // 年配の人らしく、少しゆっくり
+    return speakWith(text, v);
+  }
+
+  function speakWith(text, v) {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) return resolve();
       const u = new SpeechSynthesisUtterance(text);
-      const v = voiceSetting();
       u.lang = "ja-JP";
       if (v.voice) u.voice = v.voice;
       u.pitch = v.pitch;
-      u.rate = 0.9; // 年配の人らしく、少しゆっくり
+      u.rate = v.rate;
       // 端末によっては読み上げ終わりの合図が来ないので、長さから見積もった時間で打ち切る
       const guard = setTimeout(resolve, 3000 + text.length * 250);
       u.onend = u.onerror = () => { clearTimeout(guard); resolve(); };
