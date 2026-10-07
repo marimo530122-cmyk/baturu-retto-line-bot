@@ -32,4 +32,7 @@ jobs:
           SHIELD_AI_MODEL: ${{ inputs.model }}
         run: |
           if [ -z "$SHIELD_AI_MODEL" ]; then unset SHIELD_AI_MODEL; fi
+          # 登録したキーの前後に改行や空白が入っていると「キーが無効」になるので取り除く
+          ANTHROPIC_API_KEY="$(printf '%s' "$ANTHROPIC_API_KEY" | tr -d '[:space:]')"
+          export ANTHROPIC_API_KEY
           node rehearsal.js
