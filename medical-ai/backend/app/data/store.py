@@ -1,0 +1,230 @@
+"""患者・診察セッション・連携記録・医師プロファイルの保存先。
+
+SQLite(1つのファイルに保存する、追加費用なしのデータベース)に書き込むので、
+アプリを再起動してもデータが消えない。
+
+設計メモ:
+- 読み込みは起動時に1回だけファイルから行い、以降はメモリ上の同じオブジェクトを返す。
+  書き込み(save_*/create_*/add_*)はその場でファイルにも反映する(write-through)。
+  録音中のWebSocketとライブドラフト更新が同じセッションを同時に触っても、以前のインメモリ版と
+  同じく1つのオブジェクトを共有するので、古いコピーで上書きし合うことがない。
+- そのため「1プロセスで動かす」前提。複数台・複数プロセスで動かす段階(本番)では、
+  PostgreSQL等のサーバー型DBに置き換えること。外から見える関数(list_patients 等)は
+  変えずに中身だけ差し替えられるよう、ここに保存処理を閉じ込めてある。
+- 各データはPydanticモデルをJSONにして1行ずつ保存する(項目追加でスキーマ変更が要らない)。
+"""
+from __future__ import annotations
+
+import os
+import sqlite3
+import threading
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import HTTPException
+
+from app.config import get_settings
+from app.models import (
+    ConsultationSession,
+    HandoffRecord,
+    Patient,
+    PatientStatus,
+    PhysicianProfile,
+    SessionStatus,
+)
+
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS patients (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS handoffs (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    data TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS physician_profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL
+);
+"""
+
+
+def _demo_patients() -> list[Patient]:
+    """データベースが空のときだけ入れる、架空のデモ患者。"""
+    return [
+        Patient(
+            id="p001",
+            name="山田 太郎",
+            name_kana="ヤマダ タロウ",
+            birth_date="1968-04-12",
+            sex="男性",
+            department="内科",
+            scheduled_time="09:00",
+            chief_complaint="咳・微熱が3日間続いている",
+        ),
+        Patient(
+            id="p002",
+            name="佐藤 花子",
+            name_kana="サトウ ハナコ",
+            birth_date="1985-11-02",
+            sex="女性",
+            department="内科",
+            scheduled_time="09:20",
+            chief_complaint="不眠が続いており、いつもの薬を1ヶ月分希望",
+        ),
+        Patient(
+            id="p003",
+            name="鈴木 一郎",
+            name_kana="スズキ イチロウ",
+            birth_date="1952-01-30",
+            sex="男性",
+            department="循環器内科",
+            scheduled_time="09:40",
+            chief_complaint="動悸・息切れ、専門医紹介の可能性",
+        ),
+    ]
+
+
+class SqliteStore:
+    def __init__(self, database_path: str) -> None:
+        self._lock = threading.RLock()
+        is_memory = database_path == ":memory:"
+        if not is_memory:
+            path = Path(database_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            is_new = not path.exists()
+        self._conn = sqlite3.connect(database_path, check_same_thread=False)
+        if not is_memory:
+            if is_new:
+                # 患者情報が入るファイルなので、持ち主(アプリを動かすユーザー)以外は読めないようにする
+                os.chmod(database_path, 0o600)
+            # 書き込み途中で落ちてもファイルが壊れにくいモード
+            self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.executescript(_SCHEMA)
+        self._conn.commit()
+
+        self._patients: dict[str, Patient] = {}
+        self._sessions: dict[str, ConsultationSession] = {}
+        self._handoffs: list[HandoffRecord] = []
+        self._physician_profile = PhysicianProfile()
+        self._load()
+        if not self._patients:
+            for patient in _demo_patients():
+                self._save_patient(patient)
+
+    def _load(self) -> None:
+        for (data,) in self._conn.execute("SELECT data FROM patients ORDER BY rowid"):
+            patient = Patient.model_validate_json(data)
+            self._patients[patient.id] = patient
+        for (data,) in self._conn.execute("SELECT data FROM sessions ORDER BY rowid"):
+            session = ConsultationSession.model_validate_json(data)
+            self._sessions[session.id] = session
+        for (data,) in self._conn.execute("SELECT data FROM handoffs ORDER BY seq"):
+            self._handoffs.append(HandoffRecord.model_validate_json(data))
+        row = self._conn.execute("SELECT data FROM physician_profile WHERE id = 1").fetchone()
+        if row:
+            self._physician_profile = PhysicianProfile.model_validate_json(row[0])
+
+    def _write(self, sql: str, params: tuple) -> None:
+        with self._lock:
+            self._conn.execute(sql, params)
+            self._conn.commit()
+
+    def _save_patient(self, patient: Patient) -> None:
+        self._patients[patient.id] = patient
+        self._write(
+            "INSERT INTO patients (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
+            (patient.id, patient.model_dump_json()),
+        )
+
+    def close(self) -> None:
+        with self._lock:
+            self._conn.close()
+
+    # --- 患者 ---
+
+    def list_patients(self) -> list[Patient]:
+        return list(self._patients.values())
+
+    def get_patient(self, patient_id: str) -> Patient:
+        patient = self._patients.get(patient_id)
+        if not patient:
+            raise HTTPException(status_code=404, detail="患者が見つかりません")
+        return patient
+
+    # --- 診察セッション ---
+
+    def create_session(self, patient_id: str) -> ConsultationSession:
+        patient = self.get_patient(patient_id)
+        session = ConsultationSession(patient_id=patient_id)
+        self.save_session(session)
+        patient.status = PatientStatus.IN_SESSION
+        self._save_patient(patient)
+        return session
+
+    def get_session(self, session_id: str) -> ConsultationSession:
+        session = self._sessions.get(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="診察セッションが見つかりません")
+        return session
+
+    def save_session(self, session: ConsultationSession) -> None:
+        self._sessions[session.id] = session
+        self._write(
+            "INSERT INTO sessions (id, data, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+            (session.id, session.model_dump_json(), datetime.utcnow().isoformat()),
+        )
+
+    def list_recent_finalized_sessions(self, limit: int = 2) -> list[ConsultationSession]:
+        """医師の文体を模倣するための少数例として、直近に確定したカルテを新しい順に返す。"""
+        finalized = [
+            s
+            for s in self._sessions.values()
+            if s.status in (SessionStatus.REVIEW, SessionStatus.SENT) and s.soap.generated_at
+        ]
+        finalized.sort(key=lambda s: s.soap.generated_at, reverse=True)
+        return finalized[:limit]
+
+    # --- 看護師/調剤への連携 ---
+
+    def add_handoff(self, record: HandoffRecord) -> None:
+        self._handoffs.append(record)
+        self._write("INSERT INTO handoffs (id, data) VALUES (?, ?)", (record.id, record.model_dump_json()))
+
+    def list_handoff_outbox(self) -> list[HandoffRecord]:
+        return list(reversed(self._handoffs))
+
+    # --- 医師プロファイル ---
+
+    def get_physician_profile(self) -> PhysicianProfile:
+        return self._physician_profile
+
+    def set_physician_profile(self, style_notes: str) -> PhysicianProfile:
+        self._physician_profile = PhysicianProfile(style_notes=style_notes, updated_at=datetime.utcnow())
+        self._write(
+            "INSERT INTO physician_profile (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
+            (self._physician_profile.model_dump_json(),),
+        )
+        return self._physician_profile
+
+
+_store = SqliteStore(get_settings().database_path)
+
+# 既存のルーターは `store.get_session(...)` のように関数として呼んでいるので、その形のまま公開する
+list_patients = _store.list_patients
+get_patient = _store.get_patient
+create_session = _store.create_session
+get_session = _store.get_session
+save_session = _store.save_session
+list_recent_finalized_sessions = _store.list_recent_finalized_sessions
+add_handoff = _store.add_handoff
+list_handoff_outbox = _store.list_handoff_outbox
+get_physician_profile = _store.get_physician_profile
+set_physician_profile = _store.set_physician_profile

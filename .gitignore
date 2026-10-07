@@ -1,7 +1,15 @@
 .env
+.env.local
 node_modules/
 __pycache__/
 *.pyc
 output/
 logs/
 freelance/.debug/
+.venv/
+medical-ai/frontend/.next/
+medical-ai/frontend/*.tsbuildinfo
+medical-ai/backend/.pytest_cache/
+# 医療AIの保存データ(患者情報が入るため絶対にGitに入れない)
+medical-ai/backend/storage/
+medical-ai-local/certs/

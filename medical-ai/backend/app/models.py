@@ -1,0 +1,247 @@
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from enum import Enum
+
+from pydantic import BaseModel, Field
+
+
+def _id() -> str:
+    return uuid.uuid4().hex[:12]
+
+
+class PatientStatus(str, Enum):
+    WAITING = "waiting"
+    IN_SESSION = "in_session"
+    DONE = "done"
+
+
+class Patient(BaseModel):
+    id: str
+    name: str
+    name_kana: str
+    birth_date: str
+    sex: str
+    department: str
+    scheduled_time: str
+    chief_complaint: str
+    status: PatientStatus = PatientStatus.WAITING
+
+
+class SessionStatus(str, Enum):
+    IN_PROGRESS = "in_progress"
+    GENERATING = "generating"
+    REVIEW = "review"
+    SENT = "sent"
+
+
+class Speaker(str, Enum):
+    DOCTOR = "doctor"
+    PATIENT = "patient"
+    STAFF = "staff"
+    UNKNOWN = "unknown"
+
+
+class TranscriptSegment(BaseModel):
+    id: str = Field(default_factory=_id)
+    speaker: Speaker = Speaker.UNKNOWN
+    text: str
+    is_final: bool = True
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SoapNote(BaseModel):
+    subjective: str = ""
+    objective: str = ""
+    assessment: str = ""
+    plan: str = ""
+    generated_at: datetime | None = None
+    edited: bool = False
+    is_mock: bool = False
+
+
+class ReferralLetter(BaseModel):
+    to_institution: str = ""
+    to_department: str = ""
+    reason_for_referral: str = ""
+    clinical_summary: str = ""
+    current_treatment: str = ""
+    requested_action: str = ""
+    generated_at: datetime | None = None
+    edited: bool = False
+    is_mock: bool = False
+
+
+class PrescriptionItem(BaseModel):
+    drug_name: str
+    dosage: str
+    frequency: str
+    days_supply: int
+    quantity: str = ""
+    notes: str = ""
+
+
+class PrescriptionOrder(BaseModel):
+    diagnosis: str = ""
+    items: list[PrescriptionItem] = Field(default_factory=list)
+    patient_request_note: str = ""
+    generated_at: datetime | None = None
+    edited: bool = False
+    is_mock: bool = False
+
+
+class ComplianceSuggestionKind(str, Enum):
+    EXISTING_DIAGNOSIS_EXCEPTION = "existing_diagnosis_exception"
+    OUTSIDE_PRESCRIPTION = "outside_prescription"
+    SPLIT_VISIT = "split_visit"
+    SELF_PAY = "self_pay"
+
+
+class ComplianceSuggestion(BaseModel):
+    kind: ComplianceSuggestionKind
+    title: str
+    description: str
+    legal_basis: str
+    requires_physician_confirmation: bool = True
+
+
+COMPLIANCE_DISCLAIMER = (
+    "本提案は、カルテに記録された実際の臨床所見・診断に基づくことを前提とします。"
+    "保険適用のためだけに診断名を変更・追加することは、保険診療上の不正請求に該当し得るため行わないでください。"
+    "最終的な処方内容の決定は医師の判断で行ってください。"
+)
+
+
+class ComplianceCheckResult(BaseModel):
+    triggered: bool
+    disclaimer: str = COMPLIANCE_DISCLAIMER
+    suggestions: list[ComplianceSuggestion] = Field(default_factory=list)
+
+
+DRUG_SUGGESTION_DISCLAIMER = (
+    "これはAIによる薬剤候補の参考提案であり、処方の決定ではありません。"
+    "AIは患者の薬物アレルギー・併用薬との相互作用(併用禁忌)・腎機能/肝機能・妊娠授乳の有無・年齢・"
+    "添付文書上の禁忌や注意など、カルテに書かれていない個別事情を把握できません。"
+    "採用する場合は、医師が添付文書等で確認したうえで、薬剤名・用量・日数を自ら入力してください。"
+    "AIは用量を提案しません。"
+)
+
+
+class DrugSuggestion(BaseModel):
+    """AIによる薬剤候補の提案1件。用量・日数はあえて持たせない(用量決定は医師が行うため)。"""
+
+    drug_name: str
+    suggestion_text: str
+    rationale: str
+    # 提案の根拠として、SOAPのS/Aから「そのまま」引用した文言。
+    # サーバー側で原文に含まれるかを機械的に照合し、含まれない(=創作の疑い)提案は捨てる。
+    grounding_quote: str
+    cautions: str = ""
+
+
+class DrugSuggestionResult(BaseModel):
+    disclaimer: str = DRUG_SUGGESTION_DISCLAIMER
+    suggestions: list[DrugSuggestion] = Field(default_factory=list)
+    # 提案の材料にしたSOAPのS/A(医師が後から「何を根拠にした提案か」を確認できるように返す)
+    basis_subjective: str = ""
+    basis_assessment: str = ""
+    # 提案が0件になった理由(S/Aが空、根拠を確認できない提案を除外した 等)
+    notice: str = ""
+    discarded_count: int = 0
+    generated_at: datetime | None = None
+    is_mock: bool = False
+
+
+class HandoffTarget(str, Enum):
+    NURSE = "nurse"
+    PHARMACY = "pharmacy"
+
+
+class HandoffRecord(BaseModel):
+    id: str = Field(default_factory=_id)
+    session_id: str
+    patient_name: str
+    targets: list[HandoffTarget]
+    note: str = ""
+    sent_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LiveDraft(BaseModel):
+    """アンビエントスクライブのリアルタイムプレビュー（手動入力なしで会話から自動更新）。
+
+    確定版のSOAP/紹介状/処方オーダ（別途 finalize で生成）とは別に、診察中ずっと
+    更新され続ける「速報版」のナラティブドラフト。ユーザー指定のJSON構造に対応する。
+    """
+
+    chief_complaint: str = ""
+    clinical_reasoning: str = ""
+    prescription_draft: str = ""
+    referral_letter: str = ""
+    updated_at: datetime | None = None
+    is_mock: bool = False
+
+
+class PhysicianProfile(BaseModel):
+    """医師ごとの文体・重視ポイントの登録（プロンプトに反映して文章の再現性を高める）。
+
+    本プロトタイプは医師アカウントを分離していないため、単一プロファイルとして扱う。
+    実運用では医師IDに紐づけて複数保持する形に拡張すること。
+    """
+
+    style_notes: str = ""
+    updated_at: datetime | None = None
+
+
+class ConsultationSession(BaseModel):
+    id: str = Field(default_factory=_id)
+    patient_id: str
+    status: SessionStatus = SessionStatus.IN_PROGRESS
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    ended_at: datetime | None = None
+    transcript: list[TranscriptSegment] = Field(default_factory=list)
+    minutes: str = ""
+    soap: SoapNote = Field(default_factory=SoapNote)
+    referral: ReferralLetter = Field(default_factory=ReferralLetter)
+    prescription: PrescriptionOrder = Field(default_factory=PrescriptionOrder)
+    live_draft: LiveDraft = Field(default_factory=LiveDraft)
+
+
+class ManualTranscriptIn(BaseModel):
+    speaker: Speaker = Speaker.UNKNOWN
+    text: str
+
+
+class SoapUpdate(BaseModel):
+    subjective: str | None = None
+    objective: str | None = None
+    assessment: str | None = None
+    plan: str | None = None
+
+
+class ReferralUpdate(BaseModel):
+    to_institution: str | None = None
+    to_department: str | None = None
+    reason_for_referral: str | None = None
+    clinical_summary: str | None = None
+    current_treatment: str | None = None
+    requested_action: str | None = None
+
+
+class PrescriptionUpdate(BaseModel):
+    diagnosis: str | None = None
+    items: list[PrescriptionItem] | None = None
+    patient_request_note: str | None = None
+
+
+class ComplianceCheckIn(BaseModel):
+    requested_days_supply: int | None = None
+
+
+class HandoffIn(BaseModel):
+    targets: list[HandoffTarget]
+    note: str = ""
+
+
+class PhysicianProfileUpdate(BaseModel):
+    style_notes: str

@@ -5,6 +5,7 @@ import { Mic, Square, RotateCcw, AlertTriangle, MessagesSquare, LayoutGrid, Hist
 import { Timeline } from "@/components/Timeline";
 import { InsightPanel } from "@/components/InsightPanel";
 import { HistoryView } from "@/components/HistoryView";
+import { PrivacyNotice } from "@/components/PrivacyNotice";
 import { DocumentScanInput } from "@/components/DocumentScanInput";
 import { QrCodeButton } from "@/components/QrCodeButton";
 import { InAppBrowserBanner, InAppBrowserOverlay, useInAppBrowser } from "@/components/InAppBrowserNotice";
@@ -98,6 +99,8 @@ export default function Home() {
         </div>
       </header>
 
+      <PrivacyNotice />
+
       {error && (
         <div className="flex shrink-0 items-center gap-2 bg-amber-50 px-4 py-2 text-xs text-amber-800">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -143,7 +146,7 @@ export default function Home() {
           >
             {isRecording ? <Square className="h-5 w-5 text-white" /> : <Mic className="h-6 w-6 text-white" />}
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p
               className={`flex items-center gap-1.5 text-sm font-medium ${
                 isRecording ? "text-red-600" : "text-gray-500"
@@ -161,6 +164,10 @@ export default function Home() {
             </p>
             {status && <p className="text-xs text-gray-400">{status}</p>}
           </div>
+
+          {/* 写真を撮って読み取る機能は、録音ボタンの隣に大きめのボタンで置くことで
+              ワンタップで使えるようにしている(以前はキーボード入力の横の小さな文字リンクだった) */}
+          <DocumentScanInput onExtractedText={handleExtractedText} />
         </div>
 
         <div className="flex w-full max-w-sm flex-wrap items-start justify-center gap-x-4 gap-y-1">
@@ -171,8 +178,6 @@ export default function Home() {
             <Keyboard className="h-3.5 w-3.5" />
             {showTextInput ? "キーボード入力を閉じる" : "キーボードで入力"}
           </button>
-
-          <DocumentScanInput onExtractedText={handleExtractedText} />
         </div>
 
         {showTextInput && (

@@ -15,6 +15,9 @@ const MEETING_RULES: Array<{ category: Category; keywords: string[] }> = [
   { category: "concern", keywords: ["心配", "懸念", "リスク", "大丈夫かな", "不安"] },
   { category: "request", keywords: ["お願いします", "してほしい", "欲しいです", "依頼"] },
   { category: "important", keywords: ["重要", "大事", "ポイントは", "注意"] },
+  { category: "concept", keywords: ["というのは", "とは", "の定義", "概念として", "そもそも"] },
+  { category: "problem", keywords: ["問題は", "問題点", "課題は", "困っているのは", "うまくいかない"] },
+  { category: "solution", keywords: ["解決策", "対策として", "改善案", "解決するには", "こうすれば"] },
 ];
 
 const KARTE_RULES: Array<{ category: Category; keywords: string[] }> = [
