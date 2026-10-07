@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import MonitoringInit from "@/components/MonitoringInit";
+import AuthShell from "@/components/AuthShell";
 
 export const metadata: Metadata = {
   title: "医療AI 診察支援",
@@ -16,10 +17,7 @@ export default function RootLayout({
     <html lang="ja">
       <body className="min-h-screen">
         <MonitoringInit />
-        <header className="bg-clinic-primary text-white px-6 py-3 shadow-sm">
-          <h1 className="text-lg font-semibold tracking-wide">医療AI 診察支援システム</h1>
-        </header>
-        <main className="p-4 md:p-6 max-w-6xl mx-auto">{children}</main>
+        <AuthShell>{children}</AuthShell>
       </body>
     </html>
   );

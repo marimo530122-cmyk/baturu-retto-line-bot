@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { reportError } from "@/lib/monitoring";
+import { getToken, goToLogin, markActivity } from "@/lib/auth";
 import type { Speaker, TranscriptSegment } from "@/lib/types";
 import { useAudioCapture } from "@/lib/useAudioCapture";
 
@@ -44,6 +45,8 @@ export default function TranscriptPanel({
     wsRef.current = ws;
 
     ws.onopen = () => {
+      // ブラウザのWebSocketはログイン用ヘッダーを付けられないので、最初のメッセージでログイン情報を送る
+      ws.send(JSON.stringify({ type: "auth", token: getToken() }));
       setConnected(true);
       reconnectAttemptsRef.current = 0;
     };
@@ -62,6 +65,10 @@ export default function TranscriptPanel({
           },
         ]);
         onNewFinalSegment?.();
+      } else if (msg.type === "error" && msg.auth) {
+        // ログインが切れた(放置・アカウント停止など): 再接続はせず、ログイン画面へ
+        intentionalCloseRef.current = true;
+        goToLogin("expired", msg.message);
       } else if (msg.type === "error") {
         // サーバーからの音声処理エラー通知。fatal時は接続が切られる前提で再接続を促す
         reportError(new Error(msg.message), { sessionId, fatal: msg.fatal, source: "audio_ws" });
@@ -108,6 +115,8 @@ export default function TranscriptPanel({
   }, [connect]);
 
   const { isRecording, error: micError, start, stop } = useAudioCapture((base64) => {
+    // 録音中は画面に触れていなくても「操作中」とみなし、自動ログアウトしない
+    markActivity();
     wsRef.current?.readyState === WebSocket.OPEN &&
       wsRef.current.send(JSON.stringify({ type: "audio_chunk", audio: base64 }));
   });

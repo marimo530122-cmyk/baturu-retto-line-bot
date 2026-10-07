@@ -8,10 +8,11 @@ from fastapi.testclient import TestClient
 
 from app.data import store
 from app.main import app
+from auth_helpers import login_headers
 from app.models import DRUG_SUGGESTION_DISCLAIMER, ConsultationSession, PrescriptionItem
 from app.services import llm_pipeline
 
-client = TestClient(app)
+client = TestClient(app, headers=login_headers("doctor"))
 
 
 def _suggestion(drug_name: str, quote: str) -> dict:

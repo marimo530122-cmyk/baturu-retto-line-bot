@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     enable_drug_suggestions: bool = False
     # データの保存先(SQLiteファイル)。":memory:" を指定すると保存せずメモリ上だけで動く(テスト用)。
     database_path: str = DEFAULT_DATABASE_PATH
+    # 最後の操作からこの時間(分)がたつと自動ログアウトする
+    session_idle_minutes: int = 30
+    # 試し用の架空アカウント(demo-doctor 等)を作るか。本番では必ず false のままにする
+    seed_demo_users: bool = False
 
     @property
     def mock_mode(self) -> bool:

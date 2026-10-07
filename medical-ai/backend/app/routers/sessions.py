@@ -1,9 +1,11 @@
+import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.config import get_settings
 from app.data import store
+from app.deps import authenticate_token, CLINICAL_STAFF, DOCTOR_ONLY, require_roles
 from app.errors import LlmGenerationError
 from app.models import (
     ConsultationSession,
@@ -19,12 +21,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 
-@router.get("/{session_id}", response_model=ConsultationSession)
+@router.get("/{session_id}", response_model=ConsultationSession, dependencies=[Depends(require_roles(*CLINICAL_STAFF))])
 def get_session(session_id: str) -> ConsultationSession:
     return store.get_session(session_id)
 
 
-@router.post("/{session_id}/transcript/manual", response_model=ConsultationSession)
+@router.post("/{session_id}/transcript/manual", response_model=ConsultationSession, dependencies=[Depends(require_roles(*CLINICAL_STAFF))])
 def add_manual_transcript(session_id: str, body: ManualTranscriptIn) -> ConsultationSession:
     """マイクを使わない開発/デモ用: 手動でテキストを議事録に追加する。"""
     session = store.get_session(session_id)
@@ -33,7 +35,7 @@ def add_manual_transcript(session_id: str, body: ManualTranscriptIn) -> Consulta
     return session
 
 
-@router.post("/{session_id}/prescription/refresh", response_model=ConsultationSession)
+@router.post("/{session_id}/prescription/refresh", response_model=ConsultationSession, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 async def refresh_prescription(session_id: str) -> ConsultationSession:
     """診察中の会話（議事録）から処方オーダをその都度再抽出し、対話の進行に合わせて
     処方箋が自動的に育っていく「ライブ処方ドラフト」を実現するエンドポイント。
@@ -55,7 +57,7 @@ async def refresh_prescription(session_id: str) -> ConsultationSession:
     return session
 
 
-@router.post("/{session_id}/live-draft/refresh", response_model=ConsultationSession)
+@router.post("/{session_id}/live-draft/refresh", response_model=ConsultationSession, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 async def refresh_live_draft(session_id: str) -> ConsultationSession:
     """アンビエントスクライブのライブプレビュー（主訴・治療方針・処方・紹介状の4項目）を、
     ここまでの会話全文から手動入力なしで再生成する。医師プロファイルと、直近にこの医師が
@@ -76,7 +78,7 @@ async def refresh_live_draft(session_id: str) -> ConsultationSession:
     return session
 
 
-@router.post("/{session_id}/finalize", response_model=ConsultationSession)
+@router.post("/{session_id}/finalize", response_model=ConsultationSession, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 async def finalize_session(session_id: str) -> ConsultationSession:
     session = store.get_session(session_id)
     session.status = SessionStatus.GENERATING
@@ -102,6 +104,7 @@ async def audio_ws(websocket: WebSocket, session_id: str) -> None:
     文字起こしデルタを返しつつ、確定した発話をセッションの議事録に蓄積する。
 
     受信メッセージ (JSON):
+      {"type": "auth", "token": "<ログイントークン>"}  ← 接続直後に必ず最初に送る
       {"type": "audio_chunk", "audio": "<base64>"}
       {"type": "manual_text", "speaker": "doctor"|"patient"|"staff", "text": "..."}
     送信メッセージ (JSON):
@@ -109,6 +112,29 @@ async def audio_ws(websocket: WebSocket, session_id: str) -> None:
       {"type": "error", "message": "..."}
     """
     await websocket.accept()
+
+    # ブラウザのWebSocketはログイン用のヘッダーを付けられないため、最初のメッセージでトークンを受け取る
+    # (URLに入れるとサーバーのアクセスログに残ってしまうので使わない)
+    async def _reject(message: str) -> None:
+        await websocket.send_json({"type": "error", "fatal": True, "auth": True, "message": message})
+        await websocket.close(code=4401)
+
+    try:
+        first = await asyncio.wait_for(websocket.receive_json(), timeout=10)
+    except (asyncio.TimeoutError, WebSocketDisconnect, ValueError):
+        await _reject("ログインしてください。")
+        return
+    token = first.get("token") if isinstance(first, dict) and first.get("type") == "auth" else None
+    try:
+        user = authenticate_token(token)
+    except HTTPException as exc:
+        await _reject(str(exc.detail))
+        return
+    if user.role not in CLINICAL_STAFF:
+        await _reject("この操作を行う権限がありません。")
+        return
+    await websocket.send_json({"type": "auth_ok"})
+
     try:
         session = store.get_session(session_id)
     except Exception:  # noqa: BLE001
@@ -136,6 +162,14 @@ async def audio_ws(websocket: WebSocket, session_id: str) -> None:
         while True:
             message = await websocket.receive_json()
             msg_type = message.get("type")
+
+            # 録音中もメッセージのたびにログインを確認する(=録音中は自動ログアウトまでの時間が延びる)。
+            # アカウント停止・パスワード再発行でログインが無効になったら、その場で接続を切る。
+            try:
+                authenticate_token(token)
+            except HTTPException as exc:
+                await _reject(str(exc.detail))
+                break
 
             try:
                 if msg_type == "audio_chunk":

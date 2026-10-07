@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Patient } from "@/lib/types";
+import { useCurrentUser } from "./AuthShell";
 
 const statusLabel: Record<Patient["status"], string> = {
   waiting: "受付済み",
@@ -19,6 +20,8 @@ const statusColor: Record<Patient["status"], string> = {
 
 export default function PatientList() {
   const router = useRouter();
+  const user = useCurrentUser();
+  const isDoctor = user.role === "doctor";
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,24 @@ export default function PatientList() {
       .finally(() => setLoading(false));
   }, []);
 
+  // 看護師は新しい診察を始められないので、その患者の最新の記録を開く
+  async function handleOpenLatest(patientId: string) {
+    setStartingId(patientId);
+    setError(null);
+    try {
+      const sessions = await api.listPatientSessions(patientId);
+      if (sessions.length === 0) {
+        setError("この患者さんの診察記録はまだありません。");
+        setStartingId(null);
+        return;
+      }
+      router.push(`/session/${sessions[0].id}`);
+    } catch (e) {
+      setError(String(e));
+      setStartingId(null);
+    }
+  }
+
   async function handleStart(patientId: string) {
     setStartingId(patientId);
     try {
@@ -44,7 +65,7 @@ export default function PatientList() {
   }
 
   if (loading) return <p className="text-gray-500">読み込み中...</p>;
-  if (error)
+  if (error && patients.length === 0)
     return (
       <p className="text-clinic-danger">
         エラー: {error}（バックエンドAPI (NEXT_PUBLIC_API_BASE) が起動しているか確認してください）
@@ -54,6 +75,7 @@ export default function PatientList() {
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">本日の受付患者一覧</h2>
+      {error && <p className="text-sm text-clinic-danger mb-3">{error}</p>}
       <div className="grid gap-3">
         {patients.map((p) => (
           <div
@@ -74,11 +96,11 @@ export default function PatientList() {
               <div className="text-sm text-gray-700 mt-1">主訴: {p.chief_complaint}</div>
             </div>
             <button
-              onClick={() => handleStart(p.id)}
+              onClick={() => (isDoctor ? handleStart(p.id) : handleOpenLatest(p.id))}
               disabled={startingId === p.id}
               className="shrink-0 bg-clinic-primary hover:bg-clinic-primaryDark text-white font-medium px-4 py-2 rounded-md disabled:opacity-50"
             >
-              {startingId === p.id ? "開始中..." : "診察を開始"}
+              {startingId === p.id ? "開いています..." : isDoctor ? "診察を開始" : "カルテを見る"}
             </button>
           </div>
         ))}

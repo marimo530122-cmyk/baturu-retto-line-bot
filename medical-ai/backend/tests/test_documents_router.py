@@ -9,8 +9,9 @@ from fastapi.testclient import TestClient
 
 from app.data import store
 from app.main import app
+from auth_helpers import login_headers
 
-client = TestClient(app)
+client = TestClient(app, headers=login_headers("doctor"))
 
 
 def _create_session() -> str:

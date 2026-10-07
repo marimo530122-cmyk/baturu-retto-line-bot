@@ -55,6 +55,11 @@ services:
         value: "*"
       - key: OPENAI_API_KEY
         sync: false
+      # Render無料枠は保存ファイルが再起動で消え、管理者を作るコマンドも実行できないため、
+      # ここは「架空データだけのデモ」として、公開されたデモ用アカウントで動かす。
+      # 本物の患者情報は絶対に入れないこと(パスワードがREADMEで公開されている)。
+      - key: SEED_DEMO_USERS
+        value: "true"
 
   - type: web
     name: medical-ai-frontend

@@ -33,7 +33,8 @@ source .venv/bin/activate
 pip install -q -r requirements.txt
 
 echo "[2/4] バックエンドを起動しています (http://localhost:8000)..."
-uvicorn app.main:app --port 8000 > /tmp/medical-ai-backend.log 2>&1 &
+# このスクリプトは「試し用」なので、架空のデモ用アカウントを作って起動する(本番では使わないこと)
+SEED_DEMO_USERS=true uvicorn app.main:app --port 8000 > /tmp/medical-ai-backend.log 2>&1 &
 BACKEND_PID=$!
 
 cleanup() {
@@ -64,6 +65,11 @@ echo "=================================================="
 echo " 準備ができました！ブラウザで下記を開いてください"
 echo ""
 echo "   http://localhost:3000"
+echo ""
+echo " 試し用のログインID / パスワード(架空のデモ用アカウント):"
+echo "   医師    : demo-doctor / demodoctor2026"
+echo "   看護師  : demo-nurse  / demonurse2026"
+echo "   管理者  : demo-admin  / demoadmin2026"
 echo ""
 echo " （APIキー未設定のため、生成物には [MOCK] と表示されます。"
 echo "   本物のAI生成を試したい場合のみ、backend/.env に"
