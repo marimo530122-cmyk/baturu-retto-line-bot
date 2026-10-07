@@ -468,18 +468,20 @@
     if (!audioCtx) return;
     try {
       for (let i = 0; i < times; i++) {
-        const t = audioCtx.currentTime + i * 0.5;
+        // 1回の「ポーン」は約1秒(短いと気づきにくいため)。2回なら約2秒鳴る
+        const t = audioCtx.currentTime + i * 1.0;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = "sine";
         osc.frequency.setValueAtTime(880, t);
-        osc.frequency.setValueAtTime(660, t + 0.18);
+        osc.frequency.setValueAtTime(660, t + 0.3);
         gain.gain.setValueAtTime(0.0001, t);
         gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+        gain.gain.setValueAtTime(0.25, t + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(t);
-        osc.stop(t + 0.5);
+        osc.stop(t + 1.0);
       }
     } catch {}
   }
