@@ -55,3 +55,12 @@ test("AIの返事が約束(振り込む・渡す・行く・待つ)になって�
     assert.strictEqual(decoy.isSafeReply(t), true, t);
   }
 });
+
+test("見抜いていると分かる言葉や注意は読み上げない(気づかれて切られないように)", () => {
+  for (const t of ["それは詐欺じゃないですか。", "なんだか怪しいお話ですねえ。", "警察に通報しますよ。", "お気をつけくださいね。"]) {
+    assert.strictEqual(decoy.isSafeReply(t), false, t);
+  }
+  for (const t of ["あらまあ、お金が戻ってくるんですか。", "警察の方なら、メモをちゃんと残したいので、お名前と所属をもう一度教えてもらえますか。"]) {
+    assert.strictEqual(decoy.isSafeReply(t), true, t);
+  }
+});

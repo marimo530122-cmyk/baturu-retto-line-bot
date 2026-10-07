@@ -1,0 +1,35 @@
+name: 鮮刻シールド だまされたふりAIの練習(本物の Claude)
+
+# 手で動かすときだけ実行する(1回で数十円ほど Claude の料金がかかる)。
+# 結果(犯人役の台本と AI の返事)は実行ログに出るだけで、リポジトリには保存しない。
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "使うモデル(空なら既定。例: claude-opus-5-5 / claude-sonnet-5-5)"
+        required: false
+        default: ""
+
+jobs:
+  rehearsal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sengoku-shield
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 依存パッケージのインストール
+        run: npm ci
+
+      - name: 練習(犯人役の台本を流して、AIの返事を表示)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SHIELD_AI_MODEL: ${{ inputs.model }}
+        run: |
+          if [ -z "$SHIELD_AI_MODEL" ]; then unset SHIELD_AI_MODEL; fi
+          node rehearsal.js

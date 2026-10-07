@@ -52,7 +52,8 @@ function isGag(line) {
 function relevantTargets(lines, { method = null } = {}) {
   const text = lines.join(" ");
   const talksTransfer = /振り?込|口座|ATM|送金|入金/.test(text) || method === "transfer";
-  const talksHandover = /渡し|受け取|取りに|伺|回収|封筒|現金|示談金/.test(text) || method === "handover";
+  // 「ATMで受け取れます」(還付金)のように、お金が戻ってくる話の「受け取」は受け渡しに数えない
+  const talksHandover = /渡し|受け取りに|取りに|伺|回収|封筒|現金|示談金|預か/.test(text) || method === "handover";
   const order = claimsAuthority(lines) ? ORDER_AUTHORITY : ORDER_DEFAULT;
   return order
     .map((key) => BY_KEY[key])
