@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import get_settings
 
 from app.data import store
+from app.deps import CLINICAL_STAFF, DOCTOR_ONLY, require_roles
 from app.errors import LlmGenerationError
 from app.models import (
     ComplianceCheckIn,
@@ -21,12 +22,12 @@ from app.services.prescription_compliance import check_prescription
 router = APIRouter(prefix="/api/sessions", tags=["documents"])
 
 
-@router.get("/{session_id}/soap", response_model=SoapNote)
+@router.get("/{session_id}/soap", response_model=SoapNote, dependencies=[Depends(require_roles(*CLINICAL_STAFF))])
 def get_soap(session_id: str) -> SoapNote:
     return store.get_session(session_id).soap
 
 
-@router.patch("/{session_id}/soap", response_model=SoapNote)
+@router.patch("/{session_id}/soap", response_model=SoapNote, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 def update_soap(session_id: str, body: SoapUpdate) -> SoapNote:
     session = store.get_session(session_id)
     for field in body.model_fields_set:
@@ -36,12 +37,12 @@ def update_soap(session_id: str, body: SoapUpdate) -> SoapNote:
     return session.soap
 
 
-@router.get("/{session_id}/referral", response_model=ReferralLetter)
+@router.get("/{session_id}/referral", response_model=ReferralLetter, dependencies=[Depends(require_roles(*CLINICAL_STAFF))])
 def get_referral(session_id: str) -> ReferralLetter:
     return store.get_session(session_id).referral
 
 
-@router.patch("/{session_id}/referral", response_model=ReferralLetter)
+@router.patch("/{session_id}/referral", response_model=ReferralLetter, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 def update_referral(session_id: str, body: ReferralUpdate) -> ReferralLetter:
     session = store.get_session(session_id)
     for field in body.model_fields_set:
@@ -51,12 +52,12 @@ def update_referral(session_id: str, body: ReferralUpdate) -> ReferralLetter:
     return session.referral
 
 
-@router.get("/{session_id}/prescription", response_model=PrescriptionOrder)
+@router.get("/{session_id}/prescription", response_model=PrescriptionOrder, dependencies=[Depends(require_roles(*CLINICAL_STAFF))])
 def get_prescription(session_id: str) -> PrescriptionOrder:
     return store.get_session(session_id).prescription
 
 
-@router.patch("/{session_id}/prescription", response_model=PrescriptionOrder)
+@router.patch("/{session_id}/prescription", response_model=PrescriptionOrder, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 def update_prescription(session_id: str, body: PrescriptionUpdate) -> PrescriptionOrder:
     session = store.get_session(session_id)
     for field in body.model_fields_set:
@@ -66,13 +67,13 @@ def update_prescription(session_id: str, body: PrescriptionUpdate) -> Prescripti
     return session.prescription
 
 
-@router.post("/{session_id}/prescription/compliance-check", response_model=ComplianceCheckResult)
+@router.post("/{session_id}/prescription/compliance-check", response_model=ComplianceCheckResult, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 def compliance_check(session_id: str, body: ComplianceCheckIn) -> ComplianceCheckResult:
     session = store.get_session(session_id)
     return check_prescription(session.prescription, body.requested_days_supply)
 
 
-@router.post("/{session_id}/prescription/drug-suggestions", response_model=DrugSuggestionResult)
+@router.post("/{session_id}/prescription/drug-suggestions", response_model=DrugSuggestionResult, dependencies=[Depends(require_roles(*DOCTOR_ONLY))])
 async def drug_suggestions(session_id: str) -> DrugSuggestionResult:
     """SOAPのS/Aから薬剤候補の提案文を生成して返す。
 

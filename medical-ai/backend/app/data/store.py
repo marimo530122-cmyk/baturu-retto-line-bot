@@ -25,12 +25,15 @@ from fastapi import HTTPException
 
 from app.config import get_settings
 from app.models import (
+    AuthSession,
     ConsultationSession,
     HandoffRecord,
     Patient,
     PatientStatus,
     PhysicianProfile,
+    Role,
     SessionStatus,
+    User,
 )
 
 _SCHEMA = """
@@ -50,6 +53,16 @@ CREATE TABLE IF NOT EXISTS handoffs (
 );
 CREATE TABLE IF NOT EXISTS physician_profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    login_id TEXT NOT NULL UNIQUE,
+    data TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
     data TEXT NOT NULL
 );
 """
@@ -91,8 +104,16 @@ def _demo_patients() -> list[Patient]:
     ]
 
 
+# 試し用の架空アカウント(SEED_DEMO_USERS=true のときだけ作る。本番では絶対に有効にしない)
+DEMO_USERS = [
+    ("demo-doctor", "デモ医師", Role.DOCTOR, "demodoctor2026"),
+    ("demo-nurse", "デモ看護師", Role.NURSE, "demonurse2026"),
+    ("demo-admin", "デモ管理者", Role.ADMIN, "demoadmin2026"),
+]
+
+
 class SqliteStore:
-    def __init__(self, database_path: str) -> None:
+    def __init__(self, database_path: str, seed_demo_users: bool = False) -> None:
         self._lock = threading.RLock()
         is_memory = database_path == ":memory:"
         if not is_memory:
@@ -113,10 +134,25 @@ class SqliteStore:
         self._sessions: dict[str, ConsultationSession] = {}
         self._handoffs: list[HandoffRecord] = []
         self._physician_profile = PhysicianProfile()
+        self._users: dict[str, User] = {}
+        self._auth_sessions: dict[str, AuthSession] = {}
         self._load()
         if not self._patients:
             for patient in _demo_patients():
                 self._save_patient(patient)
+        if seed_demo_users and not self._users:
+            from app.services.auth import hash_password
+
+            for login_id, display_name, role, password in DEMO_USERS:
+                self.save_user(
+                    User(
+                        login_id=login_id,
+                        display_name=display_name,
+                        role=role,
+                        password_hash=hash_password(password),
+                        must_change_password=False,
+                    )
+                )
 
     def _load(self) -> None:
         for (data,) in self._conn.execute("SELECT data FROM patients ORDER BY rowid"):
@@ -130,6 +166,12 @@ class SqliteStore:
         row = self._conn.execute("SELECT data FROM physician_profile WHERE id = 1").fetchone()
         if row:
             self._physician_profile = PhysicianProfile.model_validate_json(row[0])
+        for (data,) in self._conn.execute("SELECT data FROM users ORDER BY rowid"):
+            user = User.model_validate_json(data)
+            self._users[user.id] = user
+        for (data,) in self._conn.execute("SELECT data FROM auth_sessions"):
+            auth_session = AuthSession.model_validate_json(data)
+            self._auth_sessions[auth_session.token_hash] = auth_session
 
     def _write(self, sql: str, params: tuple) -> None:
         with self._lock:
@@ -182,6 +224,12 @@ class SqliteStore:
             (session.id, session.model_dump_json(), datetime.utcnow().isoformat()),
         )
 
+    def list_sessions_for_patient(self, patient_id: str) -> list[ConsultationSession]:
+        """その患者の診察記録を新しい順に返す(看護師が最新のカルテを開くため)。"""
+        sessions = [s for s in self._sessions.values() if s.patient_id == patient_id]
+        sessions.sort(key=lambda s: s.started_at, reverse=True)
+        return sessions
+
     def list_recent_finalized_sessions(self, limit: int = 2) -> list[ConsultationSession]:
         """医師の文体を模倣するための少数例として、直近に確定したカルテを新しい順に返す。"""
         finalized = [
@@ -215,7 +263,50 @@ class SqliteStore:
         return self._physician_profile
 
 
-_store = SqliteStore(get_settings().database_path)
+    # --- 職員アカウント ---
+
+    def list_users(self) -> list[User]:
+        return list(self._users.values())
+
+    def get_user(self, user_id: str) -> User | None:
+        return self._users.get(user_id)
+
+    def find_user_by_login_id(self, login_id: str) -> User | None:
+        return next((u for u in self._users.values() if u.login_id == login_id), None)
+
+    def save_user(self, user: User) -> None:
+        self._users[user.id] = user
+        self._write(
+            "INSERT INTO users (id, login_id, data) VALUES (?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET login_id = excluded.login_id, data = excluded.data",
+            (user.id, user.login_id, user.model_dump_json()),
+        )
+
+    # --- ログイン状態 ---
+
+    def get_auth_session(self, token_hash: str) -> AuthSession | None:
+        return self._auth_sessions.get(token_hash)
+
+    def save_auth_session(self, auth_session: AuthSession) -> None:
+        self._auth_sessions[auth_session.token_hash] = auth_session
+        self._write(
+            "INSERT INTO auth_sessions (token_hash, user_id, data) VALUES (?, ?, ?) "
+            "ON CONFLICT(token_hash) DO UPDATE SET data = excluded.data",
+            (auth_session.token_hash, auth_session.user_id, auth_session.model_dump_json()),
+        )
+
+    def delete_auth_session(self, token_hash: str) -> None:
+        self._auth_sessions.pop(token_hash, None)
+        self._write("DELETE FROM auth_sessions WHERE token_hash = ?", (token_hash,))
+
+    def delete_auth_sessions_for_user(self, user_id: str) -> None:
+        """パスワード変更・アカウント停止のときに、その人のログインを全部切る。"""
+        for key in [k for k, v in self._auth_sessions.items() if v.user_id == user_id]:
+            self._auth_sessions.pop(key, None)
+        self._write("DELETE FROM auth_sessions WHERE user_id = ?", (user_id,))
+
+_settings = get_settings()
+_store = SqliteStore(_settings.database_path, seed_demo_users=_settings.seed_demo_users)
 
 # 既存のルーターは `store.get_session(...)` のように関数として呼んでいるので、その形のまま公開する
 list_patients = _store.list_patients
@@ -228,3 +319,12 @@ add_handoff = _store.add_handoff
 list_handoff_outbox = _store.list_handoff_outbox
 get_physician_profile = _store.get_physician_profile
 set_physician_profile = _store.set_physician_profile
+list_sessions_for_patient = _store.list_sessions_for_patient
+list_users = _store.list_users
+get_user = _store.get_user
+find_user_by_login_id = _store.find_user_by_login_id
+save_user = _store.save_user
+get_auth_session = _store.get_auth_session
+save_auth_session = _store.save_auth_session
+delete_auth_session = _store.delete_auth_session
+delete_auth_sessions_for_user = _store.delete_auth_sessions_for_user

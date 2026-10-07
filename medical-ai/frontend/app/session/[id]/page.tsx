@@ -12,6 +12,7 @@ import PrescriptionPanel from "@/components/PrescriptionPanel";
 import StaffHandoffBar from "@/components/StaffHandoffBar";
 import LiveDraftPreview from "@/components/LiveDraftPreview";
 import PhysicianProfileEditor from "@/components/PhysicianProfileEditor";
+import { useCurrentUser } from "@/components/AuthShell";
 
 const statusLabel: Record<ConsultationSession["status"], string> = {
   in_progress: "診察中",
@@ -24,6 +25,8 @@ export default function SessionPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const sessionId = params.id;
+  // 看護師は閲覧と会話の手入力だけ(カルテ・処方の修正や確定、送信は医師のみ。サーバー側でも禁止している)
+  const isDoctor = useCurrentUser().role === "doctor";
 
   const [session, setSession] = useState<ConsultationSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +53,7 @@ export default function SessionPage() {
   // 対話中に処方オーダ・アンビエントスクライブのライブプレビューを自動構築する
   // （発言追加のたびにデバウンスして再抽出。手動入力は一切不要）
   const handleNewFinalSegment = useCallback(() => {
+    if (!isDoctor) return; // 自動更新(AI生成)は医師の操作として行う
     if (refreshDebounce.current) clearTimeout(refreshDebounce.current);
     refreshDebounce.current = setTimeout(async () => {
       try {
@@ -65,7 +69,7 @@ export default function SessionPage() {
         liveUpdateNoticeTimer.current = setTimeout(() => setLiveUpdateNotice(null), 4000);
       }
     }, 2500);
-  }, [sessionId]);
+  }, [sessionId, isDoctor]);
 
   async function handleFinalize() {
     setFinalizing(true);
@@ -96,7 +100,8 @@ export default function SessionPage() {
   if (!session) return null;
 
   const canHandoff = session.status === "review" || session.status === "sent";
-  const liveUpdating = session.status === "in_progress" && !session.prescription.edited;
+  // 自動更新は医師の画面からだけ行うので、看護師の画面には「自動構築中」を出さない
+  const liveUpdating = isDoctor && session.status === "in_progress" && !session.prescription.edited;
 
   return (
     <div className="space-y-4">
@@ -109,7 +114,13 @@ export default function SessionPage() {
         </span>
       </div>
 
-      {session.status === "in_progress" && <PhysicianProfileEditor />}
+      {!isDoctor && (
+        <p className="text-sm bg-blue-50 border border-blue-200 text-blue-900 rounded-md px-3 py-2">
+          看護師アカウントでは閲覧のみです(会話の手入力はできます)。カルテや処方の修正・確定は医師が行います。
+        </p>
+      )}
+
+      {isDoctor && session.status === "in_progress" && <PhysicianProfileEditor />}
 
       {liveUpdateNotice && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
@@ -123,19 +134,21 @@ export default function SessionPage() {
           initialTranscript={session.transcript}
           onNewFinalSegment={handleNewFinalSegment}
         />
-        <PrescriptionPanel
-          sessionId={sessionId}
-          prescription={session.prescription}
-          liveUpdating={liveUpdating}
-          onChange={(prescription) => setSession({ ...session, prescription })}
-        />
+        <fieldset disabled={!isDoctor} className="min-w-0">
+          <PrescriptionPanel
+            sessionId={sessionId}
+            prescription={session.prescription}
+            liveUpdating={liveUpdating}
+            onChange={(prescription) => setSession({ ...session, prescription })}
+          />
+        </fieldset>
       </div>
 
       {session.status === "in_progress" && (
         <LiveDraftPreview liveDraft={session.live_draft} liveUpdating={liveUpdating} />
       )}
 
-      {session.status === "in_progress" && (
+      {isDoctor && session.status === "in_progress" && (
         <div className="space-y-2">
           {error && (
             <p className="text-sm text-clinic-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
@@ -158,7 +171,7 @@ export default function SessionPage() {
 
       {(session.status === "review" || session.status === "sent") && (
         <>
-          <div className="grid md:grid-cols-2 gap-4">
+          <fieldset disabled={!isDoctor} className="grid md:grid-cols-2 gap-4 min-w-0">
             <SoapEditor
               sessionId={sessionId}
               soap={session.soap}
@@ -169,13 +182,15 @@ export default function SessionPage() {
               referral={session.referral}
               onChange={(referral) => setSession({ ...session, referral })}
             />
-          </div>
+          </fieldset>
 
-          <StaffHandoffBar
-            sessionId={sessionId}
-            disabled={!canHandoff}
-            onSent={() => setSession({ ...session, status: "sent" })}
-          />
+          {isDoctor && (
+            <StaffHandoffBar
+              sessionId={sessionId}
+              disabled={!canHandoff}
+              onSent={() => setSession({ ...session, status: "sent" })}
+            />
+          )}
         </>
       )}
     </div>

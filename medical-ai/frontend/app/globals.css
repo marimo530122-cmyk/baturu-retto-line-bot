@@ -6,3 +6,9 @@ body {
   background-color: #f4f7f6;
   color: #1f2937;
 }
+
+/* 看護師の閲覧画面など、まとめて無効にした部分のボタンは押せないことが分かる見た目にする */
+fieldset:disabled button {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

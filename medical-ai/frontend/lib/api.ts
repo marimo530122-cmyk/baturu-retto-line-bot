@@ -5,13 +5,19 @@ import type {
   FeatureFlags,
   HandoffRecord,
   HandoffTarget,
+  LoginResult,
   Patient,
   PhysicianProfile,
   PrescriptionOrder,
   ReferralLetter,
   SoapNote,
+  UserPublic,
 } from "./types";
 import { reportError } from "./monitoring";
+import { getToken, goToLogin } from "./auth";
+
+// バックエンドの deps.PASSWORD_CHANGE_REQUIRED と同じ文言
+const PASSWORD_CHANGE_REQUIRED = "最初にパスワードを変更してください。";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -32,9 +38,14 @@ export class ApiError extends Error {
 }
 
 async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers || {}),
+    },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -44,6 +55,14 @@ async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
       message = parsed.detail || parsed.error || body;
     } catch {
       // JSONでなければそのままの本文を使う
+    }
+    // ログインが切れた(放置・停止・パスワード再発行)ときは、ログイン画面へ戻す。
+    // ただしログイン自体の失敗(IDやパスワード違い)はその画面でメッセージを出すので除く。
+    if (res.status === 401 && !path.startsWith("/api/auth/login")) {
+      goToLogin("expired", message);
+    }
+    if (res.status === 403 && message === PASSWORD_CHANGE_REQUIRED && typeof window !== "undefined") {
+      if (window.location.pathname !== "/change-password") window.location.href = "/change-password";
     }
     throw new ApiError(res.status, message || `API error ${res.status}`);
   }
@@ -69,6 +88,49 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  login: (loginId: string, password: string) =>
+    request<LoginResult>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ login_id: loginId, password }),
+    }),
+
+  logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+
+  me: () => request<UserPublic>("/api/auth/me"),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<UserPublic>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
+  listUsers: () => request<UserPublic[]>("/api/admin/users"),
+
+  createUser: (body: {
+    login_id: string;
+    display_name: string;
+    role: UserPublic["role"];
+    temporary_password: string;
+  }) => request<UserPublic>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }),
+
+  updateUser: (
+    userId: string,
+    patch: Partial<Pick<UserPublic, "display_name" | "role" | "is_active">>
+  ) =>
+    request<UserPublic>(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  resetPassword: (userId: string, temporaryPassword: string) =>
+    request<UserPublic>(`/api/admin/users/${userId}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ temporary_password: temporaryPassword }),
+    }),
+
+  listPatientSessions: (patientId: string) =>
+    request<ConsultationSession[]>(`/api/patients/${patientId}/sessions`),
+
   listPatients: () => request<Patient[]>("/api/patients"),
 
   startSession: (patientId: string) =>

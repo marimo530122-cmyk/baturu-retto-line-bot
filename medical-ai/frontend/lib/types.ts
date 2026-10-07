@@ -134,6 +134,24 @@ export interface DrugSuggestionResult {
   is_mock: boolean;
 }
 
+export type Role = "doctor" | "nurse" | "admin";
+
+export interface UserPublic {
+  id: string;
+  login_id: string;
+  display_name: string;
+  role: Role;
+  is_active: boolean;
+  must_change_password: boolean;
+  created_at: string;
+}
+
+export interface LoginResult {
+  token: string;
+  user: UserPublic;
+  idle_timeout_minutes: number;
+}
+
 export type HandoffTarget = "nurse" | "pharmacy";
 
 export interface HandoffRecord {

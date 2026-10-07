@@ -3,6 +3,8 @@ import os
 # テストでは本物の保存ファイル(backend/storage/)を汚さないよう、メモリ上のDBを使う。
 # app.data.store は import された時点で保存先を開くので、app を import する前に設定する。
 os.environ["DATABASE_PATH"] = ":memory:"
+# テストではデモ用の架空アカウント(demo-doctor / demo-nurse / demo-admin)でログインする
+os.environ["SEED_DEMO_USERS"] = "true"
 
 import pytest
 

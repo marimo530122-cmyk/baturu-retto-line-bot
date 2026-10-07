@@ -245,3 +245,86 @@ class HandoffIn(BaseModel):
 
 class PhysicianProfileUpdate(BaseModel):
     style_notes: str
+
+
+# ---------------------------------------------------------------------------
+# ログイン・職員アカウント
+# ---------------------------------------------------------------------------
+
+
+class Role(str, Enum):
+    DOCTOR = "doctor"
+    NURSE = "nurse"
+    ADMIN = "admin"
+
+
+class User(BaseModel):
+    """職員アカウント(保存用)。password_hash を含むので、APIでは必ず UserPublic に変換して返す。"""
+
+    id: str = Field(default_factory=_id)
+    login_id: str
+    display_name: str
+    role: Role
+    password_hash: str
+    is_active: bool = True
+    # 管理者が作成・再発行したパスワードは仮のものなので、初回ログイン時に本人に変えてもらう
+    must_change_password: bool = True
+    failed_login_count: int = 0
+    locked_until: datetime | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class UserPublic(BaseModel):
+    id: str
+    login_id: str
+    display_name: str
+    role: Role
+    is_active: bool
+    must_change_password: bool
+    created_at: datetime
+
+    @classmethod
+    def from_user(cls, user: User) -> "UserPublic":
+        return cls(**user.model_dump(include=set(cls.model_fields)))
+
+
+class AuthSession(BaseModel):
+    """ログイン中の状態。トークンそのものは保存せず、ハッシュだけを保存する(漏れても使えないように)。"""
+
+    token_hash: str
+    user_id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_activity_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LoginIn(BaseModel):
+    login_id: str
+    password: str
+
+
+class LoginOut(BaseModel):
+    token: str
+    user: UserPublic
+    idle_timeout_minutes: int
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UserCreateIn(BaseModel):
+    login_id: str
+    display_name: str
+    role: Role
+    temporary_password: str
+
+
+class UserUpdateIn(BaseModel):
+    display_name: str | None = None
+    role: Role | None = None
+    is_active: bool | None = None
+
+
+class PasswordResetIn(BaseModel):
+    temporary_password: str
