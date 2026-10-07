@@ -79,3 +79,8 @@ test("110番の台本の時刻は、サーバーの時間帯に関係なく日�
   const script = intel.policeScript({ startedAt: "2026-09-30T01:05:00Z" }).join("\n");
   assert.match(script, /9月30日の10時5分ごろ/);
 });
+
+test("「担当は鈴木という者です」から名前だけを取り出す", () => {
+  const p = intel.extract(["担当は鈴木という者です"]).find((f) => f.type === "person");
+  assert.strictEqual(p && p.value, "鈴木");
+});

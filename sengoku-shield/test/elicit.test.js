@@ -197,3 +197,9 @@ test("Jevが失敗・おかしな答えでも、言葉の判定だけで続け�
   assert.strictEqual(r.strategy.method, null);
   assert.ok(r.text);
 });
+
+test("還付金の「ATMで受け取れます」は受け渡しの話に数えない(いつ・どこでを聞かない)", () => {
+  const keys = elicit.missingTargets(["還付金があります。お近くのATMで受け取れますので行ってください"]).map((m) => m.key);
+  assert.ok(!keys.includes("meeting"), keys.join(","));
+  assert.ok(keys.includes("bank"), keys.join(","));
+});
