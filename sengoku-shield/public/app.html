@@ -425,9 +425,42 @@
   // 危険度が上がったときだけ、音と振動で知らせる
   // 危険度が上がったときだけ、やさしく振動で知らせる。
   // 音は鳴らさない(電話がスピーカーなので相手に聞こえる。大きな警告音はお年寄りを慌てさせる)。
+  // 怪しくなったら、本人に画面を見てもらうための合図(振動 + やさしい「ポーン」)。
+  // 電話の相手にも聞こえるかもしれないので、サイレンのような音にはせず、スマホの通知音くらいにする。
+  let audioCtx = null;
+  function unlockAudio() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch {}
+  }
+  function chime(times) {
+    if (!audioCtx) return;
+    try {
+      for (let i = 0; i < times; i++) {
+        const t = audioCtx.currentTime + i * 0.5;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, t);
+        osc.frequency.setValueAtTime(660, t + 0.18);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.5);
+      }
+    } catch {}
+  }
   function alarm(level) {
     try { navigator.vibrate && navigator.vibrate(level === "HIGH" ? [200, 300, 200] : [150]); } catch {}
+    chime(level === "HIGH" ? 2 : 1);
+    // ①の言い訳と②のボタンが見える位置まで戻す(下を見ていると気づけないため)
+    try { $("status").scrollIntoView({ behavior: "smooth", block: "start" }); } catch {}
   }
+  // ブラウザは、画面を一度押すまで音を出させないので、最初に押したときに音の準備をしておく
+  document.addEventListener("pointerdown", unlockAudio, { once: true });
 
   const RANK = { SAFE: 0, MEDIUM: 1, HIGH: 2 };
 
