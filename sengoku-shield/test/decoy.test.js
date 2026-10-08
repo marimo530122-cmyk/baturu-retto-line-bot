@@ -64,3 +64,27 @@ test("見抜いていると分かる言葉や注意は読み上げない(気づ�
     assert.strictEqual(decoy.isSafeReply(t), true, t);
   }
 });
+
+test("家に来るよう誘う・家族に話すと言う・お金を動かすつもりに聞こえる返事は読み上げない", () => {
+  for (const t of [
+    "機械はさっぱりでねえ。誰か家に来て教えてくれるのかい。",
+    "いつ頃来られるの。",
+    "後で家族に見せるから、お名前を教えてください。",
+    "それで、どこに振り込めばいいんだっけ。",
+    "どの番号にすればいいのかねえ。",
+  ]) {
+    assert.strictEqual(decoy.isSafeReply(t), false, t);
+  }
+  for (const t of [
+    "ちょっと耳が遠くてねえ。何支店って言ったかね。",
+    "間違えると困るから、窓口の電話番号も控えておきますね。",
+    "いつ、どこって言いました? メモしますから。",
+  ]) {
+    assert.strictEqual(decoy.isSafeReply(t), true, t);
+  }
+});
+
+test("期限までに連絡・振込する約束に聞こえる返事は読み上げない", () => {
+  assert.strictEqual(decoy.isSafeReply("何時までに連絡すればいいのかね。"), false);
+  assert.strictEqual(decoy.isSafeReply("お名前、どういう字を書きますか。メモが間違うといけないから。"), true);
+});
