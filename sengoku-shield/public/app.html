@@ -32,6 +32,10 @@
   h1 { font-size: 22px; margin: 4px 0 12px; }
   .inapp { border: 2px solid var(--danger); background: var(--danger-bg); }
   .inapp-open { display: block; margin-top: 10px; padding: 16px; border-radius: 12px; text-align: center; font-size: 20px; font-weight: 700; text-decoration: none; background: var(--accent); color: var(--accent-fg); }
+  .settings { margin: 28px 0 12px; border-top: 2px dashed var(--line); padding-top: 16px; }
+  .settings > summary { cursor: pointer; font-size: 18px; font-weight: 700; padding: 14px 16px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); list-style: none; text-align: center; }
+  .settings > summary::-webkit-details-marker { display: none; }
+  .settings[open] > summary { margin-bottom: 8px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 12px 0; }
   .status { border-radius: 14px; padding: 18px 16px; margin: 12px 0; font-size: 22px; font-weight: 700; text-align: center; }
   .status small { display: block; font-size: 16px; font-weight: 400; margin-top: 6px; }
@@ -116,6 +120,12 @@
   <button id="backBtn" class="secondary hidden" type="button">自分の応対に戻す</button>
   <p id="familyNote" class="family-note hidden">ご家族のLINEに知らせました</p>
 
+  <div class="card">
+    <button id="startBtn" class="primary" type="button">聞き取りを始める</button>
+    <button id="stopBtn" class="secondary hidden" type="button">電話が終わったら押してください</button>
+    <p class="note" id="support"></p>
+  </div>
+
   <div id="scriptCard" class="card script hidden">
     <strong id="scriptTitle">電話が終わりました。よくがんばりましたね</strong>
     <p id="scriptLead"></p>
@@ -154,41 +164,24 @@
     </ul>
   </div>
 
-  <div class="card">
-    <button id="startBtn" class="primary" type="button">聞き取りを始める</button>
-    <button id="stopBtn" class="secondary hidden" type="button">電話が終わったら押してください</button>
-    <p class="note" id="support"></p>
-  </div>
 
-  <div class="card">
-    <strong>会話</strong>
-    <ul id="log"></ul>
-  </div>
 
-  <div class="card">
-    <label for="testText">文字で試す(マイクなしで判定だけ確認)</label>
-    <div class="row">
-      <input id="testText" type="text" placeholder="例: 還付金があるのでATMに行ってください">
-    </div>
-    <button id="testBtn" class="secondary" type="button">判定する</button>
-  </div>
 
-  <div class="card">
-    <strong>見守り家族(怪しい電話のときに知らせる人)</strong>
-    <ul id="familyList" class="family-list"></ul>
-    <button id="inviteBtn" class="secondary" type="button">家族を登録する</button>
-    <div id="invitePanel" class="invite hidden">
-      <p>家族のスマホで、次の2つをしてもらってください。</p>
-      <ol>
-        <li>鮮刻シールドのLINEを友だち追加する<span id="lineAdd"></span></li>
-        <li>そのトークに、この番号を送る</li>
-      </ol>
-      <p id="inviteCode" class="invite-code" aria-live="polite"></p>
-      <p class="note" id="inviteNote">30分たつと使えなくなります。</p>
-    </div>
-    <p class="note" id="familyNoteText"></p>
-  </div>
 
+
+
+  <details id="settings" class="settings">
+    <summary>設定・ためし(ご家族の方へ)</summary>
+    <p class="note">最初に一度だけ、ご家族の方が設定してください。ご本人は、上の画面だけを見れば大丈夫です。</p>
+  <div class="card">
+    <label for="token">合言葉(サーバーの SHIELD_APP_TOKEN)</label>
+    <input id="token" type="password" autocomplete="off">
+    <p class="note">
+      使い方: 家の電話をスピーカーにして、この端末をそばに置きます。相手の声を文字にして判定し、
+      怪しいときは警告と「AIに応対を代わる」ボタンを出します。電話を切る・代わるかどうかは、いつもあなたが決めます。<br>
+      ※ 音声の文字起こしにはブラウザの音声認識(Chromeでは Google のサーバー)を使います。判定のため会話の文字が鮮刻シールドのサーバーに送られます。
+    </p>
+  </div>
   <div class="card">
     <strong>本人の声(AIが代わりに話すときの声)</strong>
     <div class="row gender" role="radiogroup" aria-label="本人の声">
@@ -208,16 +201,33 @@
       <button id="voiceAutoBtn" class="secondary" type="button">自動で選ぶ声に戻す</button>
     </details>
   </div>
-
   <div class="card">
-    <label for="token">合言葉(サーバーの SHIELD_APP_TOKEN)</label>
-    <input id="token" type="password" autocomplete="off">
-    <p class="note">
-      使い方: 家の電話をスピーカーにして、この端末をそばに置きます。相手の声を文字にして判定し、
-      怪しいときは警告と「AIに応対を代わる」ボタンを出します。電話を切る・代わるかどうかは、いつもあなたが決めます。<br>
-      ※ 音声の文字起こしにはブラウザの音声認識(Chromeでは Google のサーバー)を使います。判定のため会話の文字が鮮刻シールドのサーバーに送られます。
-    </p>
+    <strong>見守り家族(怪しい電話のときに知らせる人)</strong>
+    <ul id="familyList" class="family-list"></ul>
+    <button id="inviteBtn" class="secondary" type="button">家族を登録する</button>
+    <div id="invitePanel" class="invite hidden">
+      <p>家族のスマホで、次の2つをしてもらってください。</p>
+      <ol>
+        <li>鮮刻シールドのLINEを友だち追加する<span id="lineAdd"></span></li>
+        <li>そのトークに、この番号を送る</li>
+      </ol>
+      <p id="inviteCode" class="invite-code" aria-live="polite"></p>
+      <p class="note" id="inviteNote">30分たつと使えなくなります。</p>
+    </div>
+    <p class="note" id="familyNoteText"></p>
   </div>
+  <div class="card">
+    <label for="testText">文字で試す(マイクなしで判定だけ確認)</label>
+    <div class="row">
+      <input id="testText" type="text" placeholder="例: 還付金があるのでATMに行ってください">
+    </div>
+    <button id="testBtn" class="secondary" type="button">判定する</button>
+  </div>
+  <div class="card">
+    <strong>会話</strong>
+    <ul id="log"></ul>
+  </div>
+  </details>
 </main>
 
 <script src="/intel.js"></script>
@@ -282,6 +292,8 @@
   const history = [];  // AI応対中の会話
 
   $("token").value = storage.get("shieldToken");
+  // 合言葉がまだ無い(はじめて開いた)ときだけ、家族向けの設定を開いておく。設定が済めば、本人には上の画面だけが見える
+  if (!$("token").value) $("settings").open = true;
 
   // ---- 本人の声の性別に合わせた読み上げ声 ----
   // 端末に入っている日本語の声から、名前で男性・女性を見分けて選ぶ(本人の声を真似る機能は使わない)
@@ -430,6 +442,12 @@
     w.textContent = who;
     li.append(w, document.createTextNode(text));
     $("log").prepend(li);
+  }
+
+  function needToken() {
+    $("settings").open = true;
+    setStatus("IDLE", "合言葉を入れてください", "下の「設定・ためし」の一番上に入力します");
+    try { $("token").focus(); } catch {}
   }
 
   function setStatus(cls, title, sub) {
@@ -627,7 +645,7 @@
   }
 
   $("startBtn").addEventListener("click", () => {
-    if (!$("token").value.trim()) return setStatus("IDLE", "合言葉を入れてください", "画面下の欄に入力します");
+    if (!$("token").value.trim()) return needToken();
     storage.set("shieldToken", $("token").value.trim());
     listening = true;
     lastRisk = "SAFE";
@@ -784,7 +802,7 @@
   }
 
   $("inviteBtn").addEventListener("click", async () => {
-    if (!$("token").value.trim()) return ($("familyNoteText").textContent = "先に、画面下の合言葉を入れてください。");
+    if (!$("token").value.trim()) return ($("familyNoteText").textContent = "先に、合言葉を入れてください。");
     try {
       const r = await api("/api/family/invite", {});
       $("inviteCode").textContent = r.code.replace(/(\d{3})(\d{3})/, "$1 $2");
@@ -838,7 +856,7 @@
   $("testBtn").addEventListener("click", () => {
     const t = $("testText").value.trim();
     if (!t) return;
-    if (!$("token").value.trim()) return setStatus("IDLE", "合言葉を入れてください", "画面下の欄に入力します");
+    if (!$("token").value.trim()) return needToken();
     storage.set("shieldToken", $("token").value.trim());
     onUtterance(t);
   });
