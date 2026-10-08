@@ -34,5 +34,16 @@ jobs:
           if [ -z "$SHIELD_AI_MODEL" ]; then unset SHIELD_AI_MODEL; fi
           # 登録したキーの前後に改行や空白が入っていると「キーが無効」になるので取り除く
           ANTHROPIC_API_KEY="$(printf '%s' "$ANTHROPIC_API_KEY" | tr -d '[:space:]')"
+          # 名前ごと貼ってしまった場合(ANTHROPIC_API_KEY=sk-...)は、名前の部分を取り除く
+          ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY#ANTHROPIC_API_KEY=}"
           export ANTHROPIC_API_KEY
+          # キーそのものは表示せず、形だけを確かめる(長さと、正しい書き出しかどうか)
+          case "$ANTHROPIC_API_KEY" in
+            sk-ant-api*) START="sk-ant-api で始まる(正しい形)" ;;
+            sk-ant-admin*) START="sk-ant-admin で始まる(管理用のキー。Claude を呼ぶには普通の API キーが要る)" ;;
+            sk-ant-*) START="sk-ant- で始まるが api ではない" ;;
+            "") START="空(登録されていない)" ;;
+            *) START="sk-ant- で始まらない(キー以外の文字が入っている)" ;;
+          esac
+          echo "登録されたキーの形: ${#ANTHROPIC_API_KEY} 文字 / ${START}"
           node rehearsal.js
