@@ -1,5 +1,6 @@
 import { Category, ClassifyResult, Mode } from "@/lib/types";
 import { ClassifierBackend } from "./types";
+import { SYMPTOM_PATTERNS } from "@/lib/karteInsights";
 
 /**
  * APIキー不要のルールベース分類器。
@@ -21,7 +22,8 @@ const MEETING_RULES: Array<{ category: Category; keywords: string[] }> = [
 ];
 
 const KARTE_RULES: Array<{ category: Category; keywords: string[] }> = [
-  { category: "symptom", keywords: ["痛い", "熱", "だるい", "気持ち悪い", "しびれ", "調子が"] },
+  // 症状の言葉は通院カルテの「症状と経過の整理」と同じ一覧を使う(心の症状も拾えるように)
+  { category: "symptom", keywords: [...SYMPTOM_PATTERNS.flatMap((p) => p.keywords), "調子が"] },
   { category: "decision", keywords: ["診断", "ということです", "所見", "様子を見ましょう"] },
   { category: "treatment", keywords: ["薬", "処方", "注射", "点滴", "手術", "服用"] },
   { category: "appointment", keywords: ["次回", "予約", "また来て", "来週", "1ヶ月後"] },
