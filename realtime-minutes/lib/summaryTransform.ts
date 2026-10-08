@@ -1,4 +1,5 @@
 import { CATEGORY_LABEL, ClassifiedUtterance, Mode } from "@/lib/types";
+import { analyzeKarte, candidatesEnabled, collapseGrowingUtterances, karteInsightsMarkdown } from "@/lib/karteInsights";
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
@@ -50,7 +51,18 @@ function meetingSummary(utterances: ClassifiedUtterance[]): string {
   return lines.join("\n");
 }
 
-function karteSummary(utterances: ClassifiedUtterance[]): string {
+/**
+ * 分類器の summary が「本文の先頭を切っただけ」(キー不要の簡易分類器)のときは、途中で切れて
+ * 読めなくなるので本文をそのまま出す。AIが作った本当の要約ならそちらを使う。
+ */
+function displayText(u: ClassifiedUtterance): string {
+  if (!u.summary || u.text.startsWith(u.summary)) return u.text;
+  return u.summary;
+}
+
+function karteSummary(rawUtterances: ClassifiedUtterance[]): string {
+  // 音声認識が同じ発言を伸ばしながら何度も確定させた分を、表示用に1つにまとめる
+  const utterances = collapseGrowingUtterances(rawUtterances);
   const now = new Date();
   const lines: string[] = [
     "# 通院カルテ",
@@ -58,13 +70,14 @@ function karteSummary(utterances: ClassifiedUtterance[]): string {
     `記録日: ${now.toLocaleDateString("ja-JP")}`,
     `作成時刻: ${now.toLocaleTimeString("ja-JP")}`,
     "",
+    ...karteInsightsMarkdown(analyzeKarte(utterances, { includeCandidates: candidatesEnabled() })),
   ];
 
   const section = (label: string, category: ClassifiedUtterance["category"]) => {
     const items = utterances.filter((u) => u.category === category);
     if (items.length === 0) return;
     lines.push(`## ${label}`);
-    items.forEach((u) => lines.push(`- ${u.summary || u.text}`));
+    items.forEach((u) => lines.push(`- ${displayText(u)}`));
     lines.push("");
   };
 
