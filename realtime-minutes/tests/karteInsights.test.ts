@@ -138,14 +138,62 @@ test("薬を大量に飲んだ話は、治療方針ではなく「先生と共�
   assert.equal(insights.important[0].pattern.id, "overdose");
 });
 
-test("5項目まとめはカルテの一番上に出る", () => {
-  const md = karteInsightsMarkdown(analyzeKarte([u("フラッシュバックがあります"), u("次回は来週です")])).join("\n");
-  assert.ok(md.startsWith("## ① 概要"));
-  assert.ok(md.indexOf("⑤ 今後の方針") < md.indexOf("症状と経過の整理"));
+test("並び順: 要点 → 先生と共有(発言の引用) → 5項目まとめ → 詳しい整理", () => {
+  const md = karteInsightsMarkdown(analyzeKarte([u("死にたいと思うことがあります"), u("次回は来週です")])).join("\n");
+  assert.ok(md.startsWith("## 1. 診察の重要ポイント"));
+  const order = ["1. 診察の重要ポイント", "4. 家族の対応", "先生と必ず共有しておきたいこと", "① 概要", "⑤ 今後の方針", "症状と経過の整理"];
+  const positions = order.map((h) => md.indexOf(`## ${h}`));
+  assert.ok(positions.every((p) => p >= 0), `見出しが足りない: ${order.filter((_, i) => positions[i] < 0)}`);
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions);
 });
 
-test("「死にたい」等の見落とせない発言は、5項目まとめよりもさらに上に出す", () => {
-  const md = karteInsightsMarkdown(analyzeKarte([u("死にたいと思うことがあります"), u("次回は来週です")])).join("\n");
-  assert.ok(md.startsWith("## 先生と必ず共有しておきたいこと"));
-  assert.ok(md.indexOf("先生と必ず共有") < md.indexOf("① 概要"));
+// --- 要点(1. 重要ポイント / 2. 処方の確認 / 3. 考えられる病気 / 4. 家族の対応) ---
+
+function keyPoints(lines: string[]) {
+  return Object.fromEntries(analyzeKarte(lines.map((t) => u(t))).keyPoints.map((s) => [s.heading, s.items]));
+}
+
+test("要点: 命の安全を最初に、体・心の症状とつらい体験の話題を短い言葉でまとめる", () => {
+  const kp = keyPoints([
+    "死にたいと思うことがあります",
+    "全身が痛くて、最近は歩けなくなりました",
+    "昔の事故のフラッシュバックがあります",
+  ]);
+  const items = kp["1. 診察の重要ポイント"];
+  assert.match(items[0], /^命の安全\(最優先\):死にたい気持ち/);
+  assert.ok(items.some((i) => /^体の症状:.*痛み.*歩けない/.test(i)));
+  assert.ok(items.some((i) => /^心・トラウマの症状:.*フラッシュバック/.test(i)));
+  assert.ok(items.some((i) => /^背景にあるつらい体験の話題:.*事故/.test(i)));
+  // 要点には発言そのものは引用しない(短い言葉だけ)
+  assert.ok(items.every((i) => !i.includes("「")));
+});
+
+test("要点: 過量服薬の話があれば、処方の日数と家族による管理を確認項目に入れる", () => {
+  const kp = keyPoints(["前に薬を大量に飲んでしまいました", "リリカは続けてください"]);
+  const items = kp["2. 処方の確認"];
+  assert.match(items[0], /^日数と管理:/);
+  assert.ok(items.some((i) => /^目的と副作用:.*プレガバリン/.test(i)));
+});
+
+test("要点: 病気の候補は「診断ではありません」の見出しで、理由を短く添える", () => {
+  const kp = keyPoints(["フラッシュバックがあります", "事故の道は避けます"]);
+  const items = kp["3. 考えられる病気(候補・診断ではありません)"];
+  assert.ok(items.some((i) => /^PTSD.*:フラッシュバック・関係する場所を避ける/.test(i)));
+});
+
+test("要点: 家族の対応は、記憶の抜けがあれば代弁を、いつも緊急連絡先の確認を入れる", () => {
+  const withMemory = keyPoints(["その頃の記憶がないんです", "フラッシュバックもあります"])["4. 家族の対応"];
+  assert.ok(withMemory.some((i) => i.startsWith("診察の代弁:")));
+  assert.ok(withMemory.some((i) => i.startsWith("治療の進め方:")));
+  assert.ok(withMemory.some((i) => i.startsWith("緊急連絡先:")));
+
+  const plain = keyPoints(["少し頭痛があります"])["4. 家族の対応"];
+  assert.deepEqual(plain.map((i) => i.split(":")[0]), ["緊急連絡先"]);
+});
+
+test("要点: 症状の話が無ければ、無理に作らない", () => {
+  const kp = keyPoints(["今日は晴れていますね"]);
+  assert.deepEqual(kp["1. 診察の重要ポイント"], ["症状に関する言葉は見つかりませんでした"]);
+  assert.equal(kp["2. 処方の確認"], undefined);
+  assert.equal(kp["3. 考えられる病気(候補・診断ではありません)"], undefined);
 });
