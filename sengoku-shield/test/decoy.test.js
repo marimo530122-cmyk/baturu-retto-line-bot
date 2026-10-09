@@ -88,3 +88,8 @@ test("期限までに連絡・振込する約束に聞こえる返事は読み�
   assert.strictEqual(decoy.isSafeReply("何時までに連絡すればいいのかね。"), false);
   assert.strictEqual(decoy.isSafeReply("お名前、どういう字を書きますか。メモが間違うといけないから。"), true);
 });
+
+test("「振込先」など、お金を動かす前提に聞こえる聞き方は読み上げない(本物の Claude の練習で出た言い方)", () => {
+  assert.strictEqual(decoy.isSafeReply("田中さん、はいはい。あの、振込先の銀行は何銀行の何支店になりますか。"), false);
+  assert.strictEqual(decoy.isSafeReply("今の銀行、どこの何支店って言いました? メモしますから。"), true);
+});

@@ -39,9 +39,8 @@ jobs:
           export ANTHROPIC_API_KEY
           # キーそのものは表示せず、形だけを確かめる(長さと、正しい書き出しかどうか)
           case "$ANTHROPIC_API_KEY" in
-            sk-ant-api*) START="sk-ant-api で始まる(正しい形)" ;;
             sk-ant-admin*) START="sk-ant-admin で始まる(管理用のキー。Claude を呼ぶには普通の API キーが要る)" ;;
-            sk-ant-*) START="sk-ant- で始まるが api ではない" ;;
+            sk-ant-*) START="sk-ant- で始まる(正しい形。本物のキーは約100文字)" ;;
             "") START="空(登録されていない)" ;;
             *) START="sk-ant- で始まらない(キー以外の文字が入っている)" ;;
           esac
