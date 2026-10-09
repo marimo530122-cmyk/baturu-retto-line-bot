@@ -191,7 +191,16 @@ export interface KeyPointSection {
   items: string[];
 }
 
+/** 症状を「命の安全・体・心・背景の体験」に分けた短い呼び名(要点とフィッシュボーンで使う) */
+export interface SymptomGroups {
+  safety: string[];
+  body: string[];
+  mind: string[];
+  hardships: string[];
+}
+
 export interface KarteInsights {
+  groups: SymptomGroups;
   keyPoints: KeyPointSection[];
   summary: SummaryItem[];
   important: SymptomFinding[];
@@ -470,8 +479,14 @@ export function analyzeKarte(
   const summary = buildSummary(utterances, symptoms, important, candidates, drugs);
   const hasTreatmentTalk = (summary.find((s) => s.id === "treatment")?.evidence.length ?? 0) > 0;
   const keyPoints = buildKeyPoints(utterances, foundIds, candidates, drugs, hasTreatmentTalk);
+  const groups: SymptomGroups = {
+    safety: shortNames(["suicidal", "overdose"], foundIds),
+    body: shortNames(BODY_SYMPTOM_IDS, foundIds),
+    mind: shortNames(MIND_SYMPTOM_IDS, foundIds),
+    hardships: HARDSHIP_TOPICS.filter((t) => utterances.some((u) => includesAny(u.text, t.keywords))).map((t) => t.label),
+  };
 
-  return { keyPoints, summary, important, symptoms, candidates, drugs, questions };
+  return { groups, keyPoints, summary, important, symptoms, candidates, drugs, questions };
 }
 
 function formatTime(ts: number): string {
