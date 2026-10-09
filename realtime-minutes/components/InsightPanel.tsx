@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { Network, ListTodo, Pin, FileText, CalendarClock, Lightbulb } from "lucide-react";
 import { ClassifiedUtterance, Mode } from "@/lib/types";
-import { MindMapView } from "./MindMapView";
+import { MapPanel } from "./MapPanel";
 import { TodoList } from "./TodoList";
 import { DecisionLog } from "./DecisionLog";
 import { IssueLog } from "./IssueLog";
 import { AppointmentList } from "./AppointmentList";
 import { SummaryView } from "./SummaryView";
-import { utterancesToMarkdown } from "@/lib/markmapTransform";
 import { utterancesToSummaryMarkdown } from "@/lib/summaryTransform";
 
 type InsightTab = "mindmap" | "todo" | "appointment" | "decisions" | "issues" | "summary";
@@ -64,7 +63,7 @@ export function InsightPanel({
         ))}
       </div>
       <div className="min-h-0 flex-1 bg-gray-50">
-        {tab === "mindmap" && <MindMapView markdown={utterancesToMarkdown(utterances, mode)} />}
+        {tab === "mindmap" && <MapPanel utterances={utterances} mode={mode} />}
         {tab === "todo" && <TodoList utterances={utterances} onToggle={onToggleTodo} />}
         {tab === "appointment" && <AppointmentList utterances={utterances} />}
         {tab === "decisions" && <DecisionLog utterances={utterances} />}

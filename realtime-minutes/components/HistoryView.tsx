@@ -78,8 +78,10 @@ export function HistoryView({ mode, onClose }: { mode: Mode; onClose: () => void
   const [selected, setSelected] = useState<HistoryEntry | null>(null);
 
   useEffect(() => {
-    setEntries(loadHistory().filter((e) => e.mode === mode));
-  }, [mode]);
+    // 以前は今のモードの記録だけを出していたため、アプリが議事録モードで開くと
+    // 通院カルテの記録が「見当たらない」状態になっていた。両方のモードの記録を全部出す。
+    setEntries(loadHistory());
+  }, []);
 
   const handleDelete = (id: string) => {
     deleteHistoryEntry(id);
@@ -100,7 +102,7 @@ export function HistoryView({ mode, onClose }: { mode: Mode; onClose: () => void
             {selected
               ? formatDate(selected.savedAt)
               : tab === "sessions"
-                ? `過去の記録(${mode === "karte" ? "通院カルテ" : "議事録"})`
+                ? "過去の記録(議事録・通院カルテ)"
                 : "写真の読み取り履歴"}
           </h2>
         </div>
@@ -151,7 +153,16 @@ export function HistoryView({ mode, onClose }: { mode: Mode; onClose: () => void
                 className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
               >
                 <button onClick={() => setSelected(e)} className="flex-1 text-left">
-                  <p className="text-sm font-medium text-gray-900">{formatDate(e.savedAt)}</p>
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                        e.mode === "karte" ? "bg-rose-100 text-rose-800" : "bg-sky-100 text-sky-800"
+                      }`}
+                    >
+                      {e.mode === "karte" ? "通院カルテ" : "議事録"}
+                    </span>
+                    {formatDate(e.savedAt)}
+                  </p>
                   <p className="text-xs text-gray-400">{e.utterances.length}件の記録</p>
                 </button>
                 <button

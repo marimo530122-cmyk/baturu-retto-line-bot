@@ -30,7 +30,7 @@ export const SYMPTOM_PATTERNS: SymptomPattern[] = [
   { id: "memory", label: "記憶が抜けている・曖昧", keywords: ["記憶がない", "記憶が曖昧", "記憶が戻らない", "覚えてない", "覚えていない", "記憶が飛"] },
   { id: "identity", label: "別の自分がいる感じ", keywords: ["別の人格", "もう一人の自分", "人格が"] },
   { id: "conversion", label: "歩けない・見えないなど体の機能の症状", keywords: ["歩けな", "目が見えな", "見えなくな", "車椅子", "転換症状", "声が出な", "言葉が出な"] },
-  { id: "pain", label: "痛み", keywords: ["痛い", "痛み", "痛がる", "線維筋痛症", "筋痛症", "刺されてる感じ"] },
+  { id: "pain", label: "痛み", keywords: ["痛い", "痛み", "痛くて", "痛む", "痛かった", "痛がる", "線維筋痛症", "筋痛症", "刺されてる感じ"] },
   { id: "swelling", label: "むくみ", keywords: ["むくみ", "むくん"] },
   { id: "sleep", label: "睡眠の問題(寝つき・夜中に目が覚める)", keywords: ["寝つき", "眠れない", "寝れな", "寝られな", "不眠", "目が覚め", "夜中に起き"] },
   { id: "appetite", label: "食欲", keywords: ["食欲", "食べられな", "食べれな"] },
@@ -185,7 +185,23 @@ export interface SummaryItem {
   evidence: ClassifiedUtterance[];
 }
 
+/** 一番上に出す「要点」(家族が通院のあとに見返す用。短い言葉だけで、発言の引用は入れない) */
+export interface KeyPointSection {
+  heading: string;
+  items: string[];
+}
+
+/** 症状を「命の安全・体・心・背景の体験」に分けた短い呼び名(要点とフィッシュボーンで使う) */
+export interface SymptomGroups {
+  safety: string[];
+  body: string[];
+  mind: string[];
+  hardships: string[];
+}
+
 export interface KarteInsights {
+  groups: SymptomGroups;
+  keyPoints: KeyPointSection[];
   summary: SummaryItem[];
   important: SymptomFinding[];
   symptoms: SymptomFinding[];
@@ -300,6 +316,113 @@ function buildSummary(
   return [overview, condition, treatment, progress, plan];
 }
 
+// 「要点」で使う短い呼び名と、体/心のどちらの症状としてまとめるか
+const SHORT_NAME: Record<string, string> = {
+  suicidal: "死にたい気持ち",
+  overdose: "過量服薬(薬をまとめて飲んだこと)",
+  flashback: "フラッシュバック",
+  avoidance: "関係する場所を避ける",
+  hypervigilance: "警戒",
+  memory: "記憶の抜け",
+  identity: "別の自分がいる感覚",
+  conversion: "歩けない・見えない等",
+  pain: "痛み",
+  swelling: "むくみ",
+  sleep: "不眠",
+  appetite: "食欲の変化",
+  mood: "気分の落ち込み",
+  anxiety: "不安・恐怖",
+  interpersonal: "対人関係の苦手さ",
+  weight: "体重の変化",
+  fatigue: "だるさ",
+  fever: "熱",
+  headache: "頭痛",
+  nausea: "吐き気",
+  numbness: "しびれ",
+};
+const BODY_SYMPTOM_IDS = ["pain", "conversion", "swelling", "sleep", "appetite", "weight", "fatigue", "fever", "headache", "nausea", "numbness"];
+const MIND_SYMPTOM_IDS = ["flashback", "avoidance", "hypervigilance", "memory", "identity", "mood", "anxiety", "interpersonal"];
+
+/** 背景にあるつらい体験の話題(要点には言葉の種類だけ出し、発言そのものは引用しない) */
+const HARDSHIP_TOPICS: Array<{ label: string; keywords: string[] }> = [
+  { label: "事故", keywords: ["事故"] },
+  { label: "身近な人の死", keywords: ["亡くな", "死んじゃ", "死にました"] },
+  { label: "流産", keywords: ["流産"] },
+  { label: "暴力・DV", keywords: ["暴力", "DV", "殴"] },
+  { label: "性的な被害", keywords: ["性的", "強姦", "犯され"] },
+  { label: "虐待", keywords: ["虐待"] },
+  { label: "いじめ", keywords: ["いじめ"] },
+  { label: "家族の問題", keywords: ["離婚", "家族の問題", "親との関係"] },
+];
+
+const TRAUMA_CANDIDATE_IDS = new Set(["ptsd", "dissociation", "conversion"]);
+
+function shortNames(ids: string[], found: Set<string>): string[] {
+  return ids.filter((id) => found.has(id)).map((id) => SHORT_NAME[id]);
+}
+
+function buildKeyPoints(
+  utterances: ClassifiedUtterance[],
+  foundIds: Set<string>,
+  candidates: CandidateFinding[],
+  drugs: KarteInsights["drugs"],
+  hasTreatmentTalk: boolean
+): KeyPointSection[] {
+  const sections: KeyPointSection[] = [];
+
+  // 1. 重要ポイント
+  const important: string[] = [];
+  const safety = shortNames(["suicidal", "overdose"], foundIds);
+  if (safety.length > 0) important.push(`命の安全(最優先):${safety.join("・")}の発言あり`);
+  const body = shortNames(BODY_SYMPTOM_IDS, foundIds);
+  if (body.length > 0) important.push(`体の症状:${body.join("、")}`);
+  const mind = shortNames(MIND_SYMPTOM_IDS, foundIds);
+  if (mind.length > 0) important.push(`心・トラウマの症状:${mind.join("、")}`);
+  const hardships = HARDSHIP_TOPICS.filter((t) => utterances.some((u) => includesAny(u.text, t.keywords))).map((t) => t.label);
+  if (hardships.length > 0) important.push(`背景にあるつらい体験の話題:${hardships.join("、")}`);
+  if (important.length === 0) important.push("症状に関する言葉は見つかりませんでした");
+  sections.push({ heading: "1. 診察の重要ポイント", items: important });
+
+  // 2. 処方の確認
+  const prescription: string[] = [];
+  if (safety.length > 0) {
+    prescription.push("日数と管理:過量服薬を防ぐため、短い日数での処方や、家族が薬を預かる方法を先生と相談する");
+  }
+  if (drugs.length > 0) {
+    prescription.push(`目的と副作用:会話に出た薬(${drugs.map((d) => d.drug.label).join("、")})の目的と、ふらつき・眠気・むくみ等の副作用を確認する`);
+  } else if (hasTreatmentTalk) {
+    prescription.push("目的と副作用:出された薬それぞれの目的と、ふらつき・眠気等の副作用を確認する");
+  }
+  if (prescription.length > 0) sections.push({ heading: "2. 処方の確認", items: prescription });
+
+  // 3. 考えられる病気(候補)
+  if (candidates.length > 0) {
+    sections.push({
+      heading: "3. 考えられる病気(候補・診断ではありません)",
+      items: candidates.map(({ candidate, matchedSymptoms, explicitEvidence }) => {
+        const reasons = [
+          ...matchedSymptoms.map((p) => SHORT_NAME[p.id] ?? p.label),
+          ...(explicitEvidence.length > 0 ? ["病名そのものの発言"] : []),
+        ];
+        return `${candidate.name}:${reasons.join("・")}`;
+      }),
+    });
+  }
+
+  // 4. 家族の対応
+  const family: string[] = [];
+  if (foundIds.has("memory") || foundIds.has("identity")) {
+    family.push("診察の代弁:本人が思い出しにくい・言葉にしにくいところは、家族が経過や事実を補足する");
+  }
+  if (candidates.some((c) => TRAUMA_CANDIDATE_IDS.has(c.candidate.id)) || safety.length > 0) {
+    family.push("治療の進め方:気持ちが不安定な時期は、まず生活の安定を優先するのが一般的。つらい記憶を扱うカウンセリングの時期や進め方は先生と相談する");
+  }
+  family.push("緊急連絡先:具合が急に悪くなったときの、夜間・休日の連絡先を主治医に確認しておく");
+  sections.push({ heading: "4. 家族の対応", items: family });
+
+  return sections;
+}
+
 function includesAny(text: string, words: string[]): boolean {
   return words.some((w) => text.includes(w));
 }
@@ -354,8 +477,16 @@ export function analyzeKarte(
   ];
 
   const summary = buildSummary(utterances, symptoms, important, candidates, drugs);
+  const hasTreatmentTalk = (summary.find((s) => s.id === "treatment")?.evidence.length ?? 0) > 0;
+  const keyPoints = buildKeyPoints(utterances, foundIds, candidates, drugs, hasTreatmentTalk);
+  const groups: SymptomGroups = {
+    safety: shortNames(["suicidal", "overdose"], foundIds),
+    body: shortNames(BODY_SYMPTOM_IDS, foundIds),
+    mind: shortNames(MIND_SYMPTOM_IDS, foundIds),
+    hardships: HARDSHIP_TOPICS.filter((t) => utterances.some((u) => includesAny(u.text, t.keywords))).map((t) => t.label),
+  };
 
-  return { summary, important, symptoms, candidates, drugs, questions };
+  return { groups, keyPoints, summary, important, symptoms, candidates, drugs, questions };
 }
 
 function formatTime(ts: number): string {
@@ -380,6 +511,13 @@ function quotes(evidence: ClassifiedUtterance[]): string {
 /** 通院カルテのMarkdownに差し込む見出し付きの節(## 見出し / - 項目)を返す */
 export function karteInsightsMarkdown(insights: KarteInsights): string[] {
   const lines: string[] = [];
+
+  // 一番上: 要点(短い言葉だけに凝縮したもの)
+  for (const section of insights.keyPoints) {
+    lines.push(`## ${section.heading}`);
+    section.items.forEach((item) => lines.push(`- ${item}`));
+    lines.push("");
+  }
 
   if (insights.important.length > 0) {
     lines.push("## 先生と必ず共有しておきたいこと");

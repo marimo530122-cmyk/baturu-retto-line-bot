@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Mic, Square, RotateCcw, AlertTriangle, MessagesSquare, LayoutGrid, History, Keyboard, Send } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Mic, Square, RotateCcw, AlertTriangle, Save, X, MessagesSquare, LayoutGrid, History, Keyboard, Send } from "lucide-react";
 import { Timeline } from "@/components/Timeline";
 import { InsightPanel } from "@/components/InsightPanel";
 import { HistoryView } from "@/components/HistoryView";
@@ -11,15 +11,36 @@ import { QrCodeButton } from "@/components/QrCodeButton";
 import { InAppBrowserBanner, InAppBrowserOverlay, useInAppBrowser } from "@/components/InAppBrowserNotice";
 import { BraveBanner, BraveOverlay, useBraveDetection } from "@/components/BraveNotice";
 import { useMeetingSession } from "@/hooks/useMeetingSession";
-import { saveHistoryEntry } from "@/lib/history";
+import { loadDraft, saveDraft, saveHistoryEntry } from "@/lib/history";
 import { MODE_META, Mode } from "@/lib/types";
 
 type MobileTab = "timeline" | "insight";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("meeting");
-  const { utterances, interimText, isRecording, error, status, supported, start, stop, toggleTodo, reset, submitText } =
+  const { utterances, interimText, isRecording, error, status, supported, start, stop, toggleTodo, reset, restore, submitText } =
     useMeetingSession(mode);
+
+  // 録音中の内容は、発言が増えるたびにこのブラウザへ自動保存し(下書き)、
+  // ページを閉じたり再読み込みしたりしても、次に開いたときに続きから戻す。
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [restoredNotice, setRestoredNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      setMode(draft.mode);
+      restore(draft.utterances);
+      const when = new Date(draft.updatedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      setRestoredNotice(
+        `前回の${draft.mode === "karte" ? "通院カルテ" : "議事録"}(${when}まで・${draft.utterances.length}件)を自動保存から戻しました。終わったら「リセット」で「過去の記録」に保存できます。`
+      );
+    }
+    setDraftLoaded(true);
+  }, [restore]);
+  useEffect(() => {
+    // 読み込みが終わる前に保存すると、空の状態で下書きを上書きして消してしまうので待つ
+    if (draftLoaded) saveDraft(mode, utterances);
+  }, [draftLoaded, mode, utterances]);
   const [mobileTab, setMobileTab] = useState<MobileTab>("timeline");
   const [showHistory, setShowHistory] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
@@ -100,6 +121,16 @@ export default function Home() {
       </header>
 
       <PrivacyNotice />
+
+      {restoredNotice && (
+        <div className="flex shrink-0 items-start gap-2 bg-emerald-50 px-4 py-2 text-xs text-emerald-900">
+          <Save className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex-1">{restoredNotice}</p>
+          <button onClick={() => setRestoredNotice(null)} className="shrink-0 text-emerald-700" title="閉じる">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="flex shrink-0 items-center gap-2 bg-amber-50 px-4 py-2 text-xs text-amber-800">
