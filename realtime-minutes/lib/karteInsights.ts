@@ -175,7 +175,18 @@ export interface CandidateFinding {
   explicitEvidence: ClassifiedUtterance[];
 }
 
+/** 先生のフィードバックで決めた「5項目まとめ」の1項目 */
+export interface SummaryItem {
+  id: "overview" | "condition" | "treatment" | "progress" | "plan";
+  label: string;
+  /** 自動で作った説明文(拾った言葉から組み立てる) */
+  lead: string[];
+  /** 根拠になった発言 */
+  evidence: ClassifiedUtterance[];
+}
+
 export interface KarteInsights {
+  summary: SummaryItem[];
   important: SymptomFinding[];
   symptoms: SymptomFinding[];
   candidates: CandidateFinding[];
@@ -204,6 +215,89 @@ export function collapseGrowingUtterances(utterances: ClassifiedUtterance[]): Cl
     result.push(u);
   }
   return result;
+}
+
+// 5項目まとめで、どの発言をどの項目に入れるかの目印になる言葉
+const CONDITION_WORDS = ["診断", "病名", "と考えられ", "可能性", "疑い", "症状が出て", "状態です", "障害", "病気"];
+const TREATMENT_WORDS = ["処方", "薬", "飲んで", "服用", "カウンセリング", "治療", "リハビリ", "入院", "注射", "点滴", "療法"];
+const PROGRESS_WORDS = ["前回", "以前より", "前より", "良くなっ", "よくなっ", "悪くなっ", "変わらな", "変わりな", "様子を見", "経過", "続いて", "ここ最近", "だいぶ", "落ち着い"];
+const PLAN_WORDS = ["次回", "予約", "今後", "これから", "来週", "来月", "週間後", "ヶ月後", "か月後", "カ月後", "検査を", "紹介", "続けて", "しましょう", "していきましょう"];
+
+/** 相づちや言いかけ(「はい」「えーと」等)は要約に入れない */
+const MIN_SUMMARY_TEXT_LENGTH = 8;
+const MAX_SUMMARY_EVIDENCE = 5;
+
+function pick(utterances: ClassifiedUtterance[], words: string[]): ClassifiedUtterance[] {
+  return utterances.filter((u) => u.text.trim().length >= MIN_SUMMARY_TEXT_LENGTH && includesAny(u.text, words));
+}
+
+function buildSummary(
+  utterances: ClassifiedUtterance[],
+  symptoms: SymptomFinding[],
+  important: SymptomFinding[],
+  candidates: CandidateFinding[],
+  drugs: KarteInsights["drugs"]
+): SummaryItem[] {
+  const first = utterances[0];
+  const last = utterances[utterances.length - 1];
+  const minutes = first && last ? Math.max(1, Math.round((last.timestamp - first.timestamp) / 60_000)) : 0;
+  const symptomLabels = [...important, ...symptoms].map((f) => f.pattern.label);
+
+  const overview: SummaryItem = {
+    id: "overview",
+    label: "① 概要",
+    lead: [
+      first ? `記録 ${formatTime(first.timestamp)}〜${formatTime(last.timestamp)}(約${minutes}分・発言${utterances.length}件)` : "まだ記録がありません",
+      symptomLabels.length > 0 ? `話題になった症状:${symptomLabels.join("、")}` : "症状に関する言葉は見つかりませんでした",
+    ],
+    evidence: [],
+  };
+
+  const conditionEvidence = pick(utterances, CONDITION_WORDS);
+  const condition: SummaryItem = {
+    id: "condition",
+    label: "② 今どういう病気か",
+    lead: [
+      conditionEvidence.length > 0
+        ? "診断・病状について話された部分です。病名は先生の言葉で確認してください。"
+        : "病名についての発言は見つかりませんでした。次の診察で先生に確認しましょう。",
+      ...(candidates.length > 0 ? [`参考の候補(診断ではありません):${candidates.map((c) => c.candidate.name).join("、")}`] : []),
+    ],
+    evidence: conditionEvidence,
+  };
+
+  // 「薬を大量に飲んだ」等は治療方針ではなく、一番上の「先生と必ず共有しておきたいこと」に出す
+  const overdoseWords = SYMPTOM_PATTERNS.find((p) => p.id === "overdose")?.keywords ?? [];
+  const treatmentEvidence = pick(utterances, [...TREATMENT_WORDS, ...drugs.flatMap((d) => d.drug.names)]).filter(
+    (u) => !includesAny(u.text, overdoseWords)
+  );
+  const treatment: SummaryItem = {
+    id: "treatment",
+    label: "③ 治療方針(今の治療・薬)",
+    lead: [
+      ...(drugs.length > 0 ? [`会話に出た薬:${drugs.map((d) => d.drug.label).join("、")}`] : []),
+      ...(treatmentEvidence.length === 0 ? ["治療や薬についての発言は見つかりませんでした。"] : []),
+    ],
+    evidence: treatmentEvidence,
+  };
+
+  const progressEvidence = pick(utterances, PROGRESS_WORDS);
+  const progress: SummaryItem = {
+    id: "progress",
+    label: "④ 経過観察(これまでの経過・様子を見ること)",
+    lead: progressEvidence.length === 0 ? ["経過についての発言は見つかりませんでした。"] : [],
+    evidence: progressEvidence,
+  };
+
+  const planEvidence = pick(utterances, PLAN_WORDS);
+  const plan: SummaryItem = {
+    id: "plan",
+    label: "⑤ 今後の方針(次回の予定・これからの治療)",
+    lead: planEvidence.length === 0 ? ["今後の予定についての発言は見つかりませんでした。次回の予約を確認しましょう。"] : [],
+    evidence: planEvidence,
+  };
+
+  return [overview, condition, treatment, progress, plan];
 }
 
 function includesAny(text: string, words: string[]): boolean {
@@ -259,7 +353,9 @@ export function analyzeKarte(
     ...GENERAL_QUESTIONS,
   ];
 
-  return { important, symptoms, candidates, drugs, questions };
+  const summary = buildSummary(utterances, symptoms, important, candidates, drugs);
+
+  return { summary, important, symptoms, candidates, drugs, questions };
 }
 
 function formatTime(ts: number): string {
@@ -288,6 +384,16 @@ export function karteInsightsMarkdown(insights: KarteInsights): string[] {
   if (insights.important.length > 0) {
     lines.push("## 先生と必ず共有しておきたいこと");
     insights.important.forEach((f) => lines.push(`- ${f.pattern.label}:${quotes(f.evidence)}`));
+    lines.push("");
+  }
+
+  // 見落とせない発言(上)のすぐ下に、先生のフィードバック: まず5項目(概要・病気・治療方針・経過観察・今後の方針)で要約して見せる
+  for (const item of insights.summary) {
+    lines.push(`## ${item.label}`);
+    item.lead.forEach((l) => lines.push(`- ${l}`));
+    item.evidence.slice(0, MAX_SUMMARY_EVIDENCE).forEach((u) => lines.push(`- ${quote(u)}`));
+    const rest = item.evidence.length - MAX_SUMMARY_EVIDENCE;
+    if (rest > 0) lines.push(`- ほか${rest}件(下の「会話の記録(全体)」にあります)`);
     lines.push("");
   }
 
