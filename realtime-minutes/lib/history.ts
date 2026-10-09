@@ -51,3 +51,53 @@ export function deleteHistoryEntry(id: string): void {
     // 保存に失敗しても致命的ではないので無視
   }
 }
+
+
+// ---------------------------------------------------------------------------
+// 録音中の内容の自動保存(下書き)
+// 以前は「リセット→OK」を押したときだけ保存していたため、その前にページを閉じたり、
+// スマホがバックグラウンドのブラウザを勝手に閉じたりすると、記録が丸ごと消えていた。
+// 発言が増えるたびに下書きとして保存し、次に開いたときに続きから戻す。
+// ---------------------------------------------------------------------------
+
+const DRAFT_KEY = "realtime-minutes:draft";
+
+export interface DraftEntry {
+  mode: Mode;
+  updatedAt: number;
+  utterances: ClassifiedUtterance[];
+}
+
+export function saveDraft(mode: Mode, utterances: ClassifiedUtterance[]): void {
+  try {
+    if (utterances.length === 0) {
+      localStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    const draft: DraftEntry = { mode, updatedAt: Date.now(), utterances };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // 容量オーバー等で保存できなくても録音自体は続けられるので無視
+  }
+}
+
+export function loadDraft(): DraftEntry | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.utterances) || parsed.utterances.length === 0) return null;
+    if (parsed.mode !== "meeting" && parsed.mode !== "karte") return null;
+    return parsed as DraftEntry;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // 無視
+  }
+}

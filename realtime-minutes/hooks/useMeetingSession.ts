@@ -174,6 +174,12 @@ export function useMeetingSession(mode: Mode = "meeting") {
     setUtterances(utterancesRef.current);
   }, []);
 
+  /** 自動保存しておいた下書きから、前回の続きを戻す */
+  const restore = useCallback((saved: ClassifiedUtterance[]) => {
+    utterancesRef.current = saved;
+    setUtterances(saved);
+  }, []);
+
   const reset = useCallback(() => {
     utterancesRef.current = [];
     setUtterances([]);
@@ -192,6 +198,7 @@ export function useMeetingSession(mode: Mode = "meeting") {
     stop,
     toggleTodo,
     reset,
+    restore,
     submitText,
   };
 }
