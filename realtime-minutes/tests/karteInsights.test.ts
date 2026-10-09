@@ -97,3 +97,55 @@ test("症状の言葉が無い会話では、無理に候補を作らない", ()
   assert.equal(insights.symptoms.length, 0);
   assert.equal(insights.candidates.length, 0);
 });
+
+// --- 5項目まとめ(先生のフィードバック: 概要・今どういう病気か・治療方針・経過観察・今後の方針) ---
+
+test("5項目まとめを、決まった順番で必ず作る", () => {
+  const insights = analyzeKarte([u("今日はよろしくお願いします")]);
+  assert.deepEqual(insights.summary.map((s) => s.id), ["overview", "condition", "treatment", "progress", "plan"]);
+});
+
+test("診察の発言を5項目に振り分ける", () => {
+  const insights = analyzeKarte([
+    u("最近、夜にフラッシュバックがあって眠れないんです"),
+    u("お話を聞く限り、PTSDの可能性が高いと考えられます"),
+    u("まずはパキシルを少量から処方して、カウンセリングも始めましょう"),
+    u("前回より眠れるようになってきたので、しばらく様子を見ましょう"),
+    u("次回は2週間後に予約を取ってください"),
+  ]);
+  const byId = Object.fromEntries(insights.summary.map((s) => [s.id, s]));
+  assert.match(byId.overview.lead.join(), /話題になった症状:.*フラッシュバック/);
+  assert.match(byId.condition.evidence[0].text, /PTSDの可能性/);
+  assert.ok(byId.treatment.evidence.some((e) => e.text.includes("パキシル")));
+  assert.ok(byId.treatment.lead.some((l) => l.includes("パロキセチン")));
+  assert.ok(byId.progress.evidence.some((e) => e.text.includes("前回より")));
+  assert.ok(byId.plan.evidence.some((e) => e.text.includes("次回は2週間後")));
+});
+
+test("話に出なかった項目は「見つかりませんでした」と正直に書き、作り話で埋めない", () => {
+  const insights = analyzeKarte([u("今日は寒いですね、駐車場も混んでいました")]);
+  const byId = Object.fromEntries(insights.summary.map((s) => [s.id, s]));
+  for (const id of ["condition", "treatment", "progress", "plan"]) {
+    assert.equal(byId[id].evidence.length, 0);
+    assert.match(byId[id].lead.join(), /見つかりませんでした/);
+  }
+});
+
+test("薬を大量に飲んだ話は、治療方針ではなく「先生と共有」の方に出す", () => {
+  const insights = analyzeKarte([u("前に薬を大量に飲んでしまったことがあります")]);
+  const treatment = insights.summary.find((s) => s.id === "treatment")!;
+  assert.equal(treatment.evidence.length, 0);
+  assert.equal(insights.important[0].pattern.id, "overdose");
+});
+
+test("5項目まとめはカルテの一番上に出る", () => {
+  const md = karteInsightsMarkdown(analyzeKarte([u("フラッシュバックがあります"), u("次回は来週です")])).join("\n");
+  assert.ok(md.startsWith("## ① 概要"));
+  assert.ok(md.indexOf("⑤ 今後の方針") < md.indexOf("症状と経過の整理"));
+});
+
+test("「死にたい」等の見落とせない発言は、5項目まとめよりもさらに上に出す", () => {
+  const md = karteInsightsMarkdown(analyzeKarte([u("死にたいと思うことがあります"), u("次回は来週です")])).join("\n");
+  assert.ok(md.startsWith("## 先生と必ず共有しておきたいこと"));
+  assert.ok(md.indexOf("先生と必ず共有") < md.indexOf("① 概要"));
+});
