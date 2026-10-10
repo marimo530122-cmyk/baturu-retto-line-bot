@@ -1,6 +1,7 @@
 import os
 import json
 import glob
+import shutil
 import cv2
 import pandas as pd
 from datetime import datetime
@@ -36,20 +37,43 @@ PROMPT_TEMPLATE = """
 }
 """
 
+IMAGE_MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
+FRAME_SAMPLES = 15
+
 def extract_best_frame(video_path, output_image_path="temp_frame.jpg"):
+    # 動画全体から等間隔に何コマか取り出し、いちばんピントが合っている(文字が読みやすい)コマを選ぶ
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if total_frames > 0:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, total_frames // 2)
+        positions = sorted({total_frames * (i + 1) // (FRAME_SAMPLES + 1) for i in range(FRAME_SAMPLES)})
+    else:
+        positions = [None]  # コマ数が取れない動画は先頭のコマを使う
+    best_frame, best_score = None, -1.0
+    for pos in positions:
+        if pos is not None:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, pos)
         ret, frame = cap.read()
-        if ret:
-            cv2.imwrite(output_image_path, frame)
-            cap.release()
-            return output_image_path
+        if not ret:
+            continue
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        if score > best_score:
+            best_frame, best_score = frame, score
     cap.release()
-    return None
+    if best_frame is None:
+        return None
+    cv2.imwrite(output_image_path, best_frame)
+    return output_image_path
 
-def call_gemini_api(image_path):
+def call_gemini_api(image_path, mime_type="image/jpeg"):
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if not gemini_key:
         print("[Notice] GEMINI_API_KEY 未設定のためテストデータで動作します。")
@@ -85,7 +109,7 @@ def call_gemini_api(image_path):
             image_bytes = f.read()
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), PROMPT_TEMPLATE],
+            contents=[types.Part.from_bytes(data=image_bytes, mime_type=mime_type), PROMPT_TEMPLATE],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
         text = response.text.strip().replace("```json", "").replace("```", "")
@@ -121,18 +145,48 @@ def export_to_csvs(data, source_filename=""):
     }
     pd.DataFrame([freee_row]).to_csv("freee_import_journal.csv", mode="a", index=False, header=not os.path.exists("freee_import_journal.csv"), encoding="utf_8_sig")
 
+def process_file(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in VIDEO_EXTENSIONS:
+        frame_path = extract_best_frame(file_path)
+        if not frame_path:
+            print(f"[Error] 動画からコマを取り出せませんでした: {file_path}")
+            return None
+        try:
+            return call_gemini_api(frame_path, "image/jpeg")
+        finally:
+            os.remove(frame_path)
+    if ext in IMAGE_MIME_TYPES:
+        return call_gemini_api(file_path, IMAGE_MIME_TYPES[ext])
+    print(f"[Skip] 対応していない形式です: {file_path}")
+    return None
+
+def move_to_done(file_path, done_dir):
+    # 処理済みのファイルを done/ に移し、次回また読まれて二重記録になるのを防ぐ
+    os.makedirs(done_dir, exist_ok=True)
+    dest = os.path.join(done_dir, os.path.basename(file_path))
+    if os.path.exists(dest):
+        base, ext = os.path.splitext(os.path.basename(file_path))
+        dest = os.path.join(done_dir, f"{base}_{datetime.now().strftime('%Y%m%d%H%M%S')}{ext}")
+    shutil.move(file_path, dest)
+    return dest
+
 def main():
     input_dir = "inputs"
+    done_dir = os.path.join(input_dir, "done")
     os.makedirs(input_dir, exist_ok=True)
-    files = glob.glob(f"{input_dir}/*.*")
+    files = sorted(f for f in glob.glob(f"{input_dir}/*.*") if os.path.isfile(f))
     if not files:
-        print("inputs/ フォルダに画像を入れてください。")
+        print("inputs/ フォルダに画像または動画を入れてください。")
         return
     for f in files:
-        data = call_gemini_api(f)
+        data = process_file(f)
         if data:
             export_to_csvs(data, f)
-            print(f"✓ 完了: {f}")
+            dest = move_to_done(f, done_dir)
+            print(f"✓ 完了: {f} → {dest}")
+        else:
+            print(f"✗ 未処理のため inputs/ に残します: {f}")
     print("全処理が完了しました（haccp_ledger.csv / freee_import_journal.csv 出力済）。")
 
 if __name__ == "__main__":
