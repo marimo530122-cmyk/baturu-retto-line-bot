@@ -118,6 +118,11 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Twilio は無くても起動する(電話の受け口 `/voice/*` だけ閉じる)。スマホだけで置くときはリポジトリ直下の
   `render.yaml`(Render Blueprint、家族の名簿を残すためディスク付き)を使う。鍵は Render の画面に直接入れ、チャットや Git に書かない。
   詳細は `sengoku-shield/README.md`。別の会話で続けるときの引き継ぎ書は `sengoku-shield/docs/HANDOFF.md`。
+- `haccp_to_accounting.py` — 納品書・食材・賞味期限の写真/動画をGeminiで読み、HACCP受入記録と
+  freee用仕訳CSVを作る。処理済みは `inputs/done/` に移して二重記録を防ぐ。入力画像と出力CSVはGitに入れない。
+- `.github/workflows/haccp-accounting.yml` — 上をGoogleドライブのフォルダリンクから実行する。
+  リポジトリが公開なので、取引先・金額・ファイル名・リンクはログに出さず、結果はパスワード付きZIP(AES)で
+  Releaseに添付する(Secrets: `GEMINI_API_KEY`, `HACCP_ZIP_PASSWORD`)。暗号化なしの出力経路を足さないこと。
 - `.github/workflows/process-memo.yml` — メモ取り込みの自動化トリガー
   (`repository_dispatch` / `workflow_dispatch`)。
 - `.github/workflows/generate-short-video.yml` — 動画生成の自動化トリガー。
@@ -142,6 +147,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - 手動実行時に `dry_run=1` を指定すると投稿せず文面だけ確認できる。
 
 ## 必要なSecrets
+
+- `GEMINI_API_KEY` / `HACCP_ZIP_PASSWORD` — HACCP・経理ツール用(Gemini のキーと、結果ZIPのパスワード)。
 
 - `ANTHROPIC_API_KEY` — Claude API キー。GitHub リポジトリの
   Settings → Secrets and variables → Actions に登録しておく。

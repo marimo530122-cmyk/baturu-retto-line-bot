@@ -13,3 +13,9 @@ medical-ai/backend/.pytest_cache/
 # 医療AIの保存データ(患者情報が入るため絶対にGitに入れない)
 medical-ai/backend/storage/
 medical-ai-local/certs/
+# HACCP・経理ツール(haccp_to_accounting.py)の入力画像と出力CSV(納品書・金額が入るためGitに入れない)
+inputs/
+haccp_ledger.csv
+accounting_ledger.csv
+freee_import_journal.csv
+temp_frame.jpg

@@ -1,0 +1,107 @@
+name: HACCP to Accounting
+
+# 納品書・食材・賞味期限の写真/動画を読み取り、HACCP受入記録とfreee用仕訳CSVを作る
+# (haccp_to_accounting.py)。
+#
+# このリポジトリは公開なので、取引先・金額・ファイル名・ドライブのリンクは
+# 画面の記録(ログ)に一切出さない。結果はパスワード付きZIP(AES-256)にしてReleaseに添付する。
+#
+# 必要なSecrets: GEMINI_API_KEY / HACCP_ZIP_PASSWORD
+#
+# スマホのショートカット等から curl で叩く場合:
+#   POST https://api.github.com/repos/<owner>/<repo>/dispatches
+#   { "event_type": "haccp_accounting", "client_payload": { "folder_url": "https://drive.google.com/drive/folders/..." } }
+on:
+  repository_dispatch:
+    types: [haccp_accounting]
+  workflow_dispatch:
+    inputs:
+      folder_url:
+        description: "写真・動画を入れたGoogleドライブのフォルダの共有リンク(「リンクを知っている全員」に共有)"
+        required: true
+        type: string
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -q -r scripts/requirements-haccp.txt
+
+      - name: Check secrets
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HACCP_ZIP_PASSWORD: ${{ secrets.HACCP_ZIP_PASSWORD }}
+        run: |
+          # キーが無いと見本データで動いてしまうので、本番では止める
+          if [ -z "$GEMINI_API_KEY" ]; then echo "Secret GEMINI_API_KEY が未登録です。" >&2; exit 1; fi
+          # パスワードが無いと結果を暗号化できないので止める
+          if [ -z "$HACCP_ZIP_PASSWORD" ]; then echo "Secret HACCP_ZIP_PASSWORD が未登録です。" >&2; exit 1; fi
+
+      - name: Download photos from Google Drive
+        run: |
+          # リンクを env: に置くとログの見出しに表示されるため、イベント本体から直接読む
+          URL=$(jq -r '.inputs.folder_url // .client_payload.folder_url // empty' "$GITHUB_EVENT_PATH")
+          if [ -z "$URL" ]; then echo "folder_url を指定してください。" >&2; exit 1; fi
+          echo "::add-mask::$URL"
+          mkdir -p work/inputs
+          if ! gdown --folder "$URL" -O work/inputs -q > /dev/null 2>&1; then
+            echo "ドライブのフォルダを取得できませんでした。共有設定が「リンクを知っている全員」になっているか確認してください。" >&2
+            exit 1
+          fi
+          # サブフォルダの中身も inputs/ 直下にそろえる
+          find work/inputs -mindepth 2 -type f -exec mv --backup=numbered -t work/inputs {} +
+          echo "取得したファイル数: $(find work/inputs -maxdepth 1 -type f | wc -l)"
+
+      - name: Read with Gemini and build CSVs
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        working-directory: work
+        run: |
+          # 処理の詳細(ファイル名・エラー内容)はZIPの中の processing_log.txt にだけ残す
+          python ../haccp_to_accounting.py > processing_log.txt 2>&1 || true
+          DONE=$(find inputs/done -type f 2>/dev/null | wc -l)
+          LEFT=$(find inputs -maxdepth 1 -type f | wc -l)
+          echo "読み取り成功: ${DONE} 件 / 読めなかった・対応外: ${LEFT} 件"
+          if [ "$DONE" -eq 0 ]; then
+            echo "1件も読み取れませんでした(写真の形式やキーを確認してください)。" >&2
+            exit 1
+          fi
+
+      - name: Encrypt results
+        id: pack
+        env:
+          HACCP_ZIP_PASSWORD: ${{ secrets.HACCP_ZIP_PASSWORD }}
+        working-directory: work
+        run: |
+          TAG="haccp-$(date -u +%Y%m%d-%H%M%S)"
+          python - "$TAG.zip" <<'PY'
+          import os, sys, pyzipper
+          files = ["haccp_ledger.csv", "accounting_ledger.csv", "freee_import_journal.csv", "processing_log.txt"]
+          with pyzipper.AESZipFile(sys.argv[1], "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as z:
+              z.setpassword(os.environ["HACCP_ZIP_PASSWORD"].encode())
+              for f in files:
+                  if os.path.exists(f):
+                      z.write(f)
+          PY
+          echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
+
+      # スマホ納品ルート: パスワード付きZIPだけをReleaseに添付する(中身の情報は本文に書かない)
+      - name: Publish as a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.pack.outputs.tag_name }}
+          name: ${{ steps.pack.outputs.tag_name }}
+          body: |
+            HACCP受入記録・freee仕訳のCSV(パスワード付きZIP)。
+            パスワードは Secret `HACCP_ZIP_PASSWORD` に登録したものです。
+          files: work/${{ steps.pack.outputs.tag_name }}.zip
