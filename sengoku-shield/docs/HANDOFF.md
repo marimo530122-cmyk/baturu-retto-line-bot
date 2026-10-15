@@ -147,7 +147,8 @@
   本物の Claude での練習は、まだ一度も成功していない(料金はかかっていない)。
 - Gemini の案(例文44文・話し方10案)は、例文は docs/police-videos/2026-10-08-gemini-phrases.md に未確認として記録、話し方は決まりに合うものだけ採用。
   「電話が止まる」型(総務省・通信会社かたり)が弱く、確認済みの例文もまだ無い。
-- 利用者は Render の main を「Manual Deploy → Deploy latest commit」で反映する(自動では反映されない)。
+- 利用者は Render の main を「Manual Deploy → Deploy latest commit」で反映していた。2026-10-16 に Render の Settings の Auto-Deploy を「On Commit」にした
+  (マージで自動反映されるかは #33 のマージで確かめる。「Public Git Repository」でつないだサービスは自動反映されないことがあり、そのときは Deploy Hook を GitHub Secrets に入れてワークフローから叩く方法にする)。
 
 ## 10. 2026-10-15 の追加
 
