@@ -56,7 +56,8 @@ async function notifyFamily(judgment, utterance) {
 
 // 見守り中の経過を家族に知らせる(AIに代わった / 電話が終わった)。
 // 警察へ中継しているなど、実際にしていないことは書かない。
-function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
+// intel は lib/intel.js(110番で読む文を作る)なので、相手が言った手がかりは intelFound で受け取る
+function familyProgressMessage(type, { minutes, ai_replies, intel: intelFound = [], topicIds = [], startedAt = null } = {}) {
   if (type === "handoff") {
     return [
       "【鮮刻シールド】本人が「AIに代わってもらう」を押しました",
@@ -68,12 +69,12 @@ function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
     const parts = [];
     if (Number.isFinite(minutes)) parts.push(`約${minutes}分`);
     if (Number.isFinite(ai_replies) && ai_replies > 0) parts.push(`AIの返事 ${ai_replies}回`);
-    const types = new Set(intel.map((f) => f.type));
+    const types = new Set(intelFound.map((f) => f.type));
     const meeting = types.has("visit") || (types.has("datetime") && types.has("place"));
     return [
       "【鮮刻シールド】見守っていた電話が終わりました" + (parts.length ? `(${parts.join("・")})` : ""),
-      ...(intel.length
-        ? ["", "相手が言っていたこと:", ...intel.map((f) => `・${f.label}: ${f.value}`), ""]
+      ...(intelFound.length
+        ? ["", "相手が言っていたこと:", ...intelFound.map((f) => `・${f.label}: ${f.value}`), ""]
         : []),
       meeting
         ? "相手が、会う日時・場所や家に来る話をしていました。本人が110番できていないようなら、代わりに110番してください。"
@@ -82,6 +83,11 @@ function familyProgressMessage(type, { minutes, ai_replies, intel = [] } = {}) {
         ? ["相手が言った口座は、110番か #9110 で伝えてください。本人が振り込んでしまっていたら、振り込んだ銀行にも電話して口座を止めてもらってください。"]
         : []),
       "心配なときは #9110(警察相談専用電話)に相談できます。",
+      // 電話のあとの本人は動揺していて、自分で110番するのは難しい。家族が代わりに読めるよう、文をそのまま付ける
+      "",
+      "110番(急がないときは #9110)にかけて、次の文をそのまま読めば伝わります(かっこの中は書きかえてください)。",
+      "",
+      ...intel.policeScript({ found: intelFound, topics: intel.topicsFromIds(topicIds), startedAt, forFamily: true }),
     ].join("\n");
   }
   return null;

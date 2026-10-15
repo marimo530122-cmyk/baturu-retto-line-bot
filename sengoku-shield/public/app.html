@@ -60,6 +60,7 @@
     padding: 16px; margin: 6px 0; font-weight: 700;
   }
   .script { border: 2px solid var(--accent); }
+  .script summary { cursor: pointer; font-size: 19px; font-weight: 700; padding: 10px 0; }
   .script-lines { margin: 8px 0 0; padding-left: 1.4em; display: grid; gap: 8px; font-size: 21px; line-height: 1.6; }
   .urgent { border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); }
   .urgent p { margin: 6px 0 0; color: var(--fg); }
@@ -129,8 +130,11 @@
   <div id="scriptCard" class="card script hidden">
     <strong id="scriptTitle">電話が終わりました。よくがんばりましたね</strong>
     <p id="scriptLead"></p>
-    <ol id="scriptLines" class="script-lines"></ol>
-    <button id="scriptCopyBtn" class="secondary" type="button">この文をコピー(家族に送る用)</button>
+    <details id="scriptDetails" open>
+      <summary>110番・#9110 で読む文</summary>
+      <ol id="scriptLines" class="script-lines"></ol>
+      <button id="scriptCopyBtn" class="secondary" type="button">この文をコピー(家族に送る用)</button>
+    </details>
     <p class="note">お金やカードを渡してしまった場合は、そのことも伝えてください。
     振り込んでしまった場合は、振り込んだ銀行にもすぐ電話して「詐欺にあったので、相手の口座を止めてください」と伝えてください。</p>
   </div>
@@ -658,14 +662,20 @@
     startRecognizer();
   });
 
-  // 電話が終わったら、110番(または #9110)で読み上げる台本を出す
-  function showPoliceScript() {
+  // 電話が終わったら、110番(または #9110)で読み上げる台本を出す。
+  // 電話のあとの本人は動揺していて、自分で110番するのは難しい。ご家族のLINEに届いたときは
+  // 「ご家族からの連絡を待つ」を先に出し、文は開けば読める形にする。会う日時・場所が出ていたら待たずに110番。
+  function showPoliceScript(familySent) {
     if (!window.ShieldIntel || lastRisk === "SAFE") return;
     const urgent = ShieldIntel.needsPoliceNow(intel);
     const lines = ShieldIntel.policeScript({ found: intel, topics: ShieldIntel.topicsFromIds([...matchedIds]), startedAt });
     $("scriptLead").textContent = urgent
-      ? "相手が、会う日時や場所を言っていました。今すぐ 110番 にかけて、下の文をそのまま読んでください。"
-      : "心配なときは #9110(警察相談専用電話)にかけて、下の文をそのまま読んでください。";
+      ? (familySent ? "ご家族のLINEにも知らせました。" : "") +
+        "相手が、会う日時や場所を言っていました。今すぐ 110番 にかけて、下の文をそのまま読んでください。"
+      : familySent
+        ? "ご家族のLINEに、今の電話のことを知らせました。ご家族から連絡が来るので、待っていてくださいね。自分で相談したいときは、下の文を開いて #9110(警察相談専用電話)で読んでください。"
+        : "心配なときは #9110(警察相談専用電話)にかけて、下の文をそのまま読んでください。";
+    $("scriptDetails").open = urgent || !familySent;
     const ol = $("scriptLines");
     ol.replaceChildren();
     for (const l of lines) {
@@ -686,18 +696,40 @@
     } catch {}
   });
 
-  $("stopBtn").addEventListener("click", () => {
-    if (sessionId && lastRisk !== "SAFE") {
-      sendEvent("ended", {
-        minutes: startedAt ? Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000)) : null,
-        ai_replies: history.filter((h) => h.role === "shield").length,
-        // 家族が代わりに110番できるよう、日時・場所・金額・相手の口座などの手がかりも送る
-        intel: intel
-          .filter((f) => ["datetime", "place", "amount", "visit", "person", "org", "bank", "account", "phone"].includes(f.type))
-          .map((f) => ({ type: f.type, label: f.label, value: f.value })),
-      });
+  // 電話が終わったことを、ご家族のLINEに知らせる(110番で読む文つき)。届いたかどうかを返す。
+  // 返事が遅いときは待たずに画面を進める(届いたと分からないときは「知らせました」と出さない)
+  async function notifyEnded() {
+    if (!sessionId || lastRisk === "SAFE") return false;
+    const body = {
+      session_id: sessionId,
+      type: "ended",
+      minutes: startedAt ? Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000)) : null,
+      ai_replies: history.filter((h) => h.role === "shield").length,
+      // 家族が代わりに110番できるよう、日時・場所・金額・相手の口座などの手がかりも送る
+      intel: intel
+        .filter((f) => ["datetime", "place", "amount", "visit", "person", "org", "bank", "account", "phone"].includes(f.type))
+        .map((f) => ({ type: f.type, label: f.label, value: f.value })),
+      matched_ids: [...matchedIds],
+      started_at: startedAt ? startedAt.toISOString() : null,
+    };
+    try {
+      const r = await Promise.race([
+        api("/api/event", body),
+        new Promise((resolve) => setTimeout(() => resolve({}), 6000)),
+      ]);
+      const sent = r.family_notice === "sent";
+      if (sent) $("familyNote").classList.remove("hidden");
+      return sent;
+    } catch {
+      return false;
     }
-    showPoliceScript();
+  }
+
+  $("stopBtn").addEventListener("click", async () => {
+    $("stopBtn").disabled = true;
+    const familySent = await notifyEnded();
+    $("stopBtn").disabled = false;
+    showPoliceScript(familySent);
     listening = false;
     sessionId = ""; // 次の聞き取りは別の通話として扱う(相談用メモ・台本は残す)
     mode = "watch";
@@ -706,7 +738,15 @@
     $("handoffBtn").classList.add("hidden");
     showBridge(false);
     $("backBtn").classList.add("hidden");
-    setStatus("IDLE", "電話が終わりました", lastRisk === "SAFE" ? "「聞き取りを始める」で、次の電話も見守ります" : "下の文を読んで、警察に相談してください");
+    setStatus(
+      "IDLE",
+      "電話が終わりました",
+      lastRisk === "SAFE"
+        ? "「聞き取りを始める」で、次の電話も見守ります"
+        : familySent && !ShieldIntel.needsPoliceNow(intel)
+          ? "ご家族に知らせました。ご家族からの連絡を待っていてくださいね"
+          : "下の文を読んで、警察に相談してください"
+    );
     toggleButtons();
   });
 

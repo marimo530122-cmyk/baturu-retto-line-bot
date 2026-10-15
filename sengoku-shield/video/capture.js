@@ -74,9 +74,14 @@ const helpers = {
   },
 };
 
-// 第4話の始め: 電話の途中(怪しい話が出て、会う日時と場所まで言われた)の状態にしておく
+// 第4話の始め: 電話の途中(怪しい話が出て、金額まで言われた)の状態にしておく
 const SETUPS = {
   async callInProgress(page) {
+    // 動画のサーバーにはご家族が登録されていないので、「ご家族のLINEに届いた」ときの画面を見せるため、
+    // 電話が終わった知らせ(/api/event)の返事だけ「届いた」にする(画面の動きは本物のまま)
+    await page.route("**/api/event", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ family_notice: "sent" }) })
+    );
     await page.click("#startBtn");
     await helpers.waitFor(page, "#status.SAFE");
     for (const line of [...CALLER_LINES, ...CALLER_LINES_AFTER]) await helpers.callerSays(page, line);

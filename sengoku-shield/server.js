@@ -19,6 +19,7 @@ const { judgeUtterance } = require("./lib/realtime");
 const family = require("./lib/family");
 const line = require("./lib/line");
 const { maskPhone } = require("./lib/mask");
+const intel = require("./lib/intel");
 
 const PORT = Number(process.env.PORT || 3000);
 // Render に置いたときは、Render が入れてくれる RENDER_EXTERNAL_URL をそのまま使う
@@ -301,9 +302,26 @@ async function apiEvent(body, res) {
       .filter((f) => f && INTEL_TYPES.has(f.type) && typeof f.value === "string")
       .slice(0, 10)
       .map((f) => ({ type: f.type, label: INTEL_LABELS[f.type], value: f.value.slice(0, 60) })),
+    // 家族向けの「110番で読む文」用: 当たった検知ルールのid(話の中身になるものだけ)と、電話が始まった時刻
+    topicIds: (Array.isArray(body.matched_ids) ? body.matched_ids : [])
+      .filter((id) => typeof id === "string" && Object.hasOwn(intel.TOPIC_BY_ID, id))
+      .slice(0, 30),
+    startedAt: validStartedAt(body.started_at),
   };
-  notifyFamilyProgress(body.type, extra).catch((err) => console.error("[notify]", err.message));
-  sendJson(res, 200, { family_notice: "sent" });
+  // 本人の画面に「ご家族に知らせました」と出すので、本当に届いたかを待ってから返す(事実でない安心材料を出さない)
+  const sent = await notifyFamilyProgress(body.type, extra).catch((err) => {
+    console.error("[notify]", err.message);
+    return false;
+  });
+  sendJson(res, 200, { family_notice: sent ? "sent" : "failed" });
+}
+
+// 電話が始まった時刻(見守り画面から届く)。読めない値や、ありえない時刻は使わない
+function validStartedAt(value) {
+  if (typeof value !== "string") return null;
+  const t = Date.parse(value);
+  if (!Number.isFinite(t) || t > Date.now() + 60_000 || t < Date.now() - 24 * 3600_000) return null;
+  return new Date(t).toISOString();
 }
 
 // 見守り家族の登録(招待番号を出す・一覧・削除)
