@@ -175,6 +175,8 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
         { type: "place", value: "新宿駅の東口改札" },
         { type: "account", value: "1234567" }, // 相手の口座は家族に送り、警察・銀行に伝えてもらう
       ],
+      matched_ids: ["refund", "secrecy", "not-a-rule"],
+      started_at: new Date(Date.now() - 7 * 60000).toISOString(),
     })).json()).family_notice,
     "sent"
   );
@@ -187,7 +189,35 @@ test("AIに代わった・電話が終わったことを、種類ごとに1回�
   assert.match(pushed[1], /代わりに110番/);
   assert.match(pushed[1], /口座番号: 1234567/);
   assert.match(pushed[1], /口座を止めてもらってください/);
+  // 動揺している本人の代わりに家族が読めるよう、家族向けの「110番で読む文」が付く
+  assert.match(pushed[1], /実家の親の固定電話に、詐欺だと思う電話がありました/);
+  assert.match(pushed[1], /電話があったのは、\d+月\d+日の\d+時\d+分ごろです/);
+  assert.match(pushed[1], /還付金や誰にも言うなという口止めの話をされました/);
+  assert.match(pushed[1], /明日の午後3時に、新宿駅の東口改札で受け取る/);
   for (const text of pushed) assert.doesNotMatch(text, /中継|通報しました|警察に(送|伝え)/);
+});
+
+test("LINEに届かなかったときは、本人の画面に「ご家族に知らせました」と出させない(failed を返す)", async (t) => {
+  process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+  process.env.SHIELD_FAMILY_LINE_IDS = "Ufamily1";
+  t.after(() => {
+    delete process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    delete process.env.SHIELD_FAMILY_LINE_IDS;
+  });
+  const orig = global.fetch;
+  global.fetch = async (url, opts) =>
+    String(url).startsWith("https://api.line.me/") ? new Response("{}", { status: 500 }) : orig(url, opts);
+  t.after(() => (global.fetch = orig));
+
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const res = await orig(`${base}/api/event`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer app-secret" },
+    body: JSON.stringify({ session_id: "session-ffff-1", type: "ended", started_at: "not-a-date" }),
+  });
+  assert.strictEqual((await res.json()).family_notice, "failed");
 });
 
 test("見守り画面から招待番号を出し、LINEのWebhook(署名つき)で家族が登録される", async (t) => {

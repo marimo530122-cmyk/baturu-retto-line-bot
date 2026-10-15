@@ -148,3 +148,21 @@
 - Gemini の案(例文44文・話し方10案)は、例文は docs/police-videos/2026-10-08-gemini-phrases.md に未確認として記録、話し方は決まりに合うものだけ採用。
   「電話が止まる」型(総務省・通信会社かたり)が弱く、確認済みの例文もまだ無い。
 - 利用者は Render の main を「Manual Deploy → Deploy latest commit」で反映する(自動では反映されない)。
+
+## 10. 2026-10-15 の追加
+
+- 警察への相談: 牧之原警察署に電話し、「担当者がいなくても窓口で話を聞ける」との返事。訪問は後日あらためて連絡する(利用者が連絡する)。
+- 利用者の「絶対条件」は2つ: **操作手順動画** と **LP(紹介ページ)**。口下手なので、警察での説明に使う。動画が先。
+- 操作手順動画(`sengoku-shield/video/`): 本物の見守り画面をスマホの大きさで動かして撮り(`capture.js`、マイクと読み上げは偽物に差し替え)、
+  汎用の合成音声(edge-tts の女性の声)のナレーションと字幕をつけて縦長MP4にする(`render.py`)。台本は `episodes.js`。
+  `.github/workflows/sengoku-shield-video.yml` が作り、GitHub Release(`shield-video-…`)に添付する。
+  作ったのは 第1話 はじめの準備・第3話 電話がかかってきたら・第4話 電話が終わったら。
+  **第2話(家族をLINEで登録)は、公式LINEができてから本物の画面で作る**(利用者が決めた順番)。
+- LP は `public/index.html` に家族向けの下書きがある。動画のあとに直す。
+- 公式LINE(2026-10-15 夜): 「鮮刻シールド」(@170ubqic)を作成。Messaging API を利用中にし、
+  Webhook URL `https://sengoku-shield.onrender.com/line/webhook` を保存済み。
+  Channel secret はスクショでチャットに写ったため再発行済み。長期のチャネルアクセストークンも発行済み。
+  **残り(利用者が Render の Environment に直接入れる)**: `LINE_CHANNEL_SECRET`(入れた可能性が高いが未確認)、
+  `LINE_CHANNEL_ACCESS_TOKEN`(まだ)。友だち追加URL `https://line.me/R/ti/p/@170ubqic` を `SHIELD_LINE_ADD_URL` に入れると、
+  見守り画面の招待番号の横に出る(鍵ではない)。そのあと LINE Developers の「Verify」で Webhook を確かめ、第2話(LINE登録)の動画を作る。
+  スマホでは manager.line.biz がアプリに飛ばされやすい。Brave(既定のブラウザ)で住所を直接打ち込むと通れた。
