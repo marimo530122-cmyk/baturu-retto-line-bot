@@ -159,3 +159,10 @@
   作ったのは 第1話 はじめの準備・第3話 電話がかかってきたら・第4話 電話が終わったら。
   **第2話(家族をLINEで登録)は、公式LINEができてから本物の画面で作る**(利用者が決めた順番)。
 - LP は `public/index.html` に家族向けの下書きがある。動画のあとに直す。
+- 公式LINE(2026-10-15 夜): 「鮮刻シールド」(@170ubqic)を作成。Messaging API を利用中にし、
+  Webhook URL `https://sengoku-shield.onrender.com/line/webhook` を保存済み。
+  Channel secret はスクショでチャットに写ったため再発行済み。長期のチャネルアクセストークンも発行済み。
+  **残り(利用者が Render の Environment に直接入れる)**: `LINE_CHANNEL_SECRET`(入れた可能性が高いが未確認)、
+  `LINE_CHANNEL_ACCESS_TOKEN`(まだ)。友だち追加URL `https://line.me/R/ti/p/@170ubqic` を `SHIELD_LINE_ADD_URL` に入れると、
+  見守り画面の招待番号の横に出る(鍵ではない)。そのあと LINE Developers の「Verify」で Webhook を確かめ、第2話(LINE登録)の動画を作る。
+  スマホでは manager.line.biz がアプリに飛ばされやすい。Brave(既定のブラウザ)で住所を直接打ち込むと通れた。
