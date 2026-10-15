@@ -1,0 +1,82 @@
+name: 鮮刻シールド 操作手順動画
+
+# 本物の見守り画面(/app)を動かして撮り、ナレーションと字幕をつけた縦長の操作手順動画(MP4)を作る。
+# できた動画は GitHub Release に添付する(スマホから開いてダウンロードできる)。
+# 台本は sengoku-shield/video/episodes.js。台本や見守り画面を直して push すると作り直す。
+on:
+  workflow_dispatch:
+    inputs:
+      episodes:
+        description: "作る話(空なら全部。例: ep1 ep3)"
+        required: false
+        type: string
+  push:
+    paths:
+      - "sengoku-shield/video/**"
+      - "sengoku-shield/public/app.html"
+      - ".github/workflows/sengoku-shield-video.yml"
+
+concurrency:
+  group: sengoku-shield-video-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: sengoku-shield
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg and Japanese fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-noto-cjk
+
+      - name: Install tools
+        run: |
+          npm ci
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          pip install "edge-tts>=6.1.12"
+
+      - name: Capture screens
+        env:
+          EPISODES: ${{ github.event.inputs.episodes }}
+        run: node video/capture.js $EPISODES
+
+      - name: Add narration and make MP4
+        env:
+          EPISODES: ${{ github.event.inputs.episodes }}
+        run: python video/render.py $EPISODES
+
+      - name: Name the release
+        id: name
+        run: echo "tag=shield-video-$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish videos as a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.name.outputs.tag }}
+          name: 鮮刻シールド 操作手順動画 ${{ steps.name.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          files: sengoku-shield/video/out/*.mp4
+          body: |
+            鮮刻シールドの操作手順動画です(縦長、スマホで見る用)。
+            - ep1.mp4 第1話 はじめの準備(ご家族)
+            - ep3.mp4 第3話 電話がかかってきたら(ご本人)
+            - ep4.mp4 第4話 電話が終わったら
+            第2話(家族をLINEで登録する)は、公式LINEができてから作ります。
+            ブランチ: ${{ github.ref_name }} / コミット: ${{ github.sha }}

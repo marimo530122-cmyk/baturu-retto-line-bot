@@ -19,3 +19,5 @@ haccp_ledger.csv
 accounting_ledger.csv
 freee_import_journal.csv
 temp_frame.jpg
+# 鮮刻シールドの操作手順動画(作るたびに作り直すのでGitに入れない)
+sengoku-shield/video/out/
