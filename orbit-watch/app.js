@@ -16,7 +16,7 @@
   const RE = 6378.137;               // 地球赤道半径 km
   const MU = 398600.4418;            // 地心重力定数 km^3/s^2
   const DEG = Math.PI / 180;
-  const SITE_NAME = 'SITE-07';
+  const SITE_NAME = '観測地点';
   const PROPAGATE_HZ = 10;
   const SCREEN_MS = 1000;            // 接近スクリーニング間隔(実時間)
   const WARPS = [1, 10, 60, 600];
@@ -55,6 +55,13 @@
   const fx = (x, d) => (isNum(x) ? x.toFixed(d) : '---');
   const wrap180 = (d) => ((d + 540) % 360) - 180;
   const $ = (id) => document.getElementById(id);
+  const LEVEL_JA = ['平常', '注意', '警戒'];
+  const DIRS = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+  const dir16 = (az) => (isNum(az) ? DIRS[Math.round((((az % 360) + 360) % 360) / 22.5) % 16] : '---');
+  const latlon = (lat, lon, d) => `${lat >= 0 ? '北緯' : '南緯'}${fx(Math.abs(lat), d)}° ${lon >= 0 ? '東経' : '西経'}${fx(Math.abs(lon), d)}°`;
+  const fmtPeriod = (min) => (min >= 120 ? `${fx(min / 60, 1)}時間` : `${fx(min, 0)}分`);
+  // 日本時間で表示(計算は世界時のまま)
+  const jstStamp = (d) => utcStamp(new Date(d.getTime() + 9 * 3600000)) + ' 日本時間';
 
   function utcStamp(d) {
     return `${d.getUTCFullYear()}.${pad(d.getUTCMonth() + 1, 2)}.${pad(d.getUTCDate(), 2)} ` +
@@ -93,17 +100,17 @@
       const full = { e: 0.0005, argp: rnd() * 360, m: rnd() * 360, raan: rnd() * 360, bstar: 3e-5, ...el };
       out.push({ name, cls, tle: buildTle(num++, full, now) });
     };
-    add('ISS-CLASS STATION', 'CREWED', { i: 51.64, n: 15.50 });
-    add('CSS-CLASS STATION', 'CREWED', { i: 41.47, n: 15.60 });
-    add('HST-CLASS OPTIC', 'OPTIC', { i: 28.47, n: 15.28, bstar: 1e-5 });
-    for (let k = 0; k < 4; k++) add(`SSO-IMG ${pad(k + 1, 2)}`, 'IMAGING', { i: 97.4 + rnd(), n: 14.3 + rnd() * 0.9 });
-    add('POLAR-WX 19', 'WEATHER', { i: 99.1, n: 14.13, e: 0.0013 });
-    for (let k = 0; k < 6; k++) add(`NAV-MEO ${pad(k + 1, 2)}`, 'NAV', { i: 55, n: 2.0056, e: 0.008, raan: k * 60, bstar: 0 });
-    add('MOLNIYA-TYPE 3', 'SIGINT', { i: 63.4, n: 2.006, e: 0.72, argp: 270, bstar: 0 });
-    add('MOLNIYA-TYPE 7', 'SIGINT', { i: 63.4, n: 2.006, e: 0.71, argp: 268, bstar: 0 });
-    for (let k = 0; k < 5; k++) add(`GEO-RELAY ${pad(k + 1, 2)}`, 'RELAY', { i: 0.05 + rnd() * 0.1, n: 1.0027, e: 0.0002, bstar: 0 });
-    for (let k = 0; k < 24; k++) add(`MEGA-SHELL ${pad(k + 1, 3)}`, 'CONSTEL', { i: 53.05, n: 15.06, raan: (k % 6) * 60, m: (k * 47) % 360, bstar: 1e-4 });
-    for (let k = 0; k < 30; k++) add(`DEB ${hex(4)}`, 'DEBRIS', { i: 60 + rnd() * 45, n: 14.2 + rnd() * 1.4, e: rnd() * 0.02, bstar: 2e-4 });
+    add('国際宇宙ステーション型', 'CREWED', { i: 51.64, n: 15.50 });
+    add('中国宇宙ステーション型', 'CREWED', { i: 41.47, n: 15.60 });
+    add('宇宙望遠鏡型', 'OPTIC', { i: 28.47, n: 15.28, bstar: 1e-5 });
+    for (let k = 0; k < 4; k++) add(`地球観測 ${pad(k + 1, 2)}`, 'IMAGING', { i: 97.4 + rnd(), n: 14.3 + rnd() * 0.9 });
+    add('気象衛星 19', 'WEATHER', { i: 99.1, n: 14.13, e: 0.0013 });
+    for (let k = 0; k < 6; k++) add(`GPS型 ${pad(k + 1, 2)}`, 'NAV', { i: 55, n: 2.0056, e: 0.008, raan: k * 60, bstar: 0 });
+    add('モルニヤ型 3', 'SIGINT', { i: 63.4, n: 2.006, e: 0.72, argp: 270, bstar: 0 });
+    add('モルニヤ型 7', 'SIGINT', { i: 63.4, n: 2.006, e: 0.71, argp: 268, bstar: 0 });
+    for (let k = 0; k < 5; k++) add(`静止衛星 ${pad(k + 1, 2)}`, 'RELAY', { i: 0.05 + rnd() * 0.1, n: 1.0027, e: 0.0002, bstar: 0 });
+    for (let k = 0; k < 24; k++) add(`衛星群 ${pad(k + 1, 3)}`, 'CONSTEL', { i: 53.05, n: 15.06, raan: (k % 6) * 60, m: (k * 47) % 360, bstar: 1e-4 });
+    for (let k = 0; k < 30; k++) add(`宇宙ゴミ ${hex(4)}`, 'DEBRIS', { i: 60 + rnd() * 45, n: 14.2 + rnd() * 1.4, e: rnd() * 0.02, bstar: 2e-4 });
     return out;
   }
 
@@ -113,11 +120,28 @@
     for (let i = 0; i + 2 < lines.length && out.length < MAX_OBJECTS; i++) {
       const l1 = lines[i + 1], l2 = lines[i + 2];
       if (lines[i] && validTle(l1, l2)) {
-        out.push({ name: lines[i].trim().slice(0, 24), cls: 'PUBLIC', tle: [l1, l2] });
+        out.push({ name: jaName(lines[i].trim().slice(0, 24)), cls: 'PUBLIC', tle: [l1, l2] });
         i += 2;
       }
     }
     return out;
+  }
+
+  // 公開データの英語名を、分かる範囲で日本語にする
+  const KNOWN = [
+    [/^ISS \(ZARYA\)/, '国際宇宙ステーション'], [/^CSS \(TIANHE\)/, '中国宇宙ステーション 天和'],
+    [/^HST$/, 'ハッブル宇宙望遠鏡'], [/^NOAA (\d+)/, '米国の気象衛星 NOAA $1'],
+    [/^METEOR/, 'ロシアの気象衛星'], [/^LANDSAT/, '地球観測 ランドサット'], [/^TERRA$/, '地球観測 テラ'], [/^AQUA$/, '地球観測 アクア'],
+  ];
+  const CLS_JA = {
+    CREWED: '有人宇宙ステーション', OPTIC: '宇宙望遠鏡', IMAGING: '地球観測', WEATHER: '気象', NAV: '位置測定(GPS)',
+    SIGINT: '高い楕円軌道', RELAY: '静止軌道(通信)', CONSTEL: '通信衛星の群れ', DEBRIS: '宇宙ゴミ', PUBLIC: '公開データ',
+  };
+  function jaName(n) {
+    for (const [re, ja] of KNOWN) if (re.test(n)) return n.replace(re, ja);
+    if (/R\/B/.test(n)) return 'ロケット残骸 ' + n.replace(/\s*R\/B.*/, '');
+    if (/\bDEB\b/.test(n)) return '破片 ' + n.replace(/\s*DEB.*/, '');
+    return n;
   }
 
   async function fetchLive() {
@@ -232,21 +256,21 @@
   // ---------- 4. JEV判定 ----------
   // 1つの対象に「決まった質問」をして choice / score で答える。理由も残す(説明できる判定)。
   const QUESTIONS = [
-    { id: 'overhead', ask: (o) => o.el > 10 ? { choice: 'YES', score: 25 + Math.min(30, o.el / 2), why: `頭上通過 el=${fx(o.el, 1)}°` } : null },
+    { id: 'overhead', ask: (o) => o.el > 10 ? { choice: 'YES', score: 25 + Math.min(30, o.el / 2), why: `頭上を通過中(高さ${fx(o.el, 0)}°)` } : null },
     { id: 'conjunct', ask: (o) => {
       const c = o.conj;
       if (!c) return null;
-      if (c.d < 25) return { choice: 'CRITICAL', score: 70, why: `近接 Δ=${fx(c.d, 1)}km ↔ ${c.with}` };
-      if (c.d < 120) return { choice: 'CLOSE', score: 35, why: `接近 Δ=${fx(c.d, 0)}km ↔ ${c.with}` };
+      if (c.d < 25) return { choice: 'CRITICAL', score: 70, why: `${c.with} と ${fx(c.d, 1)}km まで接近` };
+      if (c.d < 120) return { choice: 'CLOSE', score: 35, why: `${c.with} と ${fx(c.d, 0)}km に接近` };
       return null;
     } },
-    { id: 'decay', ask: (o) => o.perigee < 300 ? { choice: 'DECAYING', score: 20, why: `近地点 ${fx(o.perigee, 0)}km 大気抵抗域` } : null },
-    { id: 'eccentric', ask: (o) => o.ecc > 0.5 ? { choice: 'HEO', score: 15, why: `高楕円 e=${fx(o.ecc, 3)} 長時間滞空` } : null },
-    { id: 'polar', ask: (o) => o.inc > 95 && o.inc < 101 ? { choice: 'SSO', score: 8, why: '太陽同期 毎日同時刻に再訪' } : null },
+    { id: 'decay', ask: (o) => o.perigee < 300 ? { choice: 'DECAYING', score: 20, why: `低い(${fx(o.perigee, 0)}km)ので空気で減速中` } : null },
+    { id: 'eccentric', ask: (o) => o.ecc > 0.5 ? { choice: 'HEO', score: 15, why: '細長い軌道で同じ空に長く居座る' } : null },
+    { id: 'polar', ask: (o) => o.inc > 95 && o.inc < 101 ? { choice: 'SSO', score: 8, why: '毎日同じ時刻に同じ場所の上空へ来る' } : null },
   ];
 
   function judge(o) {
-    if (!o.ok) { o.level = -1; o.score = 0; o.reasons = ['信号喪失 / 伝搬不能']; return; }
+    if (!o.ok) { o.level = -1; o.score = 0; o.reasons = ['見失い(計算できない)']; return; }
     let score = 0;
     const reasons = [];
     for (const q of QUESTIONS) {
@@ -453,7 +477,7 @@
         ctx.strokeStyle = col;
         ctx.beginPath(); ctx.arc(p.x, p.y, 6 + ((t / 90) % 8), 0, Math.PI * 2); ctx.stroke();
       }
-      if (s.level > 0 && s !== o && !back) { ctx.fillText(s.name.slice(0, 14), p.x + 5, p.y - 4); }
+      if (s.level === 2 && s !== o && !back) { ctx.fillText(s.name.slice(0, 10), p.x + 5, p.y - 4); }
       ctx.globalAlpha = 1;
     }
 
@@ -535,12 +559,19 @@
     ctx.lineWidth = 1;
     ctx.fillStyle = col;
     ctx.font = '10px "Share Tech Mono", monospace';
-    const right = x < W - 140;
+    const right = x < W - 150;
     ctx.textAlign = right ? 'left' : 'right';
     const tx = right ? x + s + 6 : x - s - 6;
+    const sub = `高さ${fx(o.alt, 0)}km 秒速${fx(o.vel, 1)}km`;
+    ctx.fillStyle = 'rgba(3,5,4,.8)';
+    for (const [str, ty] of [[o.name, y - s - 2], [sub, y + s + 10]]) {
+      const w = ctx.measureText(str).width;
+      ctx.fillRect(right ? tx - 2 : tx - w - 2, ty - 10, w + 4, 13);
+    }
+    ctx.fillStyle = col;
     ctx.fillText(o.name, tx, y - s - 2);
-    ctx.fillStyle = 'rgba(185,201,192,.85)';
-    ctx.fillText(`ALT ${fx(o.alt, 0)}km  V ${fx(o.vel, 2)}km/s`, tx, y + s + 10);
+    ctx.fillStyle = 'rgba(185,201,192,.95)';
+    ctx.fillText(sub, tx, y + s + 10);
     ctx.textAlign = 'left';
   }
 
@@ -602,9 +633,9 @@
   function select(o) {
     S.sel = o;
     o.track = null;
-    log('k-aos', `[LOCK] 目標捕捉 ${o.name} (#${o.norad}) — 追尾ループ開始`);
-    log('k-ghost', `[TLE] ${o.tle[0]}`);
-    log('k-ghost', `[TLE] ${o.tle[1]}`);
+    log('k-aos', `[捕捉] ${o.name}(番号${o.norad})をロックオン。追跡を開始`);
+    log('k-ghost', `[軌道データ] ${o.tle[0]}`);
+    log('k-ghost', `[軌道データ] ${o.tle[1]}`);
     beep(880, 0.06);
     renderList(true);
   }
@@ -616,20 +647,20 @@
     p.className = cls;
     const t = document.createElement('span');
     t.className = 't';
-    t.textContent = utcStamp(simNow()).slice(11) + ' ';
+    t.textContent = utcStamp(new Date(simNow().getTime() + 9 * 3600000)).slice(11) + ' ';
     p.append(t, document.createTextNode(msg));          // 外部由来の名前も textContent 扱い
     logEl.prepend(p);
     while (logEl.childElementCount > 140) logEl.lastElementChild.remove();
   }
 
   const GHOST = [
-    () => `[SIGINT] ${(2200 + Math.random() * 100).toFixed(1)}MHz 帯 走査中… 応答なし`,
-    () => `[CRYPTO] セッション鍵 ローテーション 0x${hex(16)}`,
-    () => `[NULL] 観測者を観測している観測者 — 識別不能`,
-    () => `[MESH] 中継ノード ${pick(['ODIN', 'KESTREL', 'NADIR', 'UMBRA', 'VESPER'])}-${hex(2)} ハンドオーバー完了`,
-    () => `[ARCHIVE] 軌道履歴 ${(Math.random() * 900 + 100).toFixed(0)}GB 圧縮 → 0x${hex(8)}`,
-    () => `[SYS] 予測誤差 σ=${(Math.random() * 2 + 0.4).toFixed(2)}km — SGP4 は時間とともに鈍る`,
-    () => `[ECHO] 未登録の反射を検知 RCS=${(Math.random() * 0.05).toFixed(3)}m² — 照合中…照合失敗`,
+    () => `[電波] ${(2200 + Math.random() * 100).toFixed(1)}MHz 帯を探索中… 応答なし`,
+    () => `[暗号] 通信の鍵を切り替え 0x${hex(16)}`,
+    () => `[不明] 観測者を観測している観測者がいる — 正体不明`,
+    () => `[中継] 中継局「${pick(['オーディン', 'ケストレル', 'ナディア', 'アンブラ', 'ヴェスパー'])}-${hex(2)}」に引き継ぎ完了`,
+    () => `[保存] 軌道の記録 ${(Math.random() * 900 + 100).toFixed(0)}GB を圧縮して保管`,
+    () => `[精度] 予測のずれ 約${(Math.random() * 2 + 0.4).toFixed(1)}km — データが古くなるほど大きくなる`,
+    () => `[反響] 名簿にない物体の反射を検知(大きさ約${(Math.random() * 20 + 3).toFixed(0)}cm) — 照合できず`,
   ];
 
   function streamTick() {
@@ -638,16 +669,16 @@
     const r = Math.random();
     if (r < 0.34) {
       const o = pick(ok);
-      log('k-sgp4', `[SGP4] ${o.name} r=(${fx(o.eci.x, 0)},${fx(o.eci.y, 0)},${fx(o.eci.z, 0)})km |v|=${fx(o.vel, 3)}km/s`);
+      log('k-sgp4', `[軌道計算] ${o.name} 地球中心から ${fx(Math.hypot(o.eci.x, o.eci.y, o.eci.z), 0)}km・秒速 ${fx(o.vel, 2)}km`);
     } else if (r < 0.48) {
       const o = pick(ok);
-      log('k-sgp4', `[GEO] ${o.name} φ=${fx(o.lat, 3)}° λ=${fx(o.lon, 3)}° h=${fx(o.alt, 1)}km`);
+      log('k-sgp4', `[位置] ${o.name} ${latlon(o.lat, o.lon, 2)} 高さ ${fx(o.alt, 0)}km`);
     } else if (r < 0.6) {
-      log('k-sgp4', `[GMST] θg=${fx((S.gmst / DEG + 360) % 360, 5)}°  太陽直下 φ=${fx(S.sun.dec / DEG, 2)}° λ=${fx(wrap180(S.sun.lon / DEG), 2)}°`);
+      log('k-sgp4', `[地球の向き] 自転の角度 ${fx((S.gmst / DEG + 360) % 360, 3)}° / 太陽の真下 ${latlon(S.sun.dec / DEG, wrap180(S.sun.lon / DEG), 1)}`);
     } else if (r < 0.78) {
       const top = ok.slice().sort((a, b) => b.score - a.score)[0];
       const q = top.reasons[0] || '異常なし';
-      log('k-jev', `[JEV] Q:脅威度? → ${['NOMINAL', 'WATCH', 'ALERT'][Math.max(0, top.level)]} score=${top.score} (${top.name}) ${q}`);
+      log('k-jev', `[判定] 最も危険度が高いのは ${top.name}:${LEVEL_JA[Math.max(0, top.level)]} ${top.score}点(${q})`);
     } else {
       log('k-ghost', pick(GHOST)());
     }
@@ -659,8 +690,8 @@
       if (!o.ok) continue;
       const upNow = o.el > 0;
       if (o.wasUp !== null && upNow !== o.wasUp) {
-        if (upNow) log('k-aos', `[AOS] ${o.name} ${SITE_NAME} 上空に出現 az=${fx(o.az, 1)}° 距離=${fx(o.range, 0)}km`);
-        else log('k-sgp4', `[LOS] ${o.name} 地平線下へ消失 az=${fx(o.az, 1)}°`);
+        if (upNow) log('k-aos', `[出現] ${o.name} が地平線から現れた(${dir16(o.az)}の空・距離 ${fx(o.range, 0)}km)`);
+        else log('k-sgp4', `[消失] ${o.name} が${dir16(o.az)}の地平線に沈んだ`);
       }
       o.wasUp = upNow;
     }
@@ -681,13 +712,13 @@
       li.dataset.id = o.id;
       const lv = document.createElement('i'); lv.className = 'lv';
       const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = o.name;
-      const alt = document.createElement('span'); alt.className = 'alt'; alt.textContent = o.ok ? `${fx(o.alt, 0)}km` : 'LOST';
+      const alt = document.createElement('span'); alt.className = 'alt'; alt.textContent = o.ok ? `高さ${fx(o.alt, 0)}km` : '見失い';
       const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = o.ok ? pad(o.score, 2) : '--';
       li.append(lv, nm, alt, sc);
       frag.append(li);
     }
     listEl.replaceChildren(frag);
-    $('obj-count').textContent = S.objs.filter((o) => o.ok).length + '/' + S.objs.length;
+    $('obj-count').textContent = S.objs.filter((o) => o.ok).length + '個';
   }
   listEl.addEventListener('click', (e) => {
     const li = e.target.closest('li');
@@ -713,23 +744,22 @@
     const v = $('t-verdict');
     v.className = 'verdict' + (o.level > 0 ? ` l${o.level}` : '');
     v.textContent = o.ok
-      ? `JEV ▸ ${['NOMINAL 平常', 'WATCH 監視強化', 'ALERT 警戒'][o.level]} / score ${o.score}` + (o.reasons.length ? ` / ${o.reasons.join(' · ')}` : '')
-      : 'SIGNAL LOST — 伝搬不能(軌道要素が古いか再突入)';
+      ? `判定:${LEVEL_JA[o.level]}(危険度 ${o.score}点)` + (o.reasons.length ? ` — ${o.reasons.join('/')}` : '')
+      : '見失い — 軌道データが古いか、大気圏に落ちた可能性';
     $('t-kv').replaceChildren(kv([
-      ['識別 / CLASS', `#${o.norad} / ${o.cls}`],
-      ['緯度 φ', `${fx(o.lat, 4)}°`],
-      ['経度 λ', `${fx(o.lon, 4)}°`],
-      ['高度 h', `${fx(o.alt, 2)} km`],
-      ['速度 |v|', `${fx(o.vel, 4)} km/s`],
-      ['周期 T', `${fx(o.period, 2)} min`],
-      ['軌道傾斜 i', `${fx(o.inc, 3)}°`],
-      ['離心率 e', fx(o.ecc, 6)],
-      ['近地点/遠地点', `${fx(o.perigee, 0)} / ${fx(o.apogee, 0)} km`],
-      [`${SITE_NAME} 方位/仰角`, `${fx(o.az, 1)}° / ${fx(o.el, 1)}°`],
-      [`${SITE_NAME} 距離`, `${fx(o.range, 1)} km`],
-      ['最近接物体', o.conj ? `${o.conj.with} Δ${fx(o.conj.d, 1)}km` : '—'],
+      ['番号 / 種類', `${o.norad} / ${CLS_JA[o.cls] || o.cls}`],
+      ['いまの真下', latlon(o.lat, o.lon, 2)],
+      ['高さ', `${fx(o.alt, 0)} km`],
+      ['速さ', `秒速 ${fx(o.vel, 2)} km(時速 ${fx(o.vel * 3600, 0)} km)`],
+      ['地球を1周する時間', fmtPeriod(o.period)],
+      ['軌道の傾き', `${fx(o.inc, 1)}°`],
+      ['いちばん低い/高い所', `${fx(o.perigee, 0)} / ${fx(o.apogee, 0)} km`],
+      ['あなたから見た方角', `${dir16(o.az)}(${fx(o.az, 0)}°)`],
+      ['あなたから見た高さ', o.el > 0 ? `地平線から ${fx(o.el, 0)}°上` : '地平線の下(見えない)'],
+      ['あなたからの距離', `${fx(o.range, 0)} km`],
+      ['いちばん近い物体', o.conj ? `${o.conj.with}(${fx(o.conj.d, 1)}km)` : 'なし'],
     ]));
-    $('t-tle').textContent = `${o.name}\n${o.tle[0]}\n${o.tle[1]}`;
+    $('t-tle').textContent = `軌道データ(元の数字の並び)\n${o.tle[0]}\n${o.tle[1]}`;
   }
 
   function eq(f, v, n) {
@@ -753,12 +783,12 @@
     for (; it < 8; it++) { const dE = (E - o.ecc * Math.sin(E) - M) / (1 - o.ecc * Math.cos(E)); E -= dE; if (Math.abs(dE) < 1e-12) break; }
     const lam = Math.acos(RE / (RE + Math.max(1, o.alt)));
     $('math').replaceChildren(
-      eq('M = E − e·sin E', `M=${fx(M, 6)}  E=${fx(E, 9)}  (${it + 1}回で収束)`, 'ケプラー方程式 / ニュートン法'),
-      eq('a = ∛( μ / n² )', `n=${n.toExponential(6)} rad/s → a=${fx(o.a, 3)} km`, `μ=${MU} km³/s²`),
-      eq('v = √( μ (2/r − 1/a) )', `r=${fx(r, 3)} km → v=${fx(visViva, 5)} km/s`, `SGP4実測 |v|=${fx(o.vel, 5)} km/s`),
-      eq('θg = GMST(t)', `${fx((S.gmst / DEG + 360) % 360, 6)}°`, 'グリニッジ恒星時 / ECI→ECEF 回転角'),
-      eq('λ = acos( Rₑ / (Rₑ+h) )', `${fx(lam / DEG, 3)}° → 半径 ${fx(lam * RE, 0)} km`, '可視範囲(地平線円)'),
-      eq('B* · ρ(h)', `B*=${o.rec.bstar.toExponential(4)} 1/Rₑ`, '大気抵抗項 — 低軌道ほど寿命が削られる'),
+      eq('M = E − e·sin E', `M=${fx(M, 6)}  E=${fx(E, 9)}  (${it + 1}回の計算で答えが出た)`, 'ケプラー方程式:衛星が軌道のどのあたりにいるかを求める'),
+      eq('a = ∛( μ / n² )', `n=${n.toExponential(6)} rad/s → a=${fx(o.a, 3)} km`, '回る速さ n から、軌道の大きさ a を求める'),
+      eq('v = √( μ (2/r − 1/a) )', `r=${fx(r, 3)} km → v=${fx(visViva, 5)} km/s`, `速さを求める式。くわしい計算(SGP4)では ${fx(o.vel, 5)} km/s`),
+      eq('θg = GMST(t)', `${fx((S.gmst / DEG + 360) % 360, 6)}°`, '地球がいまどれだけ自転しているか(恒星時)'),
+      eq('λ = acos( Rₑ / (Rₑ+h) )', `${fx(lam / DEG, 3)}° → 半径 ${fx(lam * RE, 0)} km`, 'この衛星から見える地面の広さ(地図上の黄色い円)'),
+      eq('B* · ρ(h)', `B*=${o.rec.bstar.toExponential(4)} 1/Rₑ`, '空気の抵抗の強さ。低い衛星ほど減速して落ちていく'),
     );
   }
   const epochOf = (o) => {
@@ -768,13 +798,13 @@
 
   function renderHud(fps) {
     const d = simNow();
-    $('utc').textContent = utcStamp(d) + ' UTC';
+    $('utc').textContent = jstStamp(d);
     const ok = S.objs.filter((o) => o.ok);
     const up = ok.filter((o) => o.el > 0).length;
-    $('hud-tl').textContent = (`TRACK  ${ok.length}\nIN VIEW ${up}\nWARP  ×${S.warp}`);
-    $('hud-tr').textContent = `GMST ${fx((S.gmst / DEG + 360) % 360, 3)}°\nVIEW ${fx(S.view.lat, 1)}°,${fx(S.view.lon, 1)}°\n${fps} FPS`;
-    $('hud-bl').textContent = `${SITE_NAME}\n${fx(S.site.lat, 2)}N ${fx(S.site.lon, 2)}E`;
-    $('hud-br').textContent = `SRC ${S.src}\nSGP4/SDP4 · ALT LOG`;
+    $('hud-tl').textContent = `追跡中 ${ok.length}個\n地平線より上 ${up}個\n時間 ×${S.warp}`;
+    $('hud-tr').textContent = `地球の自転角 ${fx((S.gmst / DEG + 360) % 360, 2)}°\n画面中央 ${latlon(S.view.lat, wrap180(S.view.lon), 0)}\n${fps}コマ/秒`;
+    $('hud-bl').textContent = `${SITE_NAME}\n${latlon(S.site.lat, S.site.lon, 2)}`;
+    $('hud-br').textContent = `${S.src}\n高さは縮めて表示`;
   }
 
   function renderAlert() {
@@ -783,12 +813,12 @@
     const crit = S.objs.filter((o) => o.level === 2);
     let cls = '', msg = '監視網 正常 — 異常軌道なし';
     if (top && top.d < 25) {
-      cls = 'alert'; msg = `接近警報 CONJUNCTION — ${top.a.name} ↔ ${top.b.name}  Δ=${fx(top.d, 1)}km`;
+      cls = 'alert'; msg = `接近警報 — ${top.a.name} と ${top.b.name} が ${fx(top.d, 1)}km まで接近`;
     } else if (crit.length) {
-      cls = 'alert'; msg = `警戒 ${crit.length}件 — ${crit[0].name}: ${crit[0].reasons.join(' · ')}`;
+      cls = 'alert'; msg = `警戒 ${crit.length}件 — ${crit[0].name}:${crit[0].reasons.join('/')}`;
     } else if (S.objs.some((o) => o.level === 1)) {
       const w = S.objs.filter((o) => o.level === 1);
-      cls = 'watch'; msg = `監視強化 ${w.length}件 — ${w[0].name}: ${w[0].reasons[0] || ''}`;
+      cls = 'watch'; msg = `注意 ${w.length}件 — ${w[0].name}:${w[0].reasons[0] || ''}`;
     }
     bar.className = 'alertbar' + (cls ? ' ' + cls : '');
     txt.textContent = msg;
@@ -818,22 +848,50 @@
   $('btn-warp').addEventListener('click', (e) => {
     const w = WARPS[(WARPS.indexOf(S.warp) + 1) % WARPS.length];
     setWarp(w);
-    e.currentTarget.textContent = '×' + w;
+    e.currentTarget.textContent = '早送り×' + w;
     e.currentTarget.classList.toggle('on', w > 1);
-    log('k-warn', `[TIME] 時間加速 ×${w} — 予測時刻 ${utcStamp(simNow())}`);
+    log('k-warn', `[時間] ${w === 1 ? '通常の速さに戻した' : `時間を${w}倍で進める`} — 画面の時刻 ${jstStamp(simNow())}`);
     for (const o of S.objs) o.wasUp = null;
   });
   $('btn-site').addEventListener('click', () => {
     S.site = { lat: S.view.lat, lon: wrap180(S.view.lon) };
     for (const o of S.objs) o.wasUp = null;
-    log('k-aos', `[SITE] 観測地点を移設 → ${fx(S.site.lat, 2)}°, ${fx(S.site.lon, 2)}°`);
+    log('k-aos', `[地点] 観測地点を ${latlon(S.site.lat, S.site.lon, 1)} に移した`);
   });
   $('btn-snd').addEventListener('click', (e) => {
     S.sound = !S.sound; e.currentTarget.classList.toggle('on', S.sound);
     beep(660, 0.05);
   });
+  const help = $('help');
+  const openHelp = () => { help.hidden = false; };
+  const closeHelp = () => {
+    help.hidden = true;
+    try { localStorage.setItem('orbit-help-seen', '1'); } catch (_) { /* 保存できなくても動く */ }
+  };
+  $('btn-help').addEventListener('click', openHelp);
+  $('btn-help2').addEventListener('click', openHelp);
+  $('help-close').addEventListener('click', closeHelp);
+  help.addEventListener('click', (e) => { if (e.target === help) closeHelp(); });
+  let seen = false;
+  try { seen = localStorage.getItem('orbit-help-seen') === '1'; } catch (_) { seen = false; }
+  if (!seen) openHelp();
+
   document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
+    const help = $('help');
+  const openHelp = () => { help.hidden = false; };
+  const closeHelp = () => {
+    help.hidden = true;
+    try { localStorage.setItem('orbit-help-seen', '1'); } catch (_) { /* 保存できなくても動く */ }
+  };
+  $('btn-help').addEventListener('click', openHelp);
+  $('btn-help2').addEventListener('click', openHelp);
+  $('help-close').addEventListener('click', closeHelp);
+  help.addEventListener('click', (e) => { if (e.target === help) closeHelp(); });
+  let seen = false;
+  try { seen = localStorage.getItem('orbit-help-seen') === '1'; } catch (_) { seen = false; }
+  if (!seen) openHelp();
+
+  document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
     document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === b.dataset.tab));
   }));
 
@@ -852,7 +910,7 @@
         passEvents();
         const c = S.conj[0];
         if (c && c.d < 120 && Math.random() < 0.5) {
-          log(c.d < 25 ? 'k-alert' : 'k-warn', `[CONJ] ${c.a.name} ↔ ${c.b.name} Δ=${fx(c.d, 2)}km 相対速度 推定中`);
+          log(c.d < 25 ? 'k-alert' : 'k-warn', `[接近] ${c.a.name} と ${c.b.name} の距離 ${fx(c.d, 1)}km`);
         }
       }
       const o = S.sel;
@@ -876,10 +934,10 @@
     resize();
     new ResizeObserver(resize).observe(cv);
     const boot = [
-      '[BOOT] ARGUS//NULL 起動シーケンス開始',
-      `[BOOT] 演算核 satellite.js SGP4/SDP4 ロード … OK`,
-      `[BOOT] 地表マスク ${LAND.length / 3} 点 展開 … OK`,
-      '[BOOT] 外部軌道要素ストリームへ接続を試行 …',
+      '[起動] 衛星監視室 起動',
+      '[起動] 軌道の計算エンジンを準備 … 完了',
+      `[起動] 陸地の点 ${LAND.length / 3}個 を配置 … 完了`,
+      '[起動] 公開されている軌道データに接続中 …',
     ];
     boot.forEach((m) => log('k-aos', m));
 
@@ -889,27 +947,27 @@
       live = true;
     } catch (err) {
       entries = synthCatalog();
-      log('k-warn', `[LINK] 外部ストリーム不通(${err && err.name === 'AbortError' ? 'TIMEOUT' : 'BLOCKED'}) — 内部合成要素に切替`);
+      log('k-warn', `[回線] 公開データに${err && err.name === 'AbortError' ? '時間内につながらない' : 'つながらない'} — 練習用の作りものデータに切り替え`);
     }
-    S.src = live ? 'CELESTRAK' : 'SYNTH';
+    S.src = live ? '本物のデータ' : '練習用データ';
     const pill = $('src-pill');
     pill.classList.add(live ? 'live' : 'synth');
-    $('src-label').textContent = live ? 'LIVE · CELESTRAK' : 'SYNTH · OFFLINE';
+    $('src-label').textContent = live ? '本物のデータ' : '練習用データ';
 
     S.objs = entries.map(makeObj).filter(Boolean);
     S.objs.forEach((o, i) => { o.id = i; });
-    log('k-aos', `[CAT] 追跡対象 ${S.objs.length} 件 登録 — 型検査を通過しなかった要素は破棄`);
+    log('k-aos', `[登録] 衛星 ${S.objs.length}個 を追跡リストに登録(壊れたデータは除外)`);
     propagateAll(simNow());
     S.conj = screenConjunctions();
     S.objs.forEach(judge);
-    const first = S.objs.find((o) => /ISS|ZARYA/.test(o.name)) || S.objs[0];
+    const first = S.objs.find((o) => /国際宇宙ステーション/.test(o.name)) || S.objs[0];
     if (first) select(first);
     renderList(true);
     requestAnimationFrame(loop);
   }
 
   if (!sat || typeof sat.propagate !== 'function') {
-    document.getElementById('alert-text').textContent = '演算核のロードに失敗 — vendor/satellite.min.js を確認';
+    document.getElementById('alert-text').textContent = '計算エンジンを読み込めませんでした。ページを開き直してください';
     return;
   }
   boot();
