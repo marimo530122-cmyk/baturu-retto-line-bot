@@ -21,7 +21,8 @@
   const SCREEN_MS = 1000;            // 接近スクリーニング間隔(実時間)
   const WARPS = [1, 10, 60, 600];
   const CELESTRAK = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle';
-  const MAX_OBJECTS = 140;
+  const MAX_OBJECTS = 200;
+  const DATA_URL = 'data/tle.json';   // GitHub Actions が公開のたびに取り直して置くファイル
 
   // 陸地マスク(Natural Earth 1:50m を2°格子にしたRLE。行=北から、海→陸→海…の連長、36進)
   const LAND_RLE = '50|50|50|1f.5.b.b.2u|16.2.3.3.1.6.1.p.y.1.2.1.1.1.e.1.16|12.1.4.4.1.4.4.o.g.4.12.4.12|u.2.a.1.3.4.4.r.h.1.16.3.10|w.1.1.1.1.1.5.1.1.6.b.j.12.2.e.c.d.3.2.1.f|s.3.1.1.3.1.3.4.1.7.a.f.1.1.12.1.b.l.2.2.q|0.1.a.2.i.7.4.2.1.a.9.d.1.1.12.1.5.3.1.4.1.n.1.a.1.2.a.1|8.d.1.1.1.7.2.3.1.2.1.2.1.3.2.1.1.1.1.4.8.d.m.9.6.1.4.4.1.2.3.1f|0.3.6.14.5.4.5.a.o.e.1.1.1.c.1.1h|2.2.3.13.1.1.3.6.7.5.a.4.d.5.2.4.1.1.1.1y|8.11.9.2.1.1.7.4.p.5.2.27|7.7.1.s.8.4.b.3.p.5.2.1v.2.1.1.4.4|9.4.8.m.8.4.2.1.u.1.4.2.1.3.3.1n.9.1.9|b.1.a.1.1.l.7.7.s.2.7.2.3.1m.9.3.9|n.1.1.o.2.a.p.3.5.1.6.1m.9.3.9|p.p.1.b.n.2.1.2.3.1v.1.1.6.1.b|q.10.q.20.1.1.i|t.t.3.2.q.1z.k|s.u.5.1.p.k.1.5.1.17.2.1.i|s.s.1.2.u.7.1.8.2.1.1.5.2.16.m|s.r.u.7.3.2.2.5.6.4.2.15.3.2.i|s.p.x.4.4.1.2.2.1.4.1.a.2.12.p|s.o.x.5.8.1.2.1.1.b.3.w.4.1.6.1.j|t.n.z.2.5.2.1.1.3.1.1.c.2.y.2.2.3.2.k|u.m.z.8.7.1.3.1.1.16.3.1.2.4.k|v.j.10.a.c.16.5.2.n|w.h.10.e.1.4.1.1a.t|y.8.7.1.z.l.1.7.1.10.t|x.1.1.6.8.1.x.o.1.7.2.x.u|y.1.1.5.16.o.2.7.7.q.v|11.4.7.2.w.q.1.b.4.o.2.1.t|11.4.4.2.4.1.u.r.1.9.6.8.3.8.10|12.4.2.2.8.2.q.r.2.8.8.5.5.6.1.1.z|14.6.10.s.1.6.a.4.6.1.1.5.6.1.t|18.4.x.t.1.4.c.3.9.5.6.1.t|1a.2.y.t.1.1.e.3.9.6.5.1.t|1b.1.5.3.q.u.2.2.c.2.9.1.2.2.8.1.r|1c.1.1.1.1.8.n.w.d.1.a.1.2.1.11|1f.a.n.v.f.1.l.1.r|1f.d.l.2.6.l.o.1.1.2.5.2.v|1f.e.u.i.q.1.1.1.4.3.v|1e.f.u.h.r.3.2.5.1.1.t|1e.h.r.h.t.2.3.4.6.2.n|1e.k.p.f.v.2.2.3.1.1.4.1.1.1.1.3.j|1d.n.o.e.w.1.g.4.h|1e.n.n.e.x.4.c.5.4.1.b|1f.l.o.e.12.1.3.1.7.2.1.1.6.1.9|1f.k.q.d.1y|1g.j.p.e.4.1.14.3.3.1.i|1g.i.q.e.4.1.12.5.3.2.a.1.6|1i.g.q.d.3.3.10.c.h|1j.f.q.c.4.3.10.c.h|1j.f.r.b.4.2.y.h.7.1.7|1j.d.t.b.4.2.x.i.f|1j.b.v.a.5.2.x.j.e|1j.b.w.8.15.k.d|1i.b.x.8.15.k.d|1i.a.z.6.17.j.d|1i.a.z.5.18.4.5.9.e|1i.7.2f.1.9.7.f|1h.9.2q.5.c.1.2|1h.6.3a.2.1|1h.4.1.1.2v.2.c.2.2|1i.4.2x.1.b.2.3|1h.4.39.2.4|1h.4.3f|1g.4.1w.1.1j|1h.2.3h|1i.2.3g|50|50|50|50|50|1m.1.3d|1k.2.1k.4.f.f.3.3.1.7.i|1i.1.1.2.1c.1.3.f.4.13.c|1g.1.1.5.r.1.4.x.2.1c.6|11.3.4.2.6.1.3.4.n.14.1.1f.5|m.c.6.i.n.2i.9|f.11.m.2p.9|8.1.4.10.5.2.9.3.5.2q.9|e.16.e.1.1.2q.a|3.2.3.1.3.1b.2.35.6|0.a.2.4o|0.50|0.50';
@@ -59,6 +60,25 @@
   const DIRS = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
   const dir16 = (az) => (isNum(az) ? DIRS[Math.round((((az % 360) + 360) % 360) / 22.5) % 16] : '---');
   const latlon = (lat, lon, d) => `${lat >= 0 ? '北緯' : '南緯'}${fx(Math.abs(lat), d)}° ${lon >= 0 ? '東経' : '西経'}${fx(Math.abs(lon), d)}°`;
+  const SITE_KIND = { default: '藤枝周辺', gps: '現在地', manual: '選んだ地点' };
+  const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+  const jst = (d) => new Date(d.getTime() + 9 * 3600000);   // getUTC* で日本時間の値が取れる
+  const md = (d) => { const j = jst(d); return `${j.getUTCMonth() + 1}/${j.getUTCDate()} ${j.getUTCHours()}:${pad(j.getUTCMinutes(), 2)}`; };
+  const jstDay = (d) => Math.floor(jst(d).getTime() / 86400000);
+  function dayWord(d, now) {
+    const diff = jstDay(d) - jstDay(now);
+    const h = jst(d).getUTCHours();
+    const night = h >= 15 || h < 4;
+    if (diff === 0) return night ? '今夜' : '今日の明け方';
+    if (diff === 1) return night && h >= 15 ? '明日の夜' : h < 4 ? '今夜遅く' : '明日の明け方';
+    if (diff === 2) return night && h >= 15 ? 'あさっての夜' : 'あさっての明け方';
+    const j = jst(d);
+    return `${j.getUTCMonth() + 1}/${j.getUTCDate()}(${WEEK[j.getUTCDay()]})`;
+  }
+  function untilJa(ms) {
+    const m = Math.max(0, Math.round(ms / 60000));
+    return m < 60 ? `あと${m}分` : m < 1440 ? `あと${Math.floor(m / 60)}時間${m % 60}分` : `あと${Math.floor(m / 1440)}日${Math.floor((m % 1440) / 60)}時間`;
+  }
   const fmtPeriod = (min) => (min >= 120 ? `${fx(min / 60, 1)}時間` : `${fx(min, 0)}分`);
   // 日本時間で表示(計算は世界時のまま)
   const jstStamp = (d) => utcStamp(new Date(d.getTime() + 9 * 3600000)) + ' 日本時間';
@@ -105,12 +125,13 @@
     add('宇宙望遠鏡型', 'OPTIC', { i: 28.47, n: 15.28, bstar: 1e-5 });
     for (let k = 0; k < 4; k++) add(`地球観測 ${pad(k + 1, 2)}`, 'IMAGING', { i: 97.4 + rnd(), n: 14.3 + rnd() * 0.9 });
     add('気象衛星 19', 'WEATHER', { i: 99.1, n: 14.13, e: 0.0013 });
+    add('しきさい型', 'OCEAN', { i: 98.6, n: 14.58 });
     for (let k = 0; k < 6; k++) add(`GPS型 ${pad(k + 1, 2)}`, 'NAV', { i: 55, n: 2.0056, e: 0.008, raan: k * 60, bstar: 0 });
     add('モルニヤ型 3', 'SIGINT', { i: 63.4, n: 2.006, e: 0.72, argp: 270, bstar: 0 });
     add('モルニヤ型 7', 'SIGINT', { i: 63.4, n: 2.006, e: 0.71, argp: 268, bstar: 0 });
     for (let k = 0; k < 5; k++) add(`静止衛星 ${pad(k + 1, 2)}`, 'RELAY', { i: 0.05 + rnd() * 0.1, n: 1.0027, e: 0.0002, bstar: 0 });
     for (let k = 0; k < 24; k++) add(`衛星群 ${pad(k + 1, 3)}`, 'CONSTEL', { i: 53.05, n: 15.06, raan: (k % 6) * 60, m: (k * 47) % 360, bstar: 1e-4 });
-    for (let k = 0; k < 30; k++) add(`宇宙ゴミ ${hex(4)}`, 'DEBRIS', { i: 60 + rnd() * 45, n: 14.2 + rnd() * 1.4, e: rnd() * 0.02, bstar: 2e-4 });
+    for (let k = 0; k < 30; k++) add(`ロケット残骸 ${hex(4)}`, 'ROCKET', { i: 60 + rnd() * 45, n: 14.2 + rnd() * 1.4, e: rnd() * 0.02, bstar: 2e-4 });
     return out;
   }
 
@@ -120,7 +141,7 @@
     for (let i = 0; i + 2 < lines.length && out.length < MAX_OBJECTS; i++) {
       const l1 = lines[i + 1], l2 = lines[i + 2];
       if (lines[i] && validTle(l1, l2)) {
-        out.push({ name: jaName(lines[i].trim().slice(0, 24)), cls: 'PUBLIC', tle: [l1, l2] });
+        out.push(classify(lines[i].trim().slice(0, 24), l1, l2, ''));
         i += 2;
       }
     }
@@ -135,13 +156,43 @@
   ];
   const CLS_JA = {
     CREWED: '有人宇宙ステーション', OPTIC: '宇宙望遠鏡', IMAGING: '地球観測', WEATHER: '気象', NAV: '位置測定(GPS)',
-    SIGINT: '高い楕円軌道', RELAY: '静止軌道(通信)', CONSTEL: '通信衛星の群れ', DEBRIS: '宇宙ゴミ', PUBLIC: '公開データ',
+    SIGINT: '高い楕円軌道', RELAY: '静止軌道(通信)', CONSTEL: '通信衛星の群れ', DEBRIS: '宇宙ゴミ(破片)',
+    ROCKET: 'ロケット残骸(宇宙ゴミ)', OCEAN: '海の観測', PUBLIC: '人工衛星',
   };
+  // 番号で決まる有名な衛星
+  const NORAD_JA = {
+    '25544': ['国際宇宙ステーション', 'CREWED'], '48274': ['中国宇宙ステーション 天和', 'CREWED'],
+    '20580': ['ハッブル宇宙望遠鏡', 'OPTIC'],
+    '43065': ['しきさい', 'OCEAN'], '38337': ['しずく', 'OCEAN'],
+    '41836': ['ひまわり9号', 'WEATHER'], '40267': ['ひまわり8号', 'WEATHER'],
+  };
+  const isJunk = (o) => o.cls === 'ROCKET' || o.cls === 'DEBRIS';
+  function classify(name, l1, l2, tag) {
+    const norad = l1.slice(2, 7).trim();
+    const known = NORAD_JA[norad];
+    if (known) return { name: known[0], cls: known[1], tle: [l1, l2], tag: tag || '' };
+    const cls = /R\/B/.test(name) ? 'ROCKET' : /\bDEB\b/.test(name) ? 'DEBRIS' : 'PUBLIC';
+    return { name: jaName(name), cls, tle: [l1, l2], tag: tag || '' };
+  }
   function jaName(n) {
     for (const [re, ja] of KNOWN) if (re.test(n)) return n.replace(re, ja);
     if (/R\/B/.test(n)) return 'ロケット残骸 ' + n.replace(/\s*R\/B.*/, '');
     if (/\bDEB\b/.test(n)) return '破片 ' + n.replace(/\s*DEB.*/, '');
     return n;
+  }
+
+  // 1) 公開ページに置いてある今日のデータ  2) CelesTrak に直接  3) 練習用の合成データ
+  async function loadSaved() {
+    const r = await fetch(DATA_URL, { cache: 'no-cache', signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const list = (Array.isArray(j.sats) ? j.sats : [])
+      .filter((s) => s && validTle(s.l1, s.l2))
+      .slice(0, MAX_OBJECTS)
+      .map((s) => classify(String(s.name || '').slice(0, 24), s.l1, s.l2, typeof s.tag === 'string' ? s.tag : ''));
+    if (list.length < 20) throw new Error('too few');
+    const at = new Date(j.fetchedAt);
+    return { list, at: isNum(at.getTime()) ? at : null };
   }
 
   async function fetchLive() {
@@ -165,10 +216,16 @@
     simAnchor: Date.now(), realAnchor: performance.now(), warp: 1,
     gmst: 0, sun: { x: 1, y: 0, z: 0 },
     site: { lat: 34.87, lon: 138.26 },     // 既定の観測地点(静岡県中部)
+    siteKind: 'default',                   // default=藤枝周辺 / gps=現在地 / manual=画面中央
+    live: false, dataAt: null,
+    pass: null, passKey: '', passAt: 0,
+    tween: null, recOffset: { lat: 0, lon: 0 },
     view: { lon: 138, lat: 22, zoom: 1, auto: true },
     alarm: 0, sound: false, src: '…',
     lastScreen: 0, conj: [],
   };
+
+  const REC = { on: false, run: 0, ep: 'overhead', alarm: false };
 
   function simNow() {
     return new Date(S.simAnchor + (performance.now() - S.realAnchor) * S.warp);
@@ -187,7 +244,7 @@
     const nRevDay = nRadMin * 1440 / (2 * Math.PI);
     const a = Math.cbrt(MU / Math.pow(nRadMin / 60, 2));
     return {
-      id: idx, name: entry.name, cls: entry.cls, tle: entry.tle, rec,
+      id: idx, name: entry.name, cls: entry.cls, tag: entry.tag || '', tle: entry.tle, rec,
       norad: entry.tle[0].slice(2, 7).trim(),
       inc: rec.inclo / DEG, ecc: rec.ecco, nRevDay, a,
       perigee: a * (1 - rec.ecco) - RE, apogee: a * (1 + rec.ecco) - RE,
@@ -237,6 +294,56 @@
     const dec = Math.asin(Math.sin(eps) * Math.sin(lam));
     const lon = ra - gmst;
     return { x: Math.cos(dec) * Math.cos(lon), y: Math.cos(dec) * Math.sin(lon), z: Math.sin(dec), dec, lon };
+  }
+
+  // ---------- ISSが肉眼で見える時間の予報 ----------
+  // 条件: 衛星が地平線から10°以上 / 観測地点の空が暗い(太陽が地平線の6°下より下) / 衛星には日が当たっている
+  function visibility(o, t, gd, upv) {
+    const d = new Date(t);
+    let pv;
+    try { pv = sat.propagate(o.rec, d); } catch (_) { return null; }
+    if (!pv || !isVec(pv.position)) return null;
+    const g = sat.gstime(d);
+    const ecf = sat.eciToEcf(pv.position, g);
+    const look = sat.ecfToLookAngles(gd, ecf);
+    const el = look.elevation / DEG, az = look.azimuth / DEG;
+    if (el < 10) return { vis: false, el, az };
+    const sun = sunEcef(d, g);
+    const sunEl = Math.asin(upv.x * sun.x + upv.y * sun.y + upv.z * sun.z) / DEG;
+    if (sunEl > -6) return { vis: false, el, az };
+    const dot = ecf.x * sun.x + ecf.y * sun.y + ecf.z * sun.z;
+    const lit = dot > 0 || (ecf.x * ecf.x + ecf.y * ecf.y + ecf.z * ecf.z - dot * dot) > RE * RE;   // 地球の影(円柱)の外か
+    return { vis: lit, el, az };
+  }
+
+  function predictPass(o, from, hours) {
+    const la = S.site.lat * DEG, lo = S.site.lon * DEG;
+    const gd = { latitude: la, longitude: lo, height: 0.05 };
+    const upv = { x: Math.cos(la) * Math.cos(lo), y: Math.cos(la) * Math.sin(lo), z: Math.sin(la) };
+    const at = (t) => visibility(o, t, gd, upv);
+    const STEP = 20000, end = from + hours * 3600000;
+    const first = at(from);
+    let start = null, ongoing = false, startAz = 0, maxEl = 0;
+    if (first && first.vis) { start = from; ongoing = true; startAz = first.az; maxEl = first.el; }
+    for (let t = from + STEP; t < end; t += STEP) {
+      const v = at(t);
+      if (!v) continue;
+      if (start === null) {
+        if (!v.vis) continue;
+        // 1秒きざみで戻って、見え始めの時刻を詰める
+        let s = t;
+        for (let k = 1; k < STEP / 1000; k++) { const w = at(t - k * 1000); if (!w || !w.vis) break; s = t - k * 1000; }
+        start = s; startAz = at(s).az; maxEl = v.el;
+      } else if (v.vis) {
+        maxEl = Math.max(maxEl, v.el);
+      } else {
+        let e = t;
+        for (let k = 1; k < STEP / 1000; k++) { const w = at(t - k * 1000); if (w && w.vis) break; e = t - k * 1000; }
+        const endAz = (at(e - 1000) || v).az;
+        return { start: new Date(start), end: new Date(e), startAz, endAz, maxEl, ongoing };
+      }
+    }
+    return null;
   }
 
   function groundTrack(o, date) {
@@ -378,7 +485,15 @@
   let sweep = 0;
 
   function draw(t) {
-    if (S.view.auto && !drag.on) S.view.lon += 0.02 * (S.warp > 1 ? 2 : 1);
+    if (S.tween) {
+      const tw = S.tween;
+      const k = Math.min(1, (performance.now() - tw.t0) / tw.ms);
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      S.view.lon = tw.from.lon + wrap180(tw.to.lon - tw.from.lon) * e;
+      S.view.lat = tw.from.lat + (tw.to.lat - tw.from.lat) * e;
+      S.view.zoom = tw.from.zoom + (tw.to.zoom - tw.from.zoom) * e;
+      if (k >= 1) S.tween = null;
+    } else if (S.view.auto && !drag.on) S.view.lon += 0.02 * (S.warp > 1 ? 2 : 1);
     S.view.lon = wrap180(S.view.lon);
     setView();
     R = Math.min(W, H) / 2 / 1.62 * S.view.zoom;
@@ -443,7 +558,7 @@
     ctx.lineTo(CX + Math.cos(sweep) * R * 1.62, CY + Math.sin(sweep) * R * 1.62); ctx.stroke();
 
     // 観測地点
-    const sl = S.site.lat * DEG, so = S.site.lon * DEG;
+    const sl = (S.site.lat + S.recOffset.lat) * DEG, so = (S.site.lon + S.recOffset.lon) * DEG;
     const ss = proj(Math.cos(sl) * Math.cos(so), Math.cos(sl) * Math.sin(so), Math.sin(sl), 1);
     if (ss.z > 0) {
       const pulse = 4 + ((t / 120) % 14);
@@ -471,7 +586,7 @@
       const back = p.z < 0;
       ctx.globalAlpha = back ? 0.35 : 1;
       ctx.fillStyle = col;
-      const sz2 = s.level === 2 ? 4 : s.cls === 'DEBRIS' ? 1.6 : 2.6;
+      const sz2 = s.level === 2 ? 4 : isJunk(s) ? 1.6 : 2.6;
       ctx.fillRect(p.x - sz2 / 2, p.y - sz2 / 2, sz2, sz2);
       if (s.level === 2) {
         ctx.strokeStyle = col;
@@ -630,9 +745,10 @@
     if (best) select(best);
   }
 
-  function select(o) {
+  function select(o, quiet) {
     S.sel = o;
     o.track = null;
+    if (quiet) { renderList(true); return; }
     log('k-aos', `[捕捉] ${o.name}(番号${o.norad})をロックオン。追跡を開始`);
     log('k-ghost', `[軌道データ] ${o.tle[0]}`);
     log('k-ghost', `[軌道データ] ${o.tle[1]}`);
@@ -802,8 +918,16 @@
     const ok = S.objs.filter((o) => o.ok);
     const up = ok.filter((o) => o.el > 0).length;
     $('hud-tl').textContent = `追跡中 ${ok.length}個\n地平線より上 ${up}個\n時間 ×${S.warp}`;
-    $('hud-tr').textContent = `地球の自転角 ${fx((S.gmst / DEG + 360) % 360, 2)}°\n画面中央 ${latlon(S.view.lat, wrap180(S.view.lon), 0)}\n${fps}コマ/秒`;
-    $('hud-bl').textContent = `${SITE_NAME}\n${latlon(S.site.lat, S.site.lon, 2)}`;
+    $('hud-tr').textContent = `地球の自転角 ${fx((S.gmst / DEG + 360) % 360, 2)}°\n` +
+      (REC.on ? '画面中央 ██.█° ███.█°' : `画面中央 ${latlon(S.view.lat, wrap180(S.view.lon), 0)}`) + `\n${fps}コマ/秒`;
+    // 現在地は約10km単位(小数1桁)までしか出さない。撮影中は黒塗り
+    $('hud-bl').textContent = REC.on ? `${SITE_NAME}\n北緯 ██.██° 東経 ███.██°` : `${SITE_NAME}(${SITE_KIND[S.siteKind]})\n${latlon(S.site.lat, S.site.lon, 1)}`;
+    renderPass();
+    if (REC.on) {
+      // 観測地点の座標が入る行は出さない
+      const lines = [...logEl.children].map((p) => p.textContent).filter((x) => !x.includes('[地点]')).slice(0, 4);
+      $('rec-ticker').textContent = lines.join('\n');
+    }
     $('hud-br').textContent = `${S.src}\n高さは縮めて表示`;
   }
 
@@ -822,8 +946,8 @@
     }
     bar.className = 'alertbar' + (cls ? ' ' + cls : '');
     txt.textContent = msg;
-    $('stage').classList.toggle('alarm', cls === 'alert');
-    if (cls === 'alert' && S.alarm === 0) { beep(440, 0.12); setTimeout(() => beep(330, 0.12), 160); }
+    $('stage').classList.toggle('alarm', REC.on ? REC.alarm : cls === 'alert');
+    if (!REC.on && cls === 'alert' && S.alarm === 0) { beep(440, 0.12); setTimeout(() => beep(330, 0.12), 160); }
     S.alarm = cls === 'alert' ? 1 : 0;
   }
 
@@ -841,6 +965,216 @@
     } catch (_) { /* 音が出ない端末でも続行 */ }
   }
 
+  // ---------- ISS予報の表示 ----------
+  function maybePredict() {
+    if (!S.iss) return;
+    const now = simNow().getTime();
+    const key = `${S.site.lat.toFixed(3)},${S.site.lon.toFixed(3)}`;
+    const p = S.pass;
+    const stale = key !== S.passKey || now - S.passAt > 600000 || now < S.passAt || (p && now > p.end.getTime());
+    if (!stale) return;
+    S.passKey = key; S.passAt = now;
+    S.pass = predictPass(S.iss, now, 72);
+  }
+
+  function renderPass() {
+    const main = $('pass-main'), sub = $('pass-sub');
+    const now = simNow();
+    const where = `${SITE_KIND[S.siteKind]}から`;
+    const caveat = '天気や計算のずれ(1分ほど)で外れることがあります';
+    if (!S.live) {
+      main.textContent = '宇宙ステーション(ISS)が見える日時の予報';
+      sub.textContent = '練習用データなので予報は出せません。公開ページでは本物のデータで計算します';
+      return;
+    }
+    if (!S.iss) { main.textContent = '宇宙ステーション(ISS)のデータがありません'; sub.textContent = ''; return; }
+    if (!S.passKey) { main.textContent = '宇宙ステーション(ISS)が見える日時を計算中…'; sub.textContent = ''; return; }
+    const p = S.pass;
+    if (!p) {
+      main.textContent = 'この3日間、宇宙ステーション(ISS)は見えません';
+      sub.textContent = `${where}の計算。明るい時間帯に通るためです。毎日計算し直します`;
+      return;
+    }
+    if (now >= p.start && now <= p.end) {
+      main.textContent = `いま見えています! ${dir16(S.iss.az)}の空、高さ${fx(Math.max(0, S.iss.el), 0)}°`;
+      sub.textContent = `${where}・${dir16(p.endAz)}へ向かって動く明るい点です・${caveat}`;
+      return;
+    }
+    const j = jst(p.start);
+    const mins = Math.max(1, Math.round((p.end - p.start) / 60000));
+    main.textContent = `次に宇宙ステーションが見えるのは ${dayWord(p.start, now)} ${j.getUTCHours()}:${pad(j.getUTCMinutes(), 2)} ` +
+      `${dir16(p.startAz)}→${dir16(p.endAz)} 約${mins}分`;
+    sub.textContent = `${where}・${untilJa(p.start - now)}・いちばん高くて${fx(p.maxEl, 0)}°・${caveat}`;
+  }
+
+  // ---------- 撮影モード(ショート動画用・約30秒) ----------
+  const STOP = new Error('stop');
+  const sleep = (ms, run) => new Promise((res, rej) => setTimeout(() => (REC.run === run ? res() : rej(STOP)), ms));
+  let recPrev = null;
+
+  function cap(kicker, main, sub, tone) {
+    const box = $('rec-cap');
+    $('rec-kicker').textContent = kicker || '';
+    $('rec-main').textContent = main || '';
+    $('rec-sub').textContent = sub || '';
+    box.className = 'rec-cap' + (tone ? ' ' + tone : '');
+    void box.offsetWidth;            // アニメーションをかけ直す
+    box.classList.add('in');
+  }
+  function lookAt(lat, lon, zoom, ms) {
+    S.tween = { from: { ...S.view }, to: { lat: Math.max(-60, Math.min(60, lat)), lon, zoom }, t0: performance.now(), ms };
+  }
+  function enterRec() {
+    if (!REC.on) recPrev = { auto: S.view.auto, sound: S.sound };
+    REC.on = true;
+    document.body.classList.add('rec');
+    $('rec-ui').hidden = false;
+    $('rec-end').hidden = true;
+    $('rec-note').textContent = S.live ? '' : '※練習用データ(作りものの衛星)';
+    S.view.auto = false;
+    S.sound = true;
+    if (S.warp !== 1) { setWarp(1); const b = $('btn-warp'); b.textContent = '早送り×1'; b.classList.remove('on'); }
+    // 地図上の印は ±0.4°(約40km)以内でずらす。計算は本当の位置のまま
+    S.recOffset = { lat: (Math.random() - 0.5) * 0.8, lon: (Math.random() - 0.5) * 0.8 };
+  }
+  function exitRec() {
+    REC.run++;
+    REC.on = false; REC.alarm = false;
+    document.body.classList.remove('rec');
+    $('rec-ui').hidden = true;
+    S.recOffset = { lat: 0, lon: 0 };
+    S.tween = null;
+    if (recPrev) { S.view.auto = recPrev.auto; S.sound = recPrev.sound; }
+    $('btn-rot').classList.toggle('on', S.view.auto);
+  }
+
+  function pickTargets(ep, above) {
+    const want = (o) => (ep === 'overhead' && o.norad === '25544') || (ep === 'fish' && o.cls === 'OCEAN') || (ep === 'junk' && isJunk(o));
+    return above.slice().sort((a, b) => (want(b) - want(a)) || (b.el - a.el)).slice(0, 4);
+  }
+
+  async function runEpisode(ep) {
+    REC.ep = ep;
+    const run = ++REC.run;
+    try {
+      enterRec();
+      cap('', '', '');
+      const black = $('rec-black'), type = $('rec-type'), count = $('rec-count');
+      black.classList.remove('out'); type.textContent = '';
+      lookAt(S.view.lat, S.view.lon, 1, 10);
+      count.hidden = false;
+      for (const n of [3, 2, 1]) { count.textContent = n; beep(660, 0.05); await sleep(1000, run); }
+      count.hidden = true;
+
+      // 0〜3秒: 接続
+      for (const line of ['機密回線 接続中…', '認証 ████████ 完了']) {
+        for (const ch of line) { type.textContent += ch; if (ch.trim()) beep(1400, 0.015); await sleep(75, run); }
+        type.textContent += '\n';
+        await sleep(300, run);
+      }
+      black.classList.add('out');
+      beep(880, 0.08);
+
+      // 3〜8秒: 観測地点へ
+      lookAt(S.site.lat, S.site.lon, 1.7, 3500);
+      cap('観測地点を特定中…', '', '');
+      await sleep(1800, run);
+      beep(990, 0.06);
+      cap('観測地点 特定', '北緯 ██.██° 東経 ███.██°', 'この上空を通る 物体を照合する');
+      await sleep(3200, run);
+
+      // 8〜17秒: 上空の衛星をロックオン
+      propagateAll(simNow());
+      const above = S.objs.filter((o) => o.ok && o.el > 0).sort((a, b) => b.el - a.el);
+      const targets = pickTargets(ep, above);
+      if (!targets.length) { cap('走査中', '上空は静かだ…', '地平線より上の物体 0個'); await sleep(4000, run); }
+      for (let i = 0; i < targets.length; i++) {
+        const o = targets[i];
+        select(o, true);
+        beep(980, 0.05);
+        cap(`捕捉 ${i + 1}/${targets.length}`, o.name, `高さ${fx(o.alt, 0)}km・秒速${fx(o.vel, 1)}km・${dir16(o.az)}の空`);
+        await sleep(targets.length > 3 ? 2200 : 9000 / targets.length, run);
+      }
+
+      // 17〜21秒: 警告
+      REC.alarm = true;
+      beep(140, 0.35); setTimeout(() => beep(140, 0.35), 450);
+      cap('警告', `今、あなたの上空に ${above.length}個の 人工衛星`, '地平線より上にある数・リアルタイム計算', 'alarm');
+      await sleep(4000, run);
+      REC.alarm = false;
+
+      // 21〜27秒: 編ごとの本題
+      await finale(ep, run, above);
+
+      // 27〜30秒: 締め
+      beep(660, 0.05);
+      cap('', 'あなたの頭上も 調べられます', '→ プロフのリンクから', 'cta');
+      await sleep(3000, run);
+      $('rec-end').hidden = false;
+    } catch (e) {
+      if (e !== STOP) throw e;
+    }
+  }
+
+  async function finale(ep, run, above) {
+    const now = simNow();
+    if (ep === 'overhead') {
+      const iss = S.iss, p = S.pass;
+      if (iss) { lookAt(iss.lat, iss.lon, 1.3, 1500); select(iss, true); }
+      beep(980, 0.05);
+      if (!S.live) cap('次の目撃チャンス', '宇宙ステーションが見える日時を計算', '本物のデータは公開ページで');
+      else if (!iss) cap('次の目撃チャンス', '宇宙ステーションのデータが取れなかった', '');
+      else if (p && now >= p.start && now <= p.end) cap('いま', `${dir16(iss.az)}の空に 宇宙ステーションが 見えている`, '外に出て 見上げて');
+      else if (p) {
+        const j = jst(p.start);
+        const mins = Math.max(1, Math.round((p.end - p.start) / 60000));
+        cap('次の目撃チャンス', `${dayWord(p.start, now)} ${j.getUTCHours()}時${j.getUTCMinutes()}分、 ${dir16(p.startAz)}の空を 見上げて`,
+          `宇宙ステーションが 約${mins}分かけて ${dir16(p.endAz)}へ横切る`);
+      } else cap('次の目撃チャンス', 'この3日間 宇宙ステーションは 明るい時間に通る', '見える日は 毎日計算し直している');
+      await sleep(6000, run);
+    } else if (ep === 'fish') {
+      const o = S.objs.find((x) => x.ok && x.tag === 'shikisai') || S.objs.find((x) => x.ok && x.cls === 'OCEAN');
+      if (o) {
+        lookAt(o.lat, o.lon, 1.4, 1500);
+        select(o, true);
+        beep(980, 0.05);
+        const what = o.norad === '38337' ? '雲の下の海の水温' : '海の水温と色';
+        cap('海の見張り役', `衛星「${o.name}」は 宇宙から ${what}を 測っている`, 'そのデータは 漁場の予想にも 使われている');
+      } else {
+        cap('海の見張り役', '海の水温は 人工衛星が 宇宙から測っている', 'そのデータは 漁場の予想にも 使われている');
+      }
+      await sleep(3500, run);
+      cap('', '監視じゃない。 海と暮らしを 見守っている', '');
+      await sleep(2500, run);
+    } else {
+      const junkAbove = above.filter(isJunk);
+      const junkAll = S.objs.filter(isJunk).length;
+      if (junkAbove.length) {
+        select(junkAbove[0], true);
+        beep(980, 0.05);
+        cap('宇宙ゴミ', `上空${above.length}個のうち ${junkAbove.length}個は ロケットの 残骸や破片`, '役目を終えても 落ちずに 回り続けている');
+      } else {
+        cap('宇宙ゴミ', `追跡中${S.objs.length}個のうち ${junkAll}個は ロケットの 残骸や破片`, '役目を終えても 落ちずに 回り続けている');
+      }
+      await sleep(3500, run);
+      cap('', '宇宙ゴミは 年々 増え続けている', '');
+      await sleep(2500, run);
+    }
+  }
+
+  const pickDlg = $('rec-pick');
+  $('btn-rec').addEventListener('click', () => { pickDlg.hidden = false; });
+  $('pick-cancel').addEventListener('click', () => { pickDlg.hidden = true; });
+  pickDlg.addEventListener('click', (e) => { if (e.target === pickDlg) pickDlg.hidden = true; });
+  pickDlg.querySelectorAll('[data-ep]').forEach((b) => b.addEventListener('click', () => {
+    pickDlg.hidden = true;
+    runEpisode(b.dataset.ep);
+  }));
+  $('rec-again').addEventListener('click', () => runEpisode(REC.ep));
+  $('rec-other').addEventListener('click', () => { pickDlg.hidden = false; });
+  $('rec-close').addEventListener('click', exitRec);
+  $('rec-exit').addEventListener('click', exitRec);
+
   // ---------- ボタン・タブ ----------
   $('btn-rot').addEventListener('click', (e) => {
     S.view.auto = !S.view.auto; e.currentTarget.classList.toggle('on', S.view.auto);
@@ -853,10 +1187,30 @@
     log('k-warn', `[時間] ${w === 1 ? '通常の速さに戻した' : `時間を${w}倍で進める`} — 画面の時刻 ${jstStamp(simNow())}`);
     for (const o of S.objs) o.wasUp = null;
   });
-  $('btn-site').addEventListener('click', () => {
-    S.site = { lat: S.view.lat, lon: wrap180(S.view.lon) };
+  function setSite(lat, lon, kind) {
+    S.site = { lat, lon: wrap180(lon) };
+    S.siteKind = kind;
+    S.passKey = '';
     for (const o of S.objs) o.wasUp = null;
-    log('k-aos', `[地点] 観測地点を ${latlon(S.site.lat, S.site.lon, 1)} に移した`);
+    $('btn-gps').classList.toggle('on', kind === 'gps');
+    log('k-aos', `[地点] 観測地点を${SITE_KIND[kind]}(${latlon(lat, lon, 1)})にした`);
+  }
+  $('btn-center').addEventListener('click', () => setSite(S.view.lat, S.view.lon, 'manual'));
+  $('btn-gps').addEventListener('click', (e) => {
+    const b = e.currentTarget;
+    if (!navigator.geolocation) { log('k-warn', '[地点] この端末では現在地を使えません'); return; }
+    b.textContent = '📍取得中…';
+    // 位置はこの端末の中の計算にだけ使い、どこにも送らない・保存もしない
+    navigator.geolocation.getCurrentPosition((p) => {
+      b.textContent = '📍現在地';
+      setSite(p.coords.latitude, p.coords.longitude, 'gps');
+      S.tween = { from: { ...S.view }, to: { lon: S.site.lon, lat: Math.max(-60, Math.min(60, S.site.lat)), zoom: S.view.zoom }, t0: performance.now(), ms: 1500 };
+    }, (err) => {
+      b.textContent = '📍現在地';
+      $('pass-sub').textContent = err && err.code === 1
+        ? '位置情報が許可されませんでした。スマホの設定でこのページの位置情報を許可すると使えます'
+        : '現在地を取得できませんでした。電波の良い場所でもう一度押してください';
+    }, { timeout: 15000, maximumAge: 600000 });
   });
   $('btn-snd').addEventListener('click', (e) => {
     S.sound = !S.sound; e.currentTarget.classList.toggle('on', S.sound);
@@ -877,21 +1231,7 @@
   if (!seen) openHelp();
 
   document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
-    const help = $('help');
-  const openHelp = () => { help.hidden = false; };
-  const closeHelp = () => {
-    help.hidden = true;
-    try { localStorage.setItem('orbit-help-seen', '1'); } catch (_) { /* 保存できなくても動く */ }
-  };
-  $('btn-help').addEventListener('click', openHelp);
-  $('btn-help2').addEventListener('click', openHelp);
-  $('help-close').addEventListener('click', closeHelp);
-  help.addEventListener('click', (e) => { if (e.target === help) closeHelp(); });
-  let seen = false;
-  try { seen = localStorage.getItem('orbit-help-seen') === '1'; } catch (_) { seen = false; }
-  if (!seen) openHelp();
-
-  document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
+    document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
     document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === b.dataset.tab));
   }));
 
@@ -926,6 +1266,7 @@
       renderHud(fps); renderTarget(); renderMath(); renderList(false); renderAlert();
     }
     if (t - lastLog > 420 + Math.random() * 500) { lastLog = t; streamTick(); }
+    maybePredict();
     requestAnimationFrame(loop);
   }
 
@@ -943,16 +1284,24 @@
 
     let entries, live = false;
     try {
-      entries = await fetchLive();
-      live = true;
-    } catch (err) {
-      entries = synthCatalog();
-      log('k-warn', `[回線] 公開データに${err && err.name === 'AbortError' ? '時間内につながらない' : 'つながらない'} — 練習用の作りものデータに切り替え`);
+      const saved = await loadSaved();
+      entries = saved.list; live = true; S.dataAt = saved.at;
+    } catch (_) {
+      try {
+        entries = await fetchLive();
+        live = true; S.dataAt = new Date();
+      } catch (err) {
+        entries = synthCatalog();
+        log('k-warn', `[回線] 公開データに${err && err.name === 'AbortError' ? '時間内につながらない' : 'つながらない'} — 練習用の作りものデータに切り替え`);
+      }
     }
+    S.live = live;
     S.src = live ? '本物のデータ' : '練習用データ';
     const pill = $('src-pill');
     pill.classList.add(live ? 'live' : 'synth');
-    $('src-label').textContent = live ? '本物のデータ' : '練習用データ';
+    $('src-label').textContent = live
+      ? '本物のデータ' + (S.dataAt ? ` ${md(S.dataAt)}取得` : '')
+      : '練習用データ';
 
     S.objs = entries.map(makeObj).filter(Boolean);
     S.objs.forEach((o, i) => { o.id = i; });
@@ -961,6 +1310,7 @@
     S.conj = screenConjunctions();
     S.objs.forEach(judge);
     const first = S.objs.find((o) => /国際宇宙ステーション/.test(o.name)) || S.objs[0];
+    S.iss = S.live ? S.objs.find((o) => o.norad === '25544') : null;
     if (first) select(first);
     renderList(true);
     requestAnimationFrame(loop);

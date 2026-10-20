@@ -21,3 +21,5 @@ freee_import_journal.csv
 temp_frame.jpg
 # 鮮刻シールドの操作手順動画(作るたびに作り直すのでGitに入れない)
 sengoku-shield/video/out/
+# 衛星データ(公開のたびに GitHub Actions が取り直すのでGitに入れない)
+orbit-watch/data/

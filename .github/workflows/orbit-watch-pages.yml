@@ -1,0 +1,45 @@
+name: Orbit Watch Pages
+
+# 衛星監視室(orbit-watch/)を GitHub Pages に公開する。
+# 公開のたびに CelesTrak から本物の軌道データを取り直して一緒に載せる(データはGitには入れない)。
+# 初回だけ、Settings → Pages → Build and deployment の Source を「GitHub Actions」にしておくこと。
+
+on:
+  schedule:
+    # 毎日 03:07 JST (18:07 UTC)。データを1日1回だけ新しくする
+    - cron: "7 18 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "orbit-watch/**"
+      - ".github/workflows/orbit-watch-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: orbit-watch-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # 取れなければ公開中の前回分を使う。それも無ければここで止まり、公開中のページはそのまま残る
+      - run: node orbit-watch/tools/fetch-tle.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: orbit-watch
+      - id: deployment
+        uses: actions/deploy-pages@v4
