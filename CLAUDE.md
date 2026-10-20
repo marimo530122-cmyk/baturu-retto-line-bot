@@ -118,6 +118,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Twilio は無くても起動する(電話の受け口 `/voice/*` だけ閉じる)。スマホだけで置くときはリポジトリ直下の
   `render.yaml`(Render Blueprint、家族の名簿を残すためディスク付き)を使う。鍵は Render の画面に直接入れ、チャットや Git に書かない。
   詳細は `sengoku-shield/README.md`。別の会話で続けるときの引き継ぎ書は `sengoku-shield/docs/HANDOFF.md`。
+- `orbit-watch/` — 作戦室風の衛星追跡Webアプリ(静的HTML、satellite.js同梱)。`index.html` を開くだけで動く。
+  「機密」等は演出で、画面下部の「実在の機密情報ではない」注記は消さない。詳細は `orbit-watch/README.md`。
 - `haccp_to_accounting.py` — 納品書・食材・賞味期限の写真/動画をGeminiで読み、HACCP受入記録と
   freee用仕訳CSVを作る。処理済みは `inputs/done/` に移して二重記録を防ぐ。入力画像と出力CSVはGitに入れない。
 - `.github/workflows/haccp-accounting.yml` — 上をGoogleドライブのフォルダリンクから実行する。

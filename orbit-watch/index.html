@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050706">
+<title>ARGUS//NULL 軌道監視</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="crt" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="sigil" aria-hidden="true">◬</span>
+    <div>
+      <h1>ARGUS<span class="dim">//</span>NULL</h1>
+      <p class="sub">軌道監視中枢 · ORBITAL SURVEILLANCE NODE 07</p>
+    </div>
+  </div>
+  <div class="status">
+    <span class="pill" id="src-pill"><i class="led"></i><b id="src-label">LINK…</b></span>
+    <span class="clock" id="utc">----.--.-- --:--:-- UTC</span>
+  </div>
+</header>
+
+<div class="classbar">機密区分 第零種 <span class="dim">//</span> SIMULATION <span class="dim">//</span> 公開軌道要素による演算 <span class="dim">//</span> 閲覧記録 有効</div>
+
+<div class="alertbar" id="alert" role="status" aria-live="polite">
+  <span class="alert-ico">⚠</span><span id="alert-text">監視網 正常 — 異常軌道なし</span>
+</div>
+
+<main class="grid">
+  <section class="stage" id="stage">
+    <canvas id="globe" aria-label="地球と追跡中の衛星"></canvas>
+    <div class="hud hud-tl" id="hud-tl"></div>
+    <div class="hud hud-tr" id="hud-tr"></div>
+    <div class="hud hud-bl" id="hud-bl"></div>
+    <div class="hud hud-br" id="hud-br"></div>
+    <div class="controls">
+      <button type="button" id="btn-rot" class="on" title="自動回転">ROT</button>
+      <button type="button" id="btn-warp" title="時間加速">×1</button>
+      <button type="button" id="btn-site" title="画面中央を観測地点にする">SITE◎</button>
+      <button type="button" id="btn-snd" title="警報音">SND</button>
+    </div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="p-objects" class="active">追跡<small>TRACK</small></button>
+    <button type="button" role="tab" data-tab="p-target">目標<small>TARGET</small></button>
+    <button type="button" role="tab" data-tab="p-math">数式<small>MATH</small></button>
+    <button type="button" role="tab" data-tab="p-log">記録<small>LOG</small></button>
+  </nav>
+
+  <section class="panel active" id="p-objects">
+    <h2>追跡対象 <span class="dim">/ TRACKED OBJECTS</span> <span class="count" id="obj-count">0</span></h2>
+    <ol class="objlist" id="objlist"></ol>
+  </section>
+
+  <section class="panel" id="p-target">
+    <h2>目標解析 <span class="dim">/ TARGET DOSSIER</span></h2>
+    <div class="target-name" id="t-name">— 未選択 —</div>
+    <div class="verdict" id="t-verdict"></div>
+    <dl class="kv" id="t-kv"></dl>
+    <pre class="tle" id="t-tle"></pre>
+  </section>
+
+  <section class="panel" id="p-math">
+    <h2>演算核 <span class="dim">/ PROPAGATION CORE</span></h2>
+    <div class="math" id="math"></div>
+  </section>
+
+  <section class="panel" id="p-log">
+    <h2>傍受記録 <span class="dim">/ INTERCEPT STREAM</span></h2>
+    <div class="log" id="log"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  演出つきの軌道シミュレーターです。位置は公開TLE(取得できない時は合成した軌道要素)をSGP4で計算した推定値で、実在の機密情報ではありません。
+  <span class="dim">satellite.js (MIT) · Natural Earth</span>
+</footer>
+
+<script src="vendor/satellite.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
