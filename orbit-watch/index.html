@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050706">
+<title>衛星監視室 ARGUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="crt" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="sigil" aria-hidden="true">◬</span>
+    <div>
+      <h1>衛星監視室</h1>
+      <p class="sub">人工衛星の位置をリアルタイムで計算中</p>
+    </div>
+  </div>
+  <div class="status">
+    <span class="pill" id="src-pill"><i class="led"></i><b id="src-label">接続中…</b></span>
+    <button type="button" class="helpbtn" id="btn-help">？使い方</button>
+    <span class="clock" id="utc">----/--/-- --:--:--</span>
+  </div>
+</header>
+
+<div class="classbar">機密区分 第零種 <span class="dim">//</span> 演習用 <span class="dim">//</span> 公開データで計算中 <span class="dim">//</span> 閲覧記録 有効</div>
+
+<div class="alertbar" id="alert" role="status" aria-live="polite">
+  <span class="alert-ico">⚠</span><span id="alert-text">監視網 正常 — 異常軌道なし</span>
+</div>
+
+<div class="passbar" id="passbar">
+  <span class="pass-ico" aria-hidden="true">🛰</span>
+  <div class="pass-text">
+    <b id="pass-main">宇宙ステーション(ISS)が見える時刻を計算中…</b>
+    <small id="pass-sub"></small>
+  </div>
+  <div class="pass-btns">
+    <button type="button" id="btn-gps">📍現在地</button>
+    <button type="button" id="btn-center">◎画面中央</button>
+  </div>
+</div>
+
+<main class="grid">
+  <section class="stage" id="stage">
+    <canvas id="globe" aria-label="地球と追跡中の衛星"></canvas>
+    <div class="hud hud-tl" id="hud-tl"></div>
+    <div class="hud hud-tr" id="hud-tr"></div>
+    <div class="hud hud-bl" id="hud-bl"></div>
+    <div class="hud hud-br" id="hud-br"></div>
+    <div class="controls">
+      <button type="button" id="btn-rot" class="on">自動回転</button>
+      <button type="button" id="btn-warp">早送り×1</button>
+      <button type="button" id="btn-snd">音</button>
+      <button type="button" id="btn-rec" class="rec-btn">🎬撮影</button>
+    </div>
+
+    <div class="rec-ui" id="rec-ui" hidden>
+      <div class="rec-black" id="rec-black"><p id="rec-type"></p></div>
+      <div class="rec-count" id="rec-count" hidden></div>
+      <div class="rec-cap" id="rec-cap">
+        <div class="rec-kicker" id="rec-kicker"></div>
+        <div class="rec-main" id="rec-main"></div>
+        <div class="rec-sub" id="rec-sub"></div>
+      </div>
+      <pre class="rec-ticker" id="rec-ticker"></pre>
+      <div class="rec-note" id="rec-note"></div>
+      <button type="button" class="rec-exit" id="rec-exit" aria-label="撮影モードを終わる">×</button>
+      <div class="rec-end" id="rec-end" hidden>
+        <button type="button" id="rec-again">もう一度</button>
+        <button type="button" id="rec-other">ほかの編</button>
+        <button type="button" id="rec-close">終わる</button>
+      </div>
+    </div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="p-objects" class="active">一覧<small>衛星の一覧</small></button>
+    <button type="button" role="tab" data-tab="p-target">詳細<small>選んだ衛星</small></button>
+    <button type="button" role="tab" data-tab="p-math">数式<small>計算のようす</small></button>
+    <button type="button" role="tab" data-tab="p-log">記録<small>通信ログ</small></button>
+  </nav>
+
+  <section class="panel active" id="p-objects">
+    <h2>追跡中の衛星 <span class="dim">危険度の高い順</span> <span class="count" id="obj-count">0</span></h2>
+    <ol class="objlist" id="objlist"></ol>
+  </section>
+
+  <section class="panel" id="p-target">
+    <h2>選んだ衛星のくわしい情報</h2>
+    <div class="target-name" id="t-name">— 衛星をタップしてください —</div>
+    <div class="verdict" id="t-verdict"></div>
+    <dl class="kv" id="t-kv"></dl>
+    <pre class="tle" id="t-tle"></pre>
+  </section>
+
+  <section class="panel" id="p-math">
+    <h2>計算のようす <span class="dim">選んだ衛星の数値</span></h2>
+    <div class="math" id="math"></div>
+  </section>
+
+  <section class="panel" id="p-log">
+    <h2>通信ログ <span class="dim">新しい順</span></h2>
+    <div class="log" id="log"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  演出つきの衛星シミュレーターです。位置は公開されている軌道データ(取れない時は練習用の作りものデータ)から計算した推定値で、実在の機密情報ではありません。
+  <button type="button" class="linkbtn" id="btn-help2">使い方を見る</button>
+  <span class="dim">satellite.js (MIT) · Natural Earth</span>
+</footer>
+
+<div class="help" id="help" hidden>
+  <div class="help-box" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <h2 id="help-title">使い方</h2>
+    <p>人工衛星の軌道データ(だれでも見られる公開データ)から、今どこを飛んでいるかを計算して地球儀に表示する画面です。右上が「本物のデータ」なら実在の衛星、「練習用データ」なら作りものの衛星です。「機密」「傍受」「警戒」「危険度」などは雰囲気を出すための演出で、本当に危ないわけではありません。</p>
+    <h3>画面の見方</h3>
+    <ul>
+      <li><b class="g">緑の点</b>…陸地。明るいところが昼、暗いところが夜</li>
+      <li><b>小さな四角</b>…衛星。色は危険度: <b class="g">緑=平常</b> <b class="y">黄=注意</b> <b class="r">赤=警戒</b></li>
+      <li><b class="c">水色の丸</b>…観測地点。最初は藤枝周辺。「📍現在地」を押すとあなたの場所になる</li>
+      <li><b>🛰 の帯</b>…次に宇宙ステーション(ISS)が肉眼で見える日時と方角</li>
+      <li><b>線と円</b>…選んだ衛星の通り道と、その衛星から見える範囲</li>
+    </ul>
+    <h3>さわり方</h3>
+    <ul>
+      <li>指でなぞる…地球を回す</li>
+      <li>2本の指で広げる・すぼめる…拡大・縮小</li>
+      <li>衛星をタップ…その衛星を選んで、くわしく見る</li>
+    </ul>
+    <h3>下のボタン</h3>
+    <ul>
+      <li><b>自動回転</b>…地球がゆっくり回る。もう一度押すと止まる</li>
+      <li><b>早送り</b>…押すたびに 1倍→10倍→60倍→600倍 の速さで時間が進む</li>
+      <li><b>音</b>…警報の音を鳴らす(最初は鳴らない)</li>
+      <li><b>🎬撮影</b>…ショート動画用の約30秒の演出(頭上編・魚屋編・宇宙ゴミ編)</li>
+      <li><b>📍現在地</b>…今いる場所を観測地点にする(位置はこの端末の中だけで使い、どこにも送らない)</li>
+      <li><b>◎画面中央</b>…画面のまん中の場所を観測地点にする</li>
+    </ul>
+    <h3>下のタブ</h3>
+    <ul>
+      <li><b>一覧</b>…追跡中の衛星。タップで選べる</li>
+      <li><b>詳細</b>…選んだ衛星の高さ・速さ・あなたから見た方角など</li>
+      <li><b>数式</b>…位置を出すのに使っている計算と、その数値</li>
+      <li><b>記録</b>…計算結果が流れるログ</li>
+    </ul>
+    <button type="button" class="help-close" id="help-close">はじめる</button>
+  </div>
+</div>
+
+<div class="help" id="rec-pick" hidden>
+  <div class="help-box" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+    <h2 id="pick-title">撮影モード</h2>
+    <p>約30秒の縦長動画用の演出が自動で流れます。<b>3・2・1</b> のカウントダウンのあいだに、スマホの<b>画面収録(画面録画)</b>を始めてください。最初と最後の余分なところは、あとで動画アプリで切り取れます。</p>
+    <p class="pick-note">座標は黒塗りで表示し、地図上の印も少しずらすので、録画に居場所は映りません。先に「📍現在地」を押しておくと、あなたの上空で計算します。</p>
+    <div class="pick-list">
+      <button type="button" data-ep="overhead"><b>① 頭上編</b><small>上空の衛星をロックオン → 宇宙ステーションが見える日時</small></button>
+      <button type="button" data-ep="fish"><b>② 魚屋編</b><small>海の水温を測る衛星「しきさい」→ 漁場の予想に使われている</small></button>
+      <button type="button" data-ep="junk"><b>③ 宇宙ゴミ編</b><small>上空の物体のうち、ロケットの残骸はいくつ?</small></button>
+    </div>
+    <button type="button" class="help-close" id="pick-cancel">やめる</button>
+  </div>
+</div>
+
+<script src="vendor/satellite.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
