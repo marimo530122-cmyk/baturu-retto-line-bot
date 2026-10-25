@@ -167,3 +167,6 @@
   `LINE_CHANNEL_ACCESS_TOKEN`(まだ)。友だち追加URL `https://line.me/R/ti/p/@170ubqic` を `SHIELD_LINE_ADD_URL` に入れると、
   見守り画面の招待番号の横に出る(鍵ではない)。そのあと LINE Developers の「Verify」で Webhook を確かめ、第2話(LINE登録)の動画を作る。
   スマホでは manager.line.biz がアプリに飛ばされやすい。Brave(既定のブラウザ)で住所を直接打ち込むと通れた。
+- 声の感情の実験(2026-10-25、`sengoku-shield/experiments/voice-emotion/`): 静岡県警の公開録音11本に emotion2vec+ をかけると、
+  10本で「平静」が最多、怒り・恐れ・驚きが最多の本は無し(愛想のよい話し方が「喜び」と出る本もあった)。
+  「詐欺師は平静・愛想よく話すので、声の感情だけでは見抜けない」裏付けとして、利用者の判断で実験はいったん止めた。本番には入れていない。
