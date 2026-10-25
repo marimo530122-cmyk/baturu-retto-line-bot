@@ -305,17 +305,46 @@ const LEVELS = [
   { min: 0, level: "none", label: "該当なし" },
 ];
 
+// 音声認識は1つの文を途中で区切って、2つの発言に分けてしまうことがある
+// (「…聞かれると思うんだけど」/「それを答えちゃってもらって大丈夫」)。
+// 前の発言が言い切っていない(「〜けど」「〜から」「〜て」「、」で終わる)ときだけ、次の発言とつなげた文でも調べる。
+// 「。」「?」「!」で終わる発言はつなげない(別々の文を無理につなげて、普通の電話を引っかけないため)。
+const UNFINISHED = /(けど|けれど(も)?|から|ので|のに|って|て|で|が|たら|れば|ても|、|,)\s*$/;
+const FINISHED = /[。?!？！]\s*$/;
+
+function continuesToNext(utterance) {
+  const text = String(utterance || "").trim();
+  return !FINISHED.test(text) && UNFINISHED.test(text);
+}
+
+// 「同じ発言の中に A と B がそろったときだけ」のルール(^(?=.*A)(?=.*B) の形)は、つなげた文では調べない。
+// 誤検知を防ぐために「1つの発言の中で」と決めて作ったルールなので、つなげるとその約束が崩れるため。
+function isSameUtteranceRule(p) {
+  return p.regex.source.startsWith("^(?");
+}
+
+// 区切られた1つの文だけを組み立て直す: 前の発言の最後の文の続き + 次の発言の最初の文まで。
+// 次の発言の全部をつなげると、関係のない文まで1つにして(「郵便局で」+ 別の用件の自動音声)誤検知になるため。
+function rejoinSplitSentence(prev, next) {
+  const tail = String(prev).trim().split(/[。?!？！]/).pop();
+  const head = String(next).trim().match(/^[^。?!？！]*[。?!？！]?/)[0];
+  return `${tail}${head}`;
+}
+
 // 任意のルール一式から検知器を作る(ベンチマークで「このルールを足したらどうなるか」を試すのに使う)
 // normalize: false にすると、文字のゆれをそろえる前の動き(元の文だけで調べる)になる(効果の比較用)
-function createDetector(patterns, { normalize = true } = {}) {
+// joinLines: false にすると、途中で区切られた発言をつなげて調べない(効果の比較用)
+function createDetector(patterns, { normalize = true, joinLines = true } = {}) {
+  const joinablePatterns = patterns.filter((p) => !isSameUtteranceRule(p));
+
   // テキストに含まれる詐欺パターンを返す(同じパターンは1回だけ数える)
   // 元の文で当たらなかったルールだけ、文字のゆれをそろえた文(lib/normalize.js)でもう一度調べる
   // (「五十万円」「キャッシュ カード」「１２３４」など。そろえたせいで当たらなくなることはない)
-  function detect(text) {
+  function detect(text, rules = patterns) {
     const raw = String(text || "");
     let normalized = null;
     const matches = [];
-    for (const p of patterns) {
+    for (const p of rules) {
       let m = raw.match(p.regex);
       let viaNormalized = false;
       if (!m && normalize) {
@@ -336,6 +365,16 @@ function createDetector(patterns, { normalize = true } = {}) {
     for (const u of utterances) {
       for (const m of detect(u)) {
         if (!seen.has(m.id)) seen.set(m.id, m);
+      }
+    }
+    // 1つの発言だけでは当たらず、言い切っていない発言と次の発言をつなげたときだけ当たるルールを足す
+    if (joinLines) {
+      for (let i = 0; i + 1 < utterances.length; i++) {
+        if (!continuesToNext(utterances[i])) continue;
+        const joined = rejoinSplitSentence(utterances[i], utterances[i + 1]);
+        for (const m of detect(joined, joinablePatterns)) {
+          if (!seen.has(m.id)) seen.set(m.id, { ...m, joined: true });
+        }
       }
     }
     const matches = [...seen.values()];
@@ -362,4 +401,6 @@ module.exports = {
   score,
   createDetector,
   compileRules,
+  continuesToNext,
+  rejoinSplitSentence,
 };

@@ -9,7 +9,7 @@
 // - 鮮刻シールドの通話ログ(data/calls/*.json)。相手(caller)の発言だけを使う
 // - ふつうのテキスト(1行1発言、空行で区切ると別の電話)
 //
-// 比べるのは「前」(元の文だけで調べる・段階の連鎖なし)と「後」(今の判定)。
+// 比べるのは「前」(元の文だけで調べる・区切られた文をつなげない・段階の連鎖なし)と「後」(今の判定)。
 // 結果を書き出すファイルは作らない(通話の中身をリポジトリに残さないため)。
 // ここで見た見逃しに合わせてルールを直さないこと(holdout と同じで、数字が実力以上に良く見えるため)。
 
@@ -82,7 +82,8 @@ function evaluate(call, { before, after }) {
     utterances: call.utterances.length,
     before: old.level,
     after: verdict.level,
-    addedByNormalize: now.matches.filter((m) => !oldIds.has(m.id)).map((m) => m.id),
+    addedByNormalize: now.matches.filter((m) => !oldIds.has(m.id) && !m.joined).map((m) => m.id),
+    addedByJoin: now.matches.filter((m) => !oldIds.has(m.id) && m.joined).map((m) => m.id),
     chain: verdict.chain ?? null,
     matched: now.matches.map((m) => m.id),
   };
@@ -91,8 +92,11 @@ function evaluate(call, { before, after }) {
 function summarize(results) {
   const count = (fn) => results.filter(fn).length;
   const levels = (key) => Object.fromEntries(ORDER.map((l) => [l, count((r) => r[key] === l)]));
-  const ruleHits = {};
-  for (const r of results) for (const id of r.addedByNormalize) ruleHits[id] = (ruleHits[id] || 0) + 1;
+  const hits = (key) => {
+    const out = {};
+    for (const r of results) for (const id of r[key]) out[id] = (out[id] || 0) + 1;
+    return out;
+  };
   return {
     calls: results.length,
     utterances: results.reduce((n, r) => n + r.utterances, 0),
@@ -101,7 +105,9 @@ function summarize(results) {
     flaggedBefore: count((r) => FLAGGED.has(r.before)),
     flaggedAfter: count((r) => FLAGGED.has(r.after)),
     raisedByNormalize: count((r) => r.addedByNormalize.length > 0),
-    normalizeRuleHits: ruleHits,
+    normalizeRuleHits: hits("addedByNormalize"),
+    raisedByJoin: count((r) => r.addedByJoin.length > 0),
+    joinRuleHits: hits("addedByJoin"),
     raisedToHighByChain: count((r) => r.chain !== null),
     levelUp: count((r) => ORDER.indexOf(r.after) > ORDER.indexOf(r.before)),
     levelDown: count((r) => ORDER.indexOf(r.after) < ORDER.indexOf(r.before)),
@@ -115,19 +121,20 @@ function toMarkdown(s, results, { details = false } = {}) {
     "",
     `- 電話の数: ${s.calls}件(発言 ${s.utterances}行)`,
     "",
-    "| | 前(元の文だけ・連鎖なし) | 後(今の判定) |",
+    "| | 前(元の文だけ・つなげない・連鎖なし) | 後(今の判定) |",
     "|---|---|---|",
     ...ORDER.slice().reverse().map((l) => `| ${l} | ${s.before[l]} | ${s.after[l]} |`),
     `| **中以上(警告が出る)** | **${s.flaggedBefore}(${pct(s.flaggedBefore)})** | **${s.flaggedAfter}(${pct(s.flaggedAfter)})** |`,
     "",
     `- 文字のゆれをそろえて、新しく当たったルールがあった電話: ${s.raisedByNormalize}件 ${JSON.stringify(s.normalizeRuleHits)}`,
+    `- 区切られた文をつなげて、新しく当たったルールがあった電話: ${s.raisedByJoin}件 ${JSON.stringify(s.joinRuleHits)}`,
     `- 手口の段階がそろって「高」に上げた電話: ${s.raisedToHighByChain}件`,
     `- 判定が上がった電話: ${s.levelUp}件 / 下がった電話: ${s.levelDown}件(下がることはない作りなので、0件のはず)`,
   ];
   if (details) {
-    lines.push("", "| 電話 | 発言数 | 前 | 後 | そろえて当たった | 段階の連鎖 | 当たったルール |", "|---|---|---|---|---|---|---|");
+    lines.push("", "| 電話 | 発言数 | 前 | 後 | そろえて当たった | つなげて当たった | 段階の連鎖 | 当たったルール |", "|---|---|---|---|---|---|---|---|");
     for (const r of results) {
-      lines.push(`| ${r.name} | ${r.utterances} | ${r.before} | ${r.after} | ${r.addedByNormalize.join(", ")} | ${r.chain ?? ""} | ${r.matched.join(", ")} |`);
+      lines.push(`| ${r.name} | ${r.utterances} | ${r.before} | ${r.after} | ${r.addedByNormalize.join(", ")} | ${r.addedByJoin.join(", ")} | ${r.chain ?? ""} | ${r.matched.join(", ")} |`);
     }
   }
   return lines.join("\n") + "\n";
@@ -140,7 +147,7 @@ function main(argv) {
     console.error("使い方: node field-eval.js [--details] <ファイルやフォルダ> ...");
     process.exit(2);
   }
-  const before = detector.createDetector(detector.PATTERNS, { normalize: false });
+  const before = detector.createDetector(detector.PATTERNS, { normalize: false, joinLines: false });
   const after = detector.createDetector(detector.PATTERNS);
   // 同じ録音が何度も文字起こしされていても、1回だけ数える
   const seen = new Set();

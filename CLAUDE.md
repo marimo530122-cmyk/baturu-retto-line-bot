@@ -95,6 +95,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   検知ルールはAI提案→機械チェック→人間承認で育てる(`evolve.js`、自動反映はしない)。
   手元の追加の検知部品(文字のゆれをそろえる `lib/normalize.js`、手口の段階の連鎖・AIの乗っ取り検知の `lib/checkers.js`)は
   `lib/jev.js` の `combine()` で Jev と合わせる。部品は通信なし・例外を外に出さない。普通の電話を新しく「中」以上にする部品は入れない。
+  音声認識が区切った文は、前の発言が言い切っていないときだけ、その1文を組み立て直して調べる(`lib/detector.js` の `joinLines`)。
+  効果は `field-eval.js`(警察の録音の文字起こしで、前と後を比べる)で測る。そこで見た見逃しに合わせてルールを直さない。
   普通の電話93件で誤検知ゼロを確認するベンチマーク(`evidence/` に結果を保存)と、
   ハッシュでつないだ監査ログ(`audit/audit-log.jsonl`、追記のみ・手で編集しない)があり、
   `.github/workflows/sengoku-shield-ci.yml` で毎回検証する。
