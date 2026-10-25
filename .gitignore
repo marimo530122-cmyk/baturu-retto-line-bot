@@ -21,3 +21,8 @@ freee_import_journal.csv
 temp_frame.jpg
 # 鮮刻シールドの操作手順動画(作るたびに作り直すのでGitに入れない)
 sengoku-shield/video/out/
+
+# 声の感情の実験の結果(文字起こしが入るのでGitに入れない)
+sengoku-shield/experiments/voice-emotion/*.csv
+sengoku-shield/experiments/voice-emotion/*_summary.md
+sengoku-shield/experiments/voice-emotion/samples/
