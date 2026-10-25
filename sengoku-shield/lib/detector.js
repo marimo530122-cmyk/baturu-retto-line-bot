@@ -306,7 +306,8 @@ const LEVELS = [
 ];
 
 // 任意のルール一式から検知器を作る(ベンチマークで「このルールを足したらどうなるか」を試すのに使う)
-function createDetector(patterns) {
+// normalize: false にすると、文字のゆれをそろえる前の動き(元の文だけで調べる)になる(効果の比較用)
+function createDetector(patterns, { normalize = true } = {}) {
   // テキストに含まれる詐欺パターンを返す(同じパターンは1回だけ数える)
   // 元の文で当たらなかったルールだけ、文字のゆれをそろえた文(lib/normalize.js)でもう一度調べる
   // (「五十万円」「キャッシュ カード」「１２３４」など。そろえたせいで当たらなくなることはない)
@@ -317,7 +318,7 @@ function createDetector(patterns) {
     for (const p of patterns) {
       let m = raw.match(p.regex);
       let viaNormalized = false;
-      if (!m) {
+      if (!m && normalize) {
         if (normalized === null) normalized = normalizeText(raw);
         if (normalized !== raw) {
           m = normalized.match(p.regex);

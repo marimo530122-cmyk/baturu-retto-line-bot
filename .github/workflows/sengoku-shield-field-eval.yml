@@ -1,0 +1,52 @@
+# 鮮刻シールド: 警察が公開している実際の詐欺電話の録音の文字起こし(transcribe-police-audio の過去の実行ログ)で、
+# 追加の検知部品の効果を測る。文字起こしはやり直さず、過去の実行ログを読むだけ(1分ほどで終わる)。
+# 結果は数字とルールの id だけをまとめ(Summary)に出す。ログやファイルはリポジトリに保存しない。
+name: sengoku-shield-field-eval
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_ids:
+        description: "文字起こしワークフロー(transcribe-police-audio)の実行ID(空白区切り)"
+        required: true
+        default: "36984534581 36984554202"
+  push:
+    branches: ["ccr-**", "claude/**"]
+    paths:
+      - ".github/workflows/sengoku-shield-field-eval.yml"
+      - "sengoku-shield/field-eval.js"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sengoku-shield
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+
+      - name: 文字起こしの実行ログを取ってくる
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_IDS: ${{ github.event.inputs.run_ids || '36984534581 36984554202' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/transcripts"
+          for run in $RUN_IDS; do
+            for job in $(gh api "repos/${{ github.repository }}/actions/runs/$run/jobs?per_page=100" \
+                -q '.jobs[] | select(.name | startswith("transcribe")) | .id'); do
+              gh api "repos/${{ github.repository }}/actions/jobs/$job/logs" > "$RUNNER_TEMP/transcripts/$job.log"
+            done
+          done
+          ls "$RUNNER_TEMP/transcripts" | wc -l
+
+      - name: 前と後で判定を比べる
+        run: node field-eval.js --details "$RUNNER_TEMP/transcripts" | tee -a "$GITHUB_STEP_SUMMARY"
