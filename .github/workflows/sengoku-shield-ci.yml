@@ -31,6 +31,13 @@ jobs:
       - name: テスト
         run: npm test
 
+      # @ts-check を付けたファイル(追加の検知部品)の型を TypeScript の厳しい設定で確かめる(依存には加えない)
+      - name: 型チェック(@ts-check のファイル)
+        run: |
+          npm install --no-save --no-audit --no-fund typescript@5.9.3 @types/node@22
+          npx tsc --noEmit --allowJs --checkJs --strict --target es2022 --module commonjs \
+            --moduleResolution node --types node lib/normalize.js lib/checkers.js
+
       - name: 誤検知ベンチマーク(誤検知が1件でもあれば失敗)
         run: node benchmark.js --check --out "$RUNNER_TEMP/evidence"
 

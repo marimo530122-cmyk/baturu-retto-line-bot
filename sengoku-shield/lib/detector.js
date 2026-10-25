@@ -7,6 +7,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { normalizeText } = require("./normalize");
 
 const BUILTIN_PATTERNS = [
   {
@@ -307,11 +308,23 @@ const LEVELS = [
 // 任意のルール一式から検知器を作る(ベンチマークで「このルールを足したらどうなるか」を試すのに使う)
 function createDetector(patterns) {
   // テキストに含まれる詐欺パターンを返す(同じパターンは1回だけ数える)
+  // 元の文で当たらなかったルールだけ、文字のゆれをそろえた文(lib/normalize.js)でもう一度調べる
+  // (「五十万円」「キャッシュ カード」「１２３４」など。そろえたせいで当たらなくなることはない)
   function detect(text) {
+    const raw = String(text || "");
+    let normalized = null;
     const matches = [];
     for (const p of patterns) {
-      const m = String(text || "").match(p.regex);
-      if (m) matches.push({ id: p.id, label: p.label, weight: p.weight, hit: m[0] });
+      let m = raw.match(p.regex);
+      let viaNormalized = false;
+      if (!m) {
+        if (normalized === null) normalized = normalizeText(raw);
+        if (normalized !== raw) {
+          m = normalized.match(p.regex);
+          viaNormalized = Boolean(m);
+        }
+      }
+      if (m) matches.push({ id: p.id, label: p.label, weight: p.weight, hit: m[0], ...(viaNormalized && { normalized: true }) });
     }
     return matches;
   }

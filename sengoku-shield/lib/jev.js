@@ -8,6 +8,9 @@
 // - スマホ連動(lib/realtime.js)では、発話ごとに短いタイムアウトで呼ぶ。
 // - TYPESAFE_API_KEY が無い・失敗したときは null を返し、正規表現の判定だけで動く。
 // - API形式は realtime-minutes/lib/classify/jevClassifier.ts と同じ POST /v1/systemone。
+// - 手元で動く追加の検知部品(lib/checkers.js)の結果も combine() で合わせる。
+
+const { runCheckers } = require("./checkers");
 
 const VERDICTS = {
   scam_likely: "詐欺の手口にかなり近い(お金・カード・個人情報を狙う流れがある)",
@@ -140,23 +143,29 @@ async function judgeEngagement(history, opts) {
 }
 
 // 正規表現の判定とJevの判定を合わせて、最終的な疑いレベルを決める
+// - 先に追加の検知部品(lib/checkers.js)を動かし、「手口の段階がそろった」なら正規表現の判定を高に上げる
 // - どちらかが「高」なら高(見逃しを減らす)
 // - 正規表現が「中」でも、Jevが普通の用件と判定したら「低」に下げる(誤検知を減らす)
-function combine(detection, jev) {
-  if (!jev) return { level: detection.level, label: detection.label, by: "regex" };
+// 返り値に、上げた理由(chain)を付ける(上げなかったときは付けない)
+function combine(detection, jev, findings = runCheckers({ detection })) {
+  const chain = findings.find((f) => f.escalateTo === "high") ?? null;
+  const regex = chain && detection.level !== "high" ? { ...detection, level: "high", label: "詐欺の疑い:高" } : detection;
+  const regexBy = regex === detection ? "regex" : "regex+chain";
+  const withChain = (verdict) => (regex === detection ? verdict : { ...verdict, chain: chain.label });
+  if (!jev) return withChain({ level: regex.level, label: regex.label, by: regexBy });
   const jevHigh = jev.verdict === "scam_likely" || jev.risk === 3;
   const jevLegit = jev.verdict === "legitimate" || jev.risk === 0;
 
-  if (detection.level === "high" || jevHigh) {
-    return { level: "high", label: "詐欺の疑い:高", by: jevHigh ? "regex+jev" : "regex" };
+  if (regex.level === "high" || jevHigh) {
+    return withChain({ level: "high", label: "詐欺の疑い:高", by: jevHigh ? `${regexBy}+jev` : regexBy });
   }
-  if (detection.level === "medium" && jevLegit) {
+  if (regex.level === "medium" && jevLegit) {
     return { level: "low", label: "詐欺の疑い:低", by: "regex+jev" };
   }
-  if (detection.level !== "medium" && (jev.verdict === "suspicious" || jev.risk === 2)) {
+  if (regex.level !== "medium" && (jev.verdict === "suspicious" || jev.risk === 2)) {
     return { level: "medium", label: "詐欺の疑い:中", by: "jev" };
   }
-  return { level: detection.level, label: detection.label, by: "regex+jev" };
+  return { level: regex.level, label: regex.label, by: "regex+jev" };
 }
 
 module.exports = { judgeCall, judgeTurn, judgeEngagement, combine, enabled, VERDICTS, ENGAGEMENT, GAG, METHOD };
