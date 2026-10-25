@@ -79,9 +79,12 @@ IP は X-Forwarded-For の先頭を使うため、IP を偽って締め出しを
   `npm audit`(5か所)・`pip-audit`(6ファイル)を実行。失敗したら Discord/Slack に通知。
 - `.github/workflows/secret-scan.yml`: すべての push・PR で `gitleaks`(鍵の書き込みチェック)。
 
-### 今わかっている残りの穴(別の作業で直す)
+### 解消した穴(2026-10-25)
 
-- `medical-ai/frontend` の Next.js 14.2.35 に **critical** の既知の穴。直すには Next.js 16 への更新が必要
-  (大きな更新で画面が壊れる可能性があるため、今回は手を付けていない)。それまで点検ワークフローはここが赤になる。
-- `realtime-minutes` は Next.js を 15.5.28 に更新して critical を解消。Next.js が中に持っている
-  `postcss` の high が1件残る(ビルド時だけ使う部品。こちらも Next.js 16 で解消)。
+- `medical-ai/frontend`: Next.js 14.2.35 には、ログインなしで画像最適化API経由のリモートコード実行ができる **critical** の穴があった。
+  Next.js 15.5.28・React 19 に更新して解消(16 までは不要)。デモ医師でログイン → 受付患者一覧 → 診察開始 → 診察画面まで、
+  ブラウザのエラーなしで動くことを確認した。
+- `realtime-minutes`: Next.js を 15.5.28 に更新して critical を解消。
+- 両方: Next.js が中に持っている古い `postcss`(8.4.31)は、`package.json` の `overrides` で本体と同じ修正済みの版を使わせている。
+  Next.js を次に更新するときは、この `overrides` がまだ必要か(`npm ls postcss`)を確かめて、不要なら外す。
+- 残りは `realtime-minutes` の low 3件だけ(数式表示の KaTeX まわり。点検の基準の high 未満)。
