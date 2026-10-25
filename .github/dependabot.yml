@@ -1,0 +1,43 @@
+# 使っているライブラリに穴(脆弱性)が見つかったら、GitHub が自動で「更新のプルリクエスト」を作る設定。
+# 毎週月曜に確認する。PRは中身(CIの結果)を見てからマージする(自動マージはしない)。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - "/"
+      - "/automation"
+      - "/sengoku-shield"
+      - "/realtime-minutes"
+      - "/medical-ai/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    groups:
+      # 小さな更新(バグ修正・機能追加)は1つのPRにまとめて、PRの数を増やしすぎない
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directories:
+      - "/medical-ai/backend"
+      - "/medical-ai-local"
+      - "/freelance"
+      - "/scripts"
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-and-patch:
+        update-types: [minor, patch]
+
+  # ワークフローで使っている GitHub Actions 自体も古いままにしない
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Tokyo

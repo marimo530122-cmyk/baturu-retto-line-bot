@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     session_idle_minutes: int = 30
     # 試し用の架空アカウント(demo-doctor 等)を作るか。本番では必ず false のままにする
     seed_demo_users: bool = False
+    # 不正アクセスの見張り(app/security.py)。知らせ先は Discord / Slack の Webhook URL(空ならログだけ)
+    security_alert_webhook_url: str | None = None
+    security_rate_per_min: int = 120
+    security_auth_fail_limit: int = 20
+    security_lock_minutes: int = 15
+    security_alert_auth_fail: int = 30
+    security_alert_5xx: int = 5
+    security_alert_total: int = 3000
 
     @property
     def mock_mode(self) -> bool:

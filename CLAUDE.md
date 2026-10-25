@@ -146,9 +146,18 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - 文字数はXの数え方(日本語2・URL23)で280以内かを投稿前にチェックする。
 - 手動実行時に `dry_run=1` を指定すると投稿せず文面だけ確認できる。
 
+## セキュリティ
+
+点検結果・鍵が漏れたときの無効化手順・残りの課題は `docs/SECURITY.md`。
+- 鮮刻シールドは `lib/guard.js`、医療AIは `app/security.py` で、連打(429)・401/403 が続くIPの締め出し・
+  警報(Discord/Slack の Webhook)をしている。外す・しきい値を大きく緩めるときは理由を書くこと。
+- 受け取る入力には型と長さの上限を付ける。SQL は必ず `?` のプレースホルダーで書く。
+- `.github/workflows/security-scan.yml`(npm audit / pip-audit)・`secret-scan.yml`(gitleaks)と `.github/dependabot.yml` で依存と鍵を自動点検する。
+
 ## 必要なSecrets
 
 - `GEMINI_API_KEY` / `HACCP_ZIP_PASSWORD` — HACCP・経理ツール用(Gemini のキーと、結果ZIPのパスワード)。
+- `SECURITY_ALERT_WEBHOOK_URL` — (任意)セキュリティ点検ワークフローが失敗したときの通知先(Discord / Slack の Webhook URL)。
 
 - `ANTHROPIC_API_KEY` — Claude API キー。GitHub リポジトリの
   Settings → Secrets and variables → Actions に登録しておく。
