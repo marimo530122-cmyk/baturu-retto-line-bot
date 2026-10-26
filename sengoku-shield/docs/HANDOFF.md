@@ -149,6 +149,9 @@
   「電話が止まる」型(総務省・通信会社かたり)が弱く、確認済みの例文もまだ無い。
 - 利用者は Render の main を「Manual Deploy → Deploy latest commit」で反映していた。2026-10-16 に Render の Settings の Auto-Deploy を「On Commit」にした
   (マージで自動反映されるかは #33 のマージで確かめる。「Public Git Repository」でつないだサービスは自動反映されないことがあり、そのときは Deploy Hook を GitHub Secrets に入れてワークフローから叩く方法にする)。
+  2026-10-26: #35 のマージでは自動反映されなかった(20分待っても古い版のまま)。利用者が Manual Deploy して Live になり、
+  `sengoku-shield-health.yml`(外からの起動確認)で新しい版が動いていることを確かめた。以後は `sengoku-shield-deploy.yml` が
+  GitHub Secrets の `RENDER_DEPLOY_HOOK_SENGOKU`(Render の Deploy Hook の URL)を叩いて反映する。Secret が未設定の間は Manual Deploy が要る。
 
 ## 10. 2026-10-15 の追加
 
