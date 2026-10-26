@@ -10,16 +10,16 @@
     "test": "node --experimental-strip-types --no-warnings --test tests/*.test.ts"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.3.0",
+    "@huggingface/transformers": "^4.3.1",
     "@ricky0123/vad-web": "^0.0.31",
     "lucide-react": "^0.468.0",
     "markmap-lib": "^0.18.8",
     "markmap-view": "^0.18.8",
     "next": "^15.1.0",
-    "pdfjs-dist": "^6.3.289",
+    "pdfjs-dist": "^6.4.299",
     "qrcode": "^1.5.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
@@ -28,7 +28,7 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
+    "postcss": "^8.5.31",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"
   },
