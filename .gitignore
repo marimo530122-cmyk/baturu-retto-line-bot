@@ -21,3 +21,18 @@ freee_import_journal.csv
 temp_frame.jpg
 # 鮮刻シールドの操作手順動画(作るたびに作り直すのでGitに入れない)
 sengoku-shield/video/out/
+# ---- 鍵・証明書を Git に入れない(セキュリティ) ----
+# .env.example(中身が空のひな形)だけは入れてよい
+.env.*
+!.env.example
+!.env.local.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*service-account*.json
+credentials*.json
+# Next.js の書き出し(ビルド時の内部の鍵が入る)
+.next/

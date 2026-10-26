@@ -93,6 +93,10 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - `sengoku-shield/` — 鮮刻シールド(せんこくシールド、詐欺電話対策ツール。「戦国」ではなく「鮮刻」。フォルダ名やURLの sengoku はそのまま)。Twilio着信にAIが応対して時間を稼ぎ、
   正規表現+Jev(TypeSafe、任意)で詐欺パターンを検知する。声紋照合・公的機関の名乗り・SNS自動投稿は意図的に入れていない。
   検知ルールはAI提案→機械チェック→人間承認で育てる(`evolve.js`、自動反映はしない)。
+  手元の追加の検知部品(文字のゆれをそろえる `lib/normalize.js`、手口の段階の連鎖・AIの乗っ取り検知の `lib/checkers.js`)は
+  `lib/jev.js` の `combine()` で Jev と合わせる。部品は通信なし・例外を外に出さない。普通の電話を新しく「中」以上にする部品は入れない。
+  音声認識が区切った文は、前の発言が言い切っていないときだけ、その1文を組み立て直して調べる(`lib/detector.js` の `joinLines`)。
+  効果は `field-eval.js`(警察の録音の文字起こしで、前と後を比べる)で測る。そこで見た見逃しに合わせてルールを直さない。
   普通の電話93件で誤検知ゼロを確認するベンチマーク(`evidence/` に結果を保存)と、
   ハッシュでつないだ監査ログ(`audit/audit-log.jsonl`、追記のみ・手で編集しない)があり、
   `.github/workflows/sengoku-shield-ci.yml` で毎回検証する。
@@ -146,9 +150,18 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
 - 文字数はXの数え方(日本語2・URL23)で280以内かを投稿前にチェックする。
 - 手動実行時に `dry_run=1` を指定すると投稿せず文面だけ確認できる。
 
+## セキュリティ
+
+点検結果・鍵が漏れたときの無効化手順・残りの課題は `docs/SECURITY.md`。
+- 鮮刻シールドは `lib/guard.js`、医療AIは `app/security.py` で、連打(429)・401/403 が続くIPの締め出し・
+  警報(Discord/Slack の Webhook)をしている。外す・しきい値を大きく緩めるときは理由を書くこと。
+- 受け取る入力には型と長さの上限を付ける。SQL は必ず `?` のプレースホルダーで書く。
+- `.github/workflows/security-scan.yml`(npm audit / pip-audit)・`secret-scan.yml`(gitleaks)と `.github/dependabot.yml` で依存と鍵を自動点検する。
+
 ## 必要なSecrets
 
 - `GEMINI_API_KEY` / `HACCP_ZIP_PASSWORD` — HACCP・経理ツール用(Gemini のキーと、結果ZIPのパスワード)。
+- `SECURITY_ALERT_WEBHOOK_URL` — (任意)セキュリティ点検ワークフローが失敗したときの通知先(Discord / Slack の Webhook URL)。
 
 - `ANTHROPIC_API_KEY` — Claude API キー。GitHub リポジトリの
   Settings → Secrets and variables → Actions に登録しておく。

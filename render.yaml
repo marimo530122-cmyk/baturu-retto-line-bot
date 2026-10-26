@@ -40,6 +40,9 @@ services:
         sync: false
       - key: SHIELD_LINE_ADD_URL
         sync: false
+      # 不正アクセスの警報の送り先(Discord / Slack の Webhook URL)。空ならログに出すだけ
+      - key: SHIELD_ALERT_WEBHOOK_URL
+        sync: false
 
   # --- 医療AI診察支援アプリ(プロトタイプ) ---
   # 手順は medical-ai/README.md の「スマホ・どこからでも開けるURLを作る」を参照。
@@ -60,6 +63,8 @@ services:
       # 本物の患者情報は絶対に入れないこと(パスワードがREADMEで公開されている)。
       - key: SEED_DEMO_USERS
         value: "true"
+      - key: SECURITY_ALERT_WEBHOOK_URL
+        sync: false
 
   - type: web
     name: medical-ai-frontend
