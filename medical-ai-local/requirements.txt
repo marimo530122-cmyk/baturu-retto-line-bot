@@ -2,6 +2,6 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 faster-whisper>=1.0.3
-httpx>=0.27
+httpx>=0.28.1
 cryptography>=42.0
 qrcode>=7.4
