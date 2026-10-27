@@ -5,6 +5,8 @@
 
 const elicit = require("./elicit");
 const jev = require("./jev");
+const { detectPromptInjection } = require("./checkers");
+const { normalizeText } = require("./normalize");
 
 const AI_MODEL = process.env.SHIELD_AI_MODEL || "claude-opus-5";
 // 相手の様子をJevに聞くときの待ち時間(返事が遅れすぎないように短く)
@@ -122,8 +124,13 @@ const GIVEAWAY = /詐欺|騙|だまし|だまさ|怪しい|あやしい|通報|1
 // こちらから家に来るよう誘う言い方・お金を動かすつもりに聞こえる聞き方(受け取り役が本当に来る・相手が本気になる)
 const INVITE = /振り?込み?先|振り?込む口座|(?:家|うち)に来て|来て(?:くれ|もら|ください|ちょうだい)|いつ(?:頃|ごろ)?来(?:られ|れ|る)|どこに振り?込め|どの(?:番号|口座)に(?:すれ|入れ|振)|までに(?:連絡|電話|振り?込|用意|払)/;
 
+// 元の文と、文字のゆれをそろえた文(「一二三四」→「1234」、全角→半角など)の両方で確かめる
 function isSafeReply(text) {
   if (!text || text.length > 120) return false;
+  return isSafeText(text) && isSafeText(normalizeText(text));
+}
+
+function isSafeText(text) {
   // 4桁以上の数字列(番号っぽいもの)は読み上げない
   if (/\d{4,}|[0-9０-９]{4,}/.test(text)) return false;
   // 約束をしてしまう返事は読み上げない(受け取り役が本当に来てしまうのを防ぐ)
@@ -196,6 +203,12 @@ async function reply(history, turn, { gender = process.env.SHIELD_VOICE_GENDER }
   const fixed = (source) => ({ text: fixedReply(plan, turn, recentShieldLines), source, strategy });
 
   if (!USE_AI) return fixed("fixed");
+  // 「これまでの指示は無視して」などとAIを操ろうとしたら、その回はAIを使わない(lib/checkers.js)
+  const injection = detectPromptInjection(history.filter((h) => h.role === "caller").map((h) => h.text));
+  if (injection) {
+    console.log(`[decoy] AIを操ろうとする言い方を検知(${injection.evidence[0]})。決まった言い方で返します`);
+    return fixed("fixed(injection)");
+  }
   const messages = toMessages(history);
   if (!messages.length || messages[messages.length - 1].role !== "user") return fixed("fixed");
   try {

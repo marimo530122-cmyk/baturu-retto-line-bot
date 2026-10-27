@@ -3,8 +3,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import Annotated
 
 from pydantic import BaseModel, Field
+
+# 画面・APIから受け取る文字の長さの上限(巨大な入力でメモリ・AI料金を食いつぶされないように)
+ShortText = Annotated[str, Field(max_length=200)]
+LongText = Annotated[str, Field(max_length=20_000)]
+# パスワードは scrypt で計算するので、極端に長いものは計算の負荷になる
+PasswordText = Annotated[str, Field(max_length=256)]
 
 
 def _id() -> str:
@@ -209,42 +216,42 @@ class ConsultationSession(BaseModel):
 
 class ManualTranscriptIn(BaseModel):
     speaker: Speaker = Speaker.UNKNOWN
-    text: str
+    text: Annotated[str, Field(min_length=1, max_length=5_000)]
 
 
 class SoapUpdate(BaseModel):
-    subjective: str | None = None
-    objective: str | None = None
-    assessment: str | None = None
-    plan: str | None = None
+    subjective: LongText | None = None
+    objective: LongText | None = None
+    assessment: LongText | None = None
+    plan: LongText | None = None
 
 
 class ReferralUpdate(BaseModel):
-    to_institution: str | None = None
-    to_department: str | None = None
-    reason_for_referral: str | None = None
-    clinical_summary: str | None = None
-    current_treatment: str | None = None
-    requested_action: str | None = None
+    to_institution: ShortText | None = None
+    to_department: ShortText | None = None
+    reason_for_referral: LongText | None = None
+    clinical_summary: LongText | None = None
+    current_treatment: LongText | None = None
+    requested_action: LongText | None = None
 
 
 class PrescriptionUpdate(BaseModel):
-    diagnosis: str | None = None
-    items: list[PrescriptionItem] | None = None
-    patient_request_note: str | None = None
+    diagnosis: LongText | None = None
+    items: Annotated[list[PrescriptionItem], Field(max_length=50)] | None = None
+    patient_request_note: LongText | None = None
 
 
 class ComplianceCheckIn(BaseModel):
-    requested_days_supply: int | None = None
+    requested_days_supply: Annotated[int, Field(ge=1, le=365)] | None = None
 
 
 class HandoffIn(BaseModel):
-    targets: list[HandoffTarget]
-    note: str = ""
+    targets: Annotated[list[HandoffTarget], Field(max_length=10)]
+    note: LongText = ""
 
 
 class PhysicianProfileUpdate(BaseModel):
-    style_notes: str
+    style_notes: LongText
 
 
 # ---------------------------------------------------------------------------
@@ -298,8 +305,8 @@ class AuthSession(BaseModel):
 
 
 class LoginIn(BaseModel):
-    login_id: str
-    password: str
+    login_id: Annotated[str, Field(max_length=64)]
+    password: PasswordText
 
 
 class LoginOut(BaseModel):
@@ -309,22 +316,22 @@ class LoginOut(BaseModel):
 
 
 class ChangePasswordIn(BaseModel):
-    current_password: str
-    new_password: str
+    current_password: PasswordText
+    new_password: PasswordText
 
 
 class UserCreateIn(BaseModel):
-    login_id: str
-    display_name: str
+    login_id: Annotated[str, Field(min_length=1, max_length=64)]
+    display_name: Annotated[str, Field(min_length=1, max_length=100)]
     role: Role
-    temporary_password: str
+    temporary_password: PasswordText
 
 
 class UserUpdateIn(BaseModel):
-    display_name: str | None = None
+    display_name: Annotated[str, Field(min_length=1, max_length=100)] | None = None
     role: Role | None = None
     is_active: bool | None = None
 
 
 class PasswordResetIn(BaseModel):
-    temporary_password: str
+    temporary_password: PasswordText

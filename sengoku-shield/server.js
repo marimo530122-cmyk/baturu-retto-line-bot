@@ -20,6 +20,7 @@ const family = require("./lib/family");
 const line = require("./lib/line");
 const { maskPhone } = require("./lib/mask");
 const intel = require("./lib/intel");
+const guard = require("./lib/guard");
 
 const PORT = Number(process.env.PORT || 3000);
 // Render に置いたときは、Render が入れてくれる RENDER_EXTERNAL_URL をそのまま使う
@@ -355,9 +356,18 @@ const ROUTES = {
 
 const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url, "http://localhost").pathname;
+  guard.securityHeaders(res);
   if (req.method === "GET" && pathname === "/health") {
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end("ok");
+  }
+  // 連打・総当たりの見張り(止めた・間違えた・エラーが続いたら開発者に知らせる)
+  const ip = guard.clientIp(req);
+  res.on("finish", () => guard.record(ip, res.statusCode, pathname));
+  const blocked = guard.check(ip);
+  if (blocked) {
+    res.setHeader("Retry-After", blocked === "locked" ? "900" : "60");
+    return sendJson(res, 429, { error: "アクセスが多すぎます。しばらく待ってからお試しください。" });
   }
   if (req.method === "GET" && pathname === "/app") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -427,6 +437,7 @@ if (require.main === module) {
     console.log("Twilio の設定(TWILIO_AUTH_TOKEN と SHIELD_PUBLIC_URL)が無いので、電話の受け口(/voice/*)は閉じて起動します。見守り画面と LINE は使えます。");
   }
   if (!APP_TOKEN) console.log("SHIELD_APP_TOKEN が空なので、見守り画面の判定(/api/*)は使えません。");
+  if (!process.env.SHIELD_ALERT_WEBHOOK_URL) console.log("SHIELD_ALERT_WEBHOOK_URL が空なので、不正アクセスの警報はログに出すだけです。");
   server.listen(PORT, () => {
     console.log(`鮮刻シールド起動: port ${PORT}(電話の受け口: ${VOICE_ENABLED ? "ON" : "OFF"} / AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
   });

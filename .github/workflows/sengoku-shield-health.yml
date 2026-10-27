@@ -1,0 +1,64 @@
+# 鮮刻シールド: Render に置いた本番のサーバーが正常に動いているかを外から確かめる(合言葉は使わない)。
+# デプロイの後に Actions の画面から手動で動かす。新しい版が届くまで(守りのヘッダーが付くまで)最大20分待つ。
+name: sengoku-shield-health
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "鮮刻シールドの公開URL"
+        required: true
+        default: "https://sengoku-shield.onrender.com"
+      wait_for_new_version:
+        description: "新しい版(守りのヘッダー付き)が届くまで待つか(1 / 0)"
+        required: true
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE: ${{ github.event.inputs.url }}
+      WAIT: ${{ github.event.inputs.wait_for_new_version }}
+    steps:
+      - name: 起動の確認(無料プランは眠っているので、起きるまで待つ)
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$BASE/health" || true)
+            echo "[$i] /health -> $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 30
+          done
+          echo "::error::/health が 200 になりませんでした"; exit 1
+
+      - name: 新しい版が届いたかの確認(守りのヘッダー)
+        run: |
+          for i in $(seq 1 40); do
+            if curl -s -D - -o /dev/null --max-time 60 "$BASE/health" | grep -qi '^x-content-type-options: *nosniff'; then
+              echo "新しい版です(守りのヘッダーあり)"; exit 0
+            fi
+            [ "$WAIT" != "1" ] && { echo "::error::古い版のままです(守りのヘッダーなし)"; exit 1; }
+            echo "[$i] まだ古い版。30秒後にもう一度"; sleep 30
+          done
+          echo "::error::20分待っても新しい版になりませんでした。Render の画面で Manual Deploy が必要かもしれません"; exit 1
+
+      - name: 画面と判定APIの確認
+        run: |
+          set -e
+          check() { # 説明 期待するコード 実際のコード
+            if [ "$2" = "$3" ]; then echo "OK  $1 ($3)"; else echo "::error::NG  $1 (期待 $2 / 実際 $3)"; FAIL=1; fi
+          }
+          FAIL=0
+          check "見守り画面 /app"            200 "$(curl -s -o /tmp/app.html -w '%{http_code}' "$BASE/app")"
+          grep -q "<html" /tmp/app.html && echo "OK  /app は HTML" || { echo "::error::/app が HTML ではありません"; FAIL=1; }
+          check "画面の部品 /intel.js"       200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/intel.js")"
+          # 合言葉なしの判定APIは断られること(1回だけ。締め出しは10回から)
+          check "合言葉なしの /api/judge"    401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"utterance":"テスト"}' "$BASE/api/judge")"
+          check "存在しないページ /"         404 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/")"
+          echo "--- /health の応答ヘッダー ---"
+          curl -s -D - -o /dev/null "$BASE/health" | grep -iE '^(x-content-type-options|x-frame-options|referrer-policy|strict-transport-security):'
+          exit $FAIL

@@ -121,6 +121,8 @@ async function judgeUtterance(input, { useJev = process.env.JEV_REALTIME === "1"
     reason_short,
     matched_ids: detection.matches.map((m) => m.id),
     engine: verdict.by,
+    // 手口の段階がそろって「高」に上げたときの理由(lib/checkers.js)。上げていなければ null
+    stage_chain: verdict.chain ?? null,
     latency_ms: Math.round(Number(process.hrtime.bigint() - started) / 1e4) / 100,
   };
 }

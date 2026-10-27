@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import admin, auth, documents, handoff, patients, physician, sessions
+from app.security import security_middleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,6 +43,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         status_code=500,
         content={"error": "サーバー内部でエラーが発生しました。しばらくしてから再度お試しください。"},
     )
+
+# 連打・総当たりの見張りと、401/403/5xx 急増時の警報(CORS より内側に置き、429 にも CORS ヘッダーが付くようにする)
+app.middleware("http")(security_middleware)
 
 app.add_middleware(
     CORSMiddleware,

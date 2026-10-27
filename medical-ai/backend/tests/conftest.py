@@ -38,3 +38,12 @@ def drug_suggestions_enabled(monkeypatch):
     yield
     monkeypatch.delenv("ENABLE_DRUG_SUGGESTIONS")
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_security_guard():
+    """テストは全部同じ相手(testclient)から送るので、見張り番の数をテストごとに数え直す。"""
+    from app import security
+
+    security.reset()
+    yield
