@@ -1,0 +1,9 @@
+# 声の感情の実験用(本番の鮮刻シールドには入れない)。
+# torch は先に CPU 版を入れる(README.md の手順):
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+funasr==1.4.16
+modelscope
+huggingface_hub
+soundfile
+librosa
+numpy

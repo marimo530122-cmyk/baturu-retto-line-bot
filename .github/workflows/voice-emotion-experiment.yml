@@ -1,0 +1,94 @@
+# 鮮刻シールドの実験: 警察が公開している詐欺電話の録音に、声の感情のモデル(emotion2vec+ / SenseVoice)をかけて、
+# 「詐欺の電話で、怒り・恐れ・驚きの声がどれくらい出るか」を数字にする。本番(Render)には関係しない。
+# 音声はページから直接取り、リポジトリにもログにも保存しない(まとめの数字と、区間ごとのCSVだけを残す)。
+# 自分や家族の電話の録音は、このワークフローに使わない(公開リポジトリなので)。手元のPCで analyze.py を使う。
+name: voice-emotion-experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      page_url:
+        description: "録音が載っている公式ページのURL"
+        required: true
+        default: "https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html"
+      max_files:
+        description: "調べる音声の数(多いと時間がかかる)"
+        required: false
+        default: "12"
+      sensevoice:
+        description: "SenseVoice の文字起こし・話す速さも出す(1 で出す)"
+        required: false
+        default: "1"
+  push:
+    branches: ["ccr-**", "claude/**"]
+    paths:
+      - ".github/workflows/voice-emotion-experiment.yml"
+      - "sengoku-shield/experiments/voice-emotion/**"
+
+permissions:
+  contents: read
+
+env:
+  PAGE_URL: ${{ github.event.inputs.page_url || 'https://www.pref.shizuoka.jp/police/kurashi/bohan/sagi/namaonsei.html' }}
+  MAX_FILES: ${{ github.event.inputs.max_files || '12' }}
+  SENSEVOICE: ${{ github.event.inputs.sensevoice || '1' }}
+
+jobs:
+  emotion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: sengoku-shield/experiments/voice-emotion
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Install
+        run: |
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: 公式ページから音声を取ってくる(作業用の一時フォルダだけ)
+        shell: python
+        run: |
+          import os, re, urllib.request, urllib.parse
+          page = os.environ["PAGE_URL"]
+          ua = {"User-Agent": "Mozilla/5.0 (sengoku-shield voice-emotion experiment)"}
+          html = urllib.request.urlopen(urllib.request.Request(page, headers=ua), timeout=30).read().decode("utf-8", "replace")
+          links = []
+          for m in re.finditer(r'["\'(]([^"\'()<>\s]+\.(?:m4a|wav|mp3|mp4|aac)(?:\?[^"\'()<>\s]*)?)["\')]', html, re.I):
+              u = urllib.parse.urljoin(page, m.group(1).replace("\\/", "/"))
+              if u not in links:
+                  links.append(u)
+          links = links[: int(os.environ["MAX_FILES"])]
+          os.makedirs("samples/fraud", exist_ok=True)
+          for i, u in enumerate(links, 1):
+              ext = os.path.splitext(urllib.parse.urlparse(u).path)[1] or ".mp3"
+              data = urllib.request.urlopen(urllib.request.Request(u, headers=ua), timeout=60).read()
+              with open(f"samples/fraud/{i:02d}{ext}", "wb") as f:
+                  f.write(data)
+              print(f"{i:02d}{ext} <- {u}")
+          print(f"{len(links)}本")
+
+      - name: 声の感情を調べる
+        run: |
+          ARGS=(samples/ --label-from-folder --hub ms)
+          if [ "$SENSEVOICE" = "1" ]; then ARGS+=(--sensevoice); fi
+          python analyze.py "${ARGS[@]}"
+          cat emotion_summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 前処理を変えて比べる(前処理なし)
+        run: |
+          python analyze.py samples/ --label-from-folder --hub ms --filter none --out emotion_results_nofilter.csv --summary nofilter_summary.md
+          { echo; echo "---"; echo "### 参考: 前処理なし"; cat nofilter_summary.md; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-emotion-results
+          path: |
+            sengoku-shield/experiments/voice-emotion/*.csv
+            sengoku-shield/experiments/voice-emotion/*_summary.md
+          retention-days: 14

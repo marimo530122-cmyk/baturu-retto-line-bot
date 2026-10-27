@@ -36,3 +36,8 @@ id_ed25519*
 credentials*.json
 # Next.js の書き出し(ビルド時の内部の鍵が入る)
 .next/
+
+# 声の感情の実験の結果(文字起こしが入るのでGitに入れない)
+sengoku-shield/experiments/voice-emotion/*.csv
+sengoku-shield/experiments/voice-emotion/*_summary.md
+sengoku-shield/experiments/voice-emotion/samples/
