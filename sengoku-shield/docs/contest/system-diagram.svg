@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="IPAPGothic, 'IPAGothic', 'Noto Sans CJK JP', 'Hiragino Sans', sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2d3e6b"/>
+    </marker>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#f4f5f8"/>
+
+  <!-- タイトル -->
+  <text x="60" y="78" font-size="46" font-weight="bold" fill="#1d2433">鮮刻シールド　しくみ図</text>
+  <text x="60" y="118" font-size="22" fill="#4a5468">詐欺の電話を取ってしまった「あと」に、本人・AI・家族で被害を止める試作品</text>
+
+  <!-- 1. 電話 -->
+  <rect x="60" y="170" width="300" height="300" rx="20" fill="#ffffff" stroke="#c9cedb" stroke-width="2"/>
+  <text x="210" y="215" font-size="26" font-weight="bold" fill="#1d2433" text-anchor="middle">① 詐欺の電話</text>
+  <text x="210" y="262" font-size="20" fill="#4a5468" text-anchor="middle">犯人 → お年寄りの電話</text>
+  <text x="210" y="300" font-size="20" fill="#4a5468" text-anchor="middle">スピーカーにして</text>
+  <text x="210" y="330" font-size="20" fill="#4a5468" text-anchor="middle">スマホの見守り画面が</text>
+  <text x="210" y="360" font-size="20" fill="#4a5468" text-anchor="middle">相手の声を文字にする</text>
+  <text x="210" y="410" font-size="17" fill="#6b7489" text-anchor="middle">(ブラウザの音声認識)</text>
+  <text x="210" y="440" font-size="17" fill="#6b7489" text-anchor="middle">固定電話の転送は準備中</text>
+
+  <line x1="362" y1="320" x2="425" y2="320" stroke="#2d3e6b" stroke-width="4" marker-end="url(#arr)"/>
+
+  <!-- 2. 判定 -->
+  <rect x="430" y="170" width="430" height="300" rx="20" fill="#ffffff" stroke="#2d3e6b" stroke-width="3"/>
+  <text x="645" y="215" font-size="26" font-weight="bold" fill="#1d2433" text-anchor="middle">② 判定（1ミリ秒未満）</text>
+  <text x="455" y="262" font-size="19" fill="#1d2433">・詐欺の手口ルール 39種（警察の資料から）</text>
+  <text x="455" y="297" font-size="19" fill="#1d2433">・文字のゆれ・途切れた文の組み立て直し</text>
+  <text x="455" y="332" font-size="19" fill="#1d2433">・手口の段階の連鎖</text>
+  <text x="475" y="358" font-size="17" fill="#4a5468">（名乗り→口実→口止め→お金の要求）</text>
+  <text x="455" y="393" font-size="19" fill="#1d2433">・会話全体の判定：Jev（TypeSafe・任意）</text>
+  <text x="645" y="445" font-size="20" font-weight="bold" fill="#2d3e6b" text-anchor="middle">→ 疑い：高・中・低・なし</text>
+
+  <line x1="862" y1="320" x2="925" y2="320" stroke="#2d3e6b" stroke-width="4" marker-end="url(#arr)"/>
+
+  <!-- 3. 本人の画面 -->
+  <rect x="930" y="170" width="290" height="300" rx="20" fill="#ffffff" stroke="#c9cedb" stroke-width="2"/>
+  <text x="1075" y="215" font-size="26" font-weight="bold" fill="#1d2433" text-anchor="middle">③ 本人の画面</text>
+  <text x="1075" y="262" font-size="19" fill="#4a5468" text-anchor="middle">「大丈夫です。</text>
+  <text x="1075" y="290" font-size="19" fill="#4a5468" text-anchor="middle">落ち着いてくださいね」</text>
+  <text x="1075" y="330" font-size="19" fill="#4a5468" text-anchor="middle">相手に言う一言を表示</text>
+  <text x="1075" y="358" font-size="17" fill="#6b7489" text-anchor="middle">（例：玄関に誰か来たみたい）</text>
+  <rect x="975" y="390" width="200" height="54" rx="12" fill="#2d3e6b"/>
+  <text x="1075" y="425" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">AIに代わる</text>
+
+  <line x1="1222" y1="320" x2="1285" y2="320" stroke="#2d3e6b" stroke-width="4" marker-end="url(#arr)"/>
+  <text x="1253" y="300" font-size="15" fill="#6b7489" text-anchor="middle">本人が押す</text>
+
+  <!-- 4. AI -->
+  <rect x="1290" y="170" width="250" height="300" rx="20" fill="#ffffff" stroke="#c9cedb" stroke-width="2"/>
+  <text x="1415" y="215" font-size="26" font-weight="bold" fill="#1d2433" text-anchor="middle">④ AIが応対</text>
+  <text x="1415" y="258" font-size="18" fill="#4a5468" text-anchor="middle">Claude が</text>
+  <text x="1415" y="284" font-size="18" fill="#4a5468" text-anchor="middle">「だまされたふり」で</text>
+  <text x="1415" y="310" font-size="18" fill="#4a5468" text-anchor="middle">振込先の口座・会う日時</text>
+  <text x="1415" y="336" font-size="18" fill="#4a5468" text-anchor="middle">・名乗った名前を聞き出す</text>
+  <text x="1415" y="380" font-size="16" fill="#b3261e" text-anchor="middle">約束はしない・番号は言わない</text>
+  <text x="1415" y="406" font-size="16" fill="#b3261e" text-anchor="middle">AIの乗っ取りの指示は無視</text>
+  <text x="1415" y="440" font-size="16" fill="#6b7489" text-anchor="middle">（返事は毎回、機械が確認）</text>
+
+  <!-- 5. 家族・警察 -->
+  <line x1="1415" y1="472" x2="1415" y2="535" stroke="#b3261e" stroke-width="4" marker-end="url(#arrRed)"/>
+  <rect x="930" y="540" width="610" height="150" rx="20" fill="#fdf2f1" stroke="#b3261e" stroke-width="3"/>
+  <text x="1235" y="585" font-size="26" font-weight="bold" fill="#b3261e" text-anchor="middle">⑤ 家族へ、その場ですぐ知らせる</text>
+  <text x="960" y="628" font-size="19" fill="#1d2433">・口座が出たら家族のLINEへ → 家族から銀行・警察に連絡</text>
+  <text x="960" y="664" font-size="19" fill="#1d2433">・会う日時・場所が出たら家族に自動で電話 ／ 110番用の台本</text>
+
+  <!-- 信頼性 -->
+  <rect x="60" y="540" width="800" height="150" rx="20" fill="#eef2fb" stroke="#2d3e6b" stroke-width="2"/>
+  <text x="90" y="585" font-size="26" font-weight="bold" fill="#2d3e6b">信頼性を数字で確かめ続ける</text>
+  <text x="90" y="628" font-size="19" fill="#1d2433">・普通の電話 93件で誤検知 0件（変更のたびに自動で確認）</text>
+  <text x="90" y="664" font-size="19" fill="#1d2433">・警察が公開した本物の詐欺電話 107件で効果を測定 ／ 自動テスト 133件</text>
+
+  <!-- やらないこと -->
+  <rect x="60" y="720" width="1480" height="120" rx="20" fill="#ffffff" stroke="#c9cedb" stroke-width="2"/>
+  <text x="90" y="765" font-size="24" font-weight="bold" fill="#1d2433">あえて、やらないこと</text>
+  <text x="90" y="808" font-size="19" fill="#4a5468">電話を勝手に切らない（必ず本人の操作）・本人や家族の声のまね（声のクローン）は作らない・AIはお金を動かす約束をしない・警察を名乗らない</text>
+
+  <text x="1540" y="872" font-size="15" fill="#6b7489" text-anchor="end">2026年10月時点の試作品　https://sengoku-shield.onrender.com/demo</text>
+</svg>
