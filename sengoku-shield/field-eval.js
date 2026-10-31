@@ -2,6 +2,8 @@
 //
 //   node field-eval.js <ファイルやフォルダ> ...        … まとめの数字だけを出す
 //   node field-eval.js --details <ファイル> ...       … 1件ごとに、当たったルールの id も出す(発言の中身は出さない)
+//   node field-eval.js --triage <ファイル> ...        … 何も当たらなかった電話を仕分けるための一覧を出す。
+//       holdout の例文の元になった録音は、数字(行数・文字数)だけを出し、中身は出さない
 //
 // 読めるもの:
 // - 警察の録音の文字起こし(transcribe-police-audio ワークフローの出力。「## 番号. ファイル名」ごとに1件、
@@ -140,11 +142,54 @@ function toMarkdown(s, results, { details = false } = {}) {
   return lines.join("\n") + "\n";
 }
 
+// holdout の例文の元になった録音のファイル名(scam-samples.json の source に書いてある)。
+// ここに入る録音は、ルールを考えるときに中身を読まない(数字だけを数える)
+function holdoutSources(samples = require("./scam-samples.json")) {
+  const names = new Set();
+  for (const s of samples) {
+    if (s.split !== "holdout") continue;
+    for (const f of String(s.source || "").match(/[\w-]+\.(?:mp3|mp4|wav|m4a)/g) || []) names.add(f);
+  }
+  return names;
+}
+
+const TRIAGE_MAX_LINES = 80;
+
+// 何も当たらなかった電話の一覧。holdout の元の録音は中身を出さない
+function toTriage(results, calls, holdout = holdoutSources()) {
+  const byName = new Map(calls.map((c) => [c.name, c]));
+  const missed = results.filter((r) => r.after === "none");
+  const hidden = missed.filter((r) => holdout.has(r.name));
+  const open = missed.filter((r) => !holdout.has(r.name));
+  const size = (r) => byName.get(r.name).utterances.join("").length;
+  const lines = [
+    "# 何も当たらなかった電話の仕分け用一覧",
+    "",
+    `- 何も当たらなかった電話: ${missed.length}件(うち holdout の元の録音 ${hidden.length}件は中身を出さない)`,
+    "",
+    "## holdout の元の録音(数字だけ)",
+    "",
+    "| 電話 | 発言数 | 文字数 |",
+    "|---|---|---|",
+    ...hidden.map((r) => `| ${r.name} | ${r.utterances} | ${size(r)} |`),
+    "",
+    "## それ以外(中身を見て仕分ける)",
+  ];
+  for (const r of open) {
+    const u = byName.get(r.name).utterances;
+    lines.push("", `### ${r.name}(発言 ${u.length}行・${size(r)}文字)`, "");
+    for (const t of u.slice(0, TRIAGE_MAX_LINES)) lines.push(`- ${t.slice(0, 100)}`);
+    if (u.length > TRIAGE_MAX_LINES) lines.push(`- (以下 ${u.length - TRIAGE_MAX_LINES}行は省略)`);
+  }
+  return lines.join("\n") + "\n";
+}
+
 function main(argv) {
   const details = argv.includes("--details");
+  const triage = argv.includes("--triage");
   const inputs = argv.filter((a) => !a.startsWith("--"));
   if (!inputs.length) {
-    console.error("使い方: node field-eval.js [--details] <ファイルやフォルダ> ...");
+    console.error("使い方: node field-eval.js [--details | --triage] <ファイルやフォルダ> ...");
     process.exit(2);
   }
   const before = detector.createDetector(detector.PATTERNS, { normalize: false, joinLines: false });
@@ -153,9 +198,9 @@ function main(argv) {
   const seen = new Set();
   const calls = listFiles(inputs).flatMap(parseFile).filter((c) => !seen.has(c.name) && seen.add(c.name));
   const results = calls.map((c) => evaluate(c, { before, after }));
-  process.stdout.write(toMarkdown(summarize(results), results, { details }));
+  process.stdout.write(triage ? toTriage(results, calls) : toMarkdown(summarize(results), results, { details }));
 }
 
 if (require.main === module) main(process.argv.slice(2));
 
-module.exports = { parseFile, evaluate, summarize, toMarkdown };
+module.exports = { parseFile, evaluate, summarize, toMarkdown, toTriage, holdoutSources };

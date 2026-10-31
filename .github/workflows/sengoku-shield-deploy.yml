@@ -1,0 +1,62 @@
+# 鮮刻シールド: main に入ったら Render に自動で反映し、本番が正常に動いているかを確かめる。
+# Render の「Public Git Repository」でつないだサービスは、Auto-Deploy(On Commit)が動かなかったため(2026-10-26 に確認)、
+# Render の Deploy Hook をここから叩く。
+# Deploy Hook の URL は鍵と同じ扱い(知っている人は誰でもデプロイできる)。GitHub の Secrets(RENDER_DEPLOY_HOOK_SENGOKU)に入れ、
+# チャットや Git には書かない。未設定なら何もしない。
+name: sengoku-shield-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sengoku-shield/**"
+      - ".github/workflows/sengoku-shield-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 続けてマージしたときに、デプロイが重ならないようにする
+concurrency:
+  group: sengoku-shield-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_SENGOKU }}
+      BASE: https://sengoku-shield.onrender.com
+    steps:
+      - name: Render にデプロイを頼む
+        id: hook
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::RENDER_DEPLOY_HOOK_SENGOKU が未設定なので、自動デプロイはしません(Render の画面で Manual Deploy してください)"
+            echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # URL はログに出さない
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$HOOK")
+          echo "Deploy Hook の応答: $code"
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ] || { echo "::error::Deploy Hook が失敗しました($code)"; exit 1; }
+
+      - name: 新しい版が動き出すまで待って、本番を確かめる
+        if: steps.hook.outputs.skip != '1'
+        run: |
+          # ビルドと切り替えに数分かかる。その間は古い版が答えるので、少し待ってから確かめ始める
+          sleep 120
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$BASE/health" || true)
+            echo "[$i] /health -> $code"
+            if [ "$code" = "200" ]; then break; fi
+            sleep 20
+          done
+          [ "$code" = "200" ] || { echo "::error::本番の /health が 200 になりませんでした"; exit 1; }
+          fail=0
+          check() { if [ "$2" = "$3" ]; then echo "OK  $1 ($3)"; else echo "::error::NG  $1 (期待 $2 / 実際 $3)"; fail=1; fi; }
+          check "見守り画面 /app"         200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/app")"
+          check "合言葉なしの /api/judge" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"utterance":"テスト"}' "$BASE/api/judge")"
+          curl -s -D - -o /dev/null "$BASE/health" | grep -qi '^x-content-type-options: *nosniff' && echo "OK  守りのヘッダー" || { echo "::error::守りのヘッダーがありません"; fail=1; }
+          echo "Render の画面の Events で、どの版(コミット)が Live になったかも確かめられます"
+          exit $fail

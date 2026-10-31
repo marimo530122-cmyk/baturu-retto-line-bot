@@ -46,6 +46,12 @@ const MAX_SILENCE = 3;
 const APP_TOKEN = process.env.SHIELD_APP_TOKEN;
 const APP_HTML_PATH = path.join(__dirname, "public", "app.html");
 const INTEL_JS_PATH = path.join(__dirname, "lib", "intel.js");
+// 判定デモ(合言葉なしで誰でも試せる。判定はブラウザの中だけで行い、入れた言葉はサーバーに送らない)
+const DEMO_HTML_PATH = path.join(__dirname, "demo", "index.html");
+// demo/index.html はページの外枠(doctype・文字コード・スマホの画面幅)を持たない部品なので、出すときに外枠を付ける
+const DEMO_HEAD =
+  '<!doctype html><html lang="ja"><head><meta charset="utf-8">' +
+  '<meta name="viewport" content="width=device-width, initial-scale=1">';
 
 // 冒頭アナウンス: やっていないことは言わない(虚偽告知にならないよう、事実だけを告げる)
 const GREETING =
@@ -368,6 +374,10 @@ const server = http.createServer(async (req, res) => {
   if (blocked) {
     res.setHeader("Retry-After", blocked === "locked" ? "900" : "60");
     return sendJson(res, 429, { error: "アクセスが多すぎます。しばらく待ってからお試しください。" });
+  }
+  if (req.method === "GET" && pathname === "/demo") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(DEMO_HEAD + fs.readFileSync(DEMO_HTML_PATH, "utf-8") + "</html>");
   }
   if (req.method === "GET" && pathname === "/app") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
