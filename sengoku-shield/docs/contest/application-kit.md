@@ -17,6 +17,7 @@
 | 注意書き(応募文に添える) | 無料のサーバーなので、しばらく使われていないと最初の表示まで1分ほどかかります |
 | ソースコード(公開) | https://github.com/marimo530122-cmyk/baturu-retto-line-bot (`sengoku-shield/` フォルダ)【要確認: 載せるか】 |
 | しくみ図 | `sengoku-shield/docs/contest/system-diagram.png`(1600×900) |
+| 画面の画像(貼る順) | 1枚目 `screens-3steps.png`(3つの場面を横に並べた1枚、1600×900)→ 2枚目 `system-diagram.png`(しくみ図)→ 3〜5枚目 `screen-1-listening.png`・`screen-2-warning.png`・`screen-3-ai-talking.png`(縦長 1080×1920)。どれも合言葉・設定は映っていない(使い方動画 第3話と同じ作り方で、今のコードから撮り直した) |
 
 ---
 
