@@ -43,3 +43,18 @@ test("Twilio なしでも見守り画面は動き、/voice/* は閉じている"
   // Twilio が無いので家族への自動電話はかけない(かけたことにもしない)
   assert.strictEqual(body.call_notice, "none");
 });
+
+test("判定デモ(/demo)は合言葉なしで開け、判定の仕組みはページの中にある", async (t) => {
+  await new Promise((r) => server.listen(0, r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const res = await fetch(`${base}/demo`);
+  assert.strictEqual(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/html/);
+  assert.strictEqual(res.headers.get("x-content-type-options"), "nosniff");
+  const html = await res.text();
+  assert.match(html, /^<!doctype html>/);
+  assert.match(html, /name="viewport"/);
+  // サーバーの判定APIを呼ばない(入れた言葉をどこにも送らない)
+  assert.ok(!html.includes("/api/judge"));
+});

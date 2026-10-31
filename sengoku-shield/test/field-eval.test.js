@@ -47,3 +47,20 @@ test("前と後を比べ、判定が下がることはない", () => {
   assert.strictEqual(s.levelDown, 0);
   assert.strictEqual(s.after.none, 1);
 });
+
+test("仕分け用一覧: holdout の例文の元になった録音は、数字だけを出して中身を出さない", () => {
+  const { toTriage, holdoutSources } = require("../field-eval");
+  const holdout = holdoutSources();
+  const hiddenName = [...holdout][0];
+  assert.ok(hiddenName, "holdout の元の録音が見つからない");
+  const before = detector.createDetector(detector.PATTERNS, { normalize: false, joinLines: false });
+  const after = detector.createDetector(detector.PATTERNS);
+  const calls = [
+    { name: hiddenName, utterances: ["ひみつのことば1", "ひみつのことば2"] },
+    { name: "open.mp3", utterances: ["みてよいことば"] },
+  ];
+  const out = toTriage(calls.map((c) => evaluate(c, { before, after })), calls, holdout);
+  assert.ok(!out.includes("ひみつのことば"), "holdout の元の録音の中身が出ている");
+  assert.ok(out.includes(`| ${hiddenName} | 2 |`));
+  assert.ok(out.includes("みてよいことば"));
+});
