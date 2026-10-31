@@ -85,7 +85,7 @@ jobs:
           python analyze.py samples/ --label-from-folder --hub ms --filter none --out emotion_results_nofilter.csv --summary nofilter_summary.md
           { echo; echo "---"; echo "### 参考: 前処理なし"; cat nofilter_summary.md; } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: voice-emotion-results
           path: |
