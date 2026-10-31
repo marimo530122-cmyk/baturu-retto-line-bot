@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>鮮刻シールド ご説明</title>
+<style>
+@page { size: A4; margin: 12mm 14mm; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Noto Sans CJK JP", "Noto Sans JP", "WenQuanYi Zen Hei", sans-serif; font-size: 10.2pt; line-height: 1.5; color: #111; }
+h1 { font-size: 17pt; margin: 0; letter-spacing: .02em; }
+.sub { font-size: 10.5pt; margin: 2px 0 6px; }
+.to { font-size: 10pt; text-align: right; margin: 0 0 4px; }
+h2 { font-size: 11pt; margin: 7px 0 3px; padding: 2px 6px; background: #e8eef3; border-left: 4px solid #1f4e6b; }
+p { margin: 0 0 3px; }
+ol, ul { margin: 0; padding-left: 1.3em; }
+li { margin: 0 0 1px; }
+.box { border: 1.5px solid #1f4e6b; padding: 4px 8px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.note { font-size: 8.8pt; color: #333; }
+.sign { margin-top: 6px; border-top: 1px solid #999; padding-top: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 10pt; }
+.sign span { display: inline-block; border-bottom: 1px solid #999; min-width: 60%; }
+</style></head><body>
+<p class="to">警察署 生活安全課 御中　　令和8年10月</p>
+<h1>鮮刻シールド(せんこくシールド)のご説明</h1>
+<p class="sub">詐欺の電話に「出てしまった後」の高齢者を支える、スマホの見守りアプリ(試作・無料)</p>
+
+<h2>作ったきっかけ</h2>
+<p>藤枝市で魚屋を営む48歳です。十数年前、私の母が詐欺の電話で約100万円をだまし取られました。「電話に出てしまった後に、本人がひとりで判断しなくてすむ仕組み」があれば防げたのではないかと思い、生成AIを使って個人で開発しています。</p>
+
+<h2>どう動くか(今、実際に動いている機能)</h2>
+<ol>
+<li>電話をスピーカーにして、そばにスマホを置きます。スマホが相手の言葉を文字にして、詐欺によくある言い回し(還付金・ATM・口止め・口座の不正利用など)に気づきます。</li>
+<li>怪しいときは、やさしい音で知らせ、「大丈夫です。お金のことは今は答えなくて大丈夫です」という文と、時間をかせぐ一言(「メガネを落としちゃって、ちょっと待ってね」など)、<b>「AIに代わる」ボタン</b>を出します。</li>
+<li>本人がボタンを押すと、AIが本人に代わって応対し、相手の<b>名前・所属・金額・口座・会う日時と場所</b>を聞き返して記録します。</li>
+<li>電話のあと、<b>110番や #9110 でそのまま読める文</b>を画面に出します(いつ・誰を名乗り・何を言われたか)。</li>
+<li>登録した家族のLINEに、相手が言ったことと読み上げ用の文を知らせます(<b>LINEは接続の最終設定中</b>)。動揺している本人に代わり、家族が相談できるようにするためです。</li>
+</ol>
+
+<h2>守っている決まり(安全のため、あえて入れていないこと)</h2>
+<div class="box">
+<ul>
+<li>電話を切る・AIに代わるのは、<b>必ず本人の操作</b>です(自動では切り替えません)。</li>
+<li>AIが自分で110番したり、警察に自動で送信・中継したりは<b>しません</b>(「警察に中継中」など事実でない表示もしません)。</li>
+<li>AIは、振り込む・渡す・行く・待つといった<b>約束をしません</b>。架空の口座番号や住所も言わず、家に来るよう誘いません。</li>
+<li>会う日時・場所が出たら、すぐ110番するよう案内します。<b>「だまされたふり作戦」は警察の指示に従う</b>考えです。</li>
+<li>本人や家族の声をまねる機能(声のクローン)は入れていません。悪用の道具になるためです。</li>
+</ul>
+</div>
+
+<div class="cols">
+<div>
+<h2>確かめていること</h2>
+<ul>
+<li>普通の電話(病院・お店・家族など)93件で、<b>誤って詐欺と判定した数は0件</b>。</li>
+<li>静岡県警・警視庁・千葉県警などが公開している<b>実際の詐欺電話の録音</b>で検証しています。</li>
+<li>正直に申し上げると、<b>まだ見逃しもあります</b>。改善を続けています。</li>
+</ul>
+</div>
+<div>
+<h2>今の状況と予定</h2>
+<ul>
+<li>試作の段階です。スマホのブラウザだけで動きます(工事不要)。</li>
+<li>12月中旬に、家族・知人の数軒で試してもらう予定です(無料)。</li>
+<li>販売や宣伝の前に、警察の方のご意見をいただきたいと考えています。</li>
+</ul>
+</div>
+</div>
+
+<h2>ご相談・お願いしたいこと</h2>
+<ol>
+<li>この地域で今多い手口や言い回し(特に「電話が止まる」など通信会社を名乗る型)を教えていただけないでしょうか。</li>
+<li>画面の言葉や110番の案内の仕方で、直したほうがよい点があればご指摘ください。</li>
+<li>AIが聞き出した情報(名前・口座・日時場所など)は、どんな形でお伝えすると捜査や相談の役に立ちますか。</li>
+<li>このような仕組みで、気をつけるべき点(運用・法律の面など)があれば教えてください。</li>
+</ol>
+<p class="note">※ 実際に動く画面をスマホでお見せできます。操作手順の動画(約1〜2分×3本)もあります。</p>
+
+<div class="sign">
+<div>お名前:<span>&nbsp;</span></div>
+<div>お電話:<span>&nbsp;</span></div>
+</div>
+</body></html>
