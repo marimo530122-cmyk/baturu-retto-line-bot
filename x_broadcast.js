@@ -49,17 +49,25 @@ function availableEpisodes() {
   return episodes.filter((e) => (e.requires || []).every((key) => URL_VARS[key]));
 }
 
-function dayOfYear(now = new Date()) {
-  const start = new Date(now.getFullYear(), 0, 0);
-  return Math.floor((now - start) / 86400000);
+// 実話は x_episodes.json に並んだ順に、1日1本ずつ出す(続き物なので順番どおり)。
+// 1本目を出す日(日本時間)。この日より前は投稿しない。最後まで行ったら1本目に戻る
+const STORY_START_DATE = "2026-11-07";
+
+// 1本目の日から何日目か(1本目の日=0)。日付の区切りは日本時間の朝9時(=世界標準時の0時)。
+// 17:30の自動実行はGitHub側で数時間遅れることがあり(夜中の1時台になった例あり)、
+// 日本時間の0時で区切ると遅れた日に1本飛ばしてしまうため
+function daysSinceStart(now = new Date()) {
+  const today = now.toISOString().slice(0, 10);
+  return Math.round((Date.parse(today) - Date.parse(STORY_START_DATE)) / 86400000);
 }
 
 // 投稿するのは吉○水産時代の実話(kind: "story")だけ。既存の宣伝ネタ(罰ゲームルーレット等)は
-// x_episodes.json に残っていても選ばない(方針: 実話100%)。実話が0本の日は null(投稿しない)
+// x_episodes.json に入っていても選ばない(方針: 実話100%)。実話が0本の日・1本目の日より前は null(投稿しない)
 function pickEpisode(now = new Date()) {
   const stories = availableEpisodes().filter(isStory);
-  if (!stories.length) return null;
-  return stories[dayOfYear(now) % stories.length];
+  const day = daysSinceStart(now);
+  if (!stories.length || day < 0) return null;
+  return stories[day % stories.length];
 }
 
 // 会社名は実名を出さず「吉○水産」(1文字を○で伏せる)と書く。
@@ -316,7 +324,11 @@ async function postToX() {
 
   const episode = pickEpisode();
   if (!episode) {
-    console.log("投稿する実話エピソードがまだ0本のため、今日は投稿しません(x_episodes.json に kind: \"story\" を追加してください)");
+    console.log(
+      daysSinceStart() < 0
+        ? `実話の投稿は ${STORY_START_DATE} から始まるため、今日は投稿しません`
+        : "投稿する実話エピソードがまだ0本のため、今日は投稿しません(x_episodes.json に kind: \"story\" を追加してください)"
+    );
     return;
   }
   let image = resolveImage(episode);
