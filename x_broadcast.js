@@ -70,6 +70,15 @@ function maskShopName(text) {
   return text.replace(/吉川水産/g, SHOP_ALIAS);
 }
 
+// 実話シリーズの共通タグ。丸印「○」だとXがタグをそこで切ってしまうため、タグだけ漢数字の「〇」を使う
+// (本文中の表記は「吉○水産」のまま)。タグは1投稿につき2個まで: 共通タグ + エピソードごとに1個まで
+const STORY_TAG = "#吉〇水産の実話";
+const MAX_STORY_TAGS = 2;
+function storyHashtags(episode) {
+  const extra = String(episode.hashtags || "").split(/\s+/).filter((t) => t && t !== STORY_TAG);
+  return [STORY_TAG, ...extra].slice(0, MAX_STORY_TAGS).join(" ");
+}
+
 // 画像ファイルの場所と種類。指定が無い・見つからない場合は null(文字だけで投稿する)
 function resolveImage(episode) {
   if (!episode.image) return null;
@@ -103,7 +112,8 @@ function render(episode, image = null) {
 // (AIにURLを書かせると存在しないリンクや表記漏れが起きうるため)
 function composeAiPost(episode, body, image = null) {
   const lead = isStory(episode) ? "▶ 続きはブログで" : "▶";
-  const suffix = `\n\n${lead} ${linkUrl(episode)}\n\n${episode.hashtags}`;
+  const tags = isStory(episode) ? storyHashtags(episode) : episode.hashtags;
+  const suffix = `\n\n${lead} ${linkUrl(episode)}\n\n${tags}`;
   const text = withAdLabel(episode, withImageNote(image, body) + suffix);
   return isStory(episode) ? maskShopName(text) : text;
 }
@@ -128,6 +138,7 @@ const STORY_SYSTEM_PROMPT = `あなたは現役の魚屋(48歳)本人として�
 ルール:
 - 本文のみを出力する。前置き・説明・カギ括弧での囲みは不要
 - 物語全体の要約にしない。一番いい一場面だけを、その場にいるように書き、続きが気になるところで止める
+- 1行目は、セリフか現場の情景から始める(読み手の手を止めるため。「今日は〜の話」のような前置きから入らない)
 - 本人の一人称で、素直な話し言葉で書く。指定された文字数以内、絵文字は0〜1個
 - 種に書かれていない出来事・数字・セリフ・登場人物を足さない(実話なので話を盛らない)
 - 会社名は「${SHOP_ALIAS}」と表記する。実名では書かない(種に実名があっても「${SHOP_ALIAS}」に置き換える)
@@ -141,6 +152,11 @@ const IMAGE_DESCRIPTIONS = {
   photo: "本人の仕事の実物写真",
   composite: "本人の写真をもとに作った合成のイメージ画像(当時の実物写真ではない)",
 };
+
+function unwrapQuotes(text) {
+  const m = text.match(/^「([^「」]*)」$/) || text.match(/^『([^『』]*)』$/) || text.match(/^"([^"]*)"$/);
+  return m ? m[1].trim() : text;
+}
 
 async function generateAiBody(episode, maxChars, image = null) {
   const Anthropic = require("@anthropic-ai/sdk");
@@ -174,13 +190,14 @@ async function generateAiBody(episode, maxChars, image = null) {
     throw new Error(`AI生成が完了しませんでした (stop_reason: ${response.stop_reason})`);
   }
 
-  const body = response.content
+  const raw = response.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("")
-    .trim()
-    .replace(/^[「『"]+|[」』"]+$/g, "")
     .trim();
+  // AIが本文全体をカギ括弧でくくって返したときだけ外す。
+  // 「セリフ」で始まる・終わる本文の括弧は消さない(実話は1行目をセリフから書くため)
+  const body = unwrapQuotes(raw);
 
   if (!body) throw new Error("AIの本文が空でした");
   if (/https?:\/\/|#|＃|【PR】/.test(body)) {
@@ -359,7 +376,8 @@ function checkEpisodes() {
     const need = (key) => {
       if (typeof e[key] !== "string" || !e[key].trim()) errors.push(`${name}: "${key}" がありません`);
     };
-    ["title", "hashtags", "text"].forEach(need);
+    ["title", "text"].forEach(need);
+    if (!isStory(e)) need("hashtags"); // 実話は共通タグ「#吉〇水産の実話」をプログラムが付けるので省略してよい
     if (isStory(e)) {
       need("seed");
       if (typeof e.url !== "string" || !/^https:\/\/\S+$/.test(e.url)) {
@@ -369,6 +387,16 @@ function checkEpisodes() {
         errors.push(`${name}: 実話の "text" には本文だけを書いてください(URL・ハッシュタグはプログラムが付けます)`);
       }
       // 「吉川水産」は投稿時に自動で「吉○水産」に置き換わる。それ以外の形で実名が残るものだけ知らせる
+      const extraTags = String(e.hashtags || "").split(/\s+/).filter((t) => t && t !== STORY_TAG);
+      if (extraTags.length > MAX_STORY_TAGS - 1) {
+        errors.push(`${name}: "hashtags" は1個までです(共通タグ「${STORY_TAG}」はプログラムが付けるので、合わせて2個まで)`);
+      }
+      if (extraTags.some((t) => !/^[#＃]/.test(t))) {
+        errors.push(`${name}: "hashtags" は # から始めてください`);
+      }
+      if (/○|吉川/.test(e.hashtags || "")) {
+        errors.push(`${name}: タグに「○」や実名は使えません(タグでは漢数字の「〇」を使います。例: ${STORY_TAG})`);
+      }
       if (SHOP_REAL_NAME.test(maskShopName(`${e.text || ""}${e.hashtags || ""}`))) {
         errors.push(`${name}: "text" か "hashtags" に実名の一部が残っています(会社名は「${SHOP_ALIAS}」と書いてください)`);
       }
