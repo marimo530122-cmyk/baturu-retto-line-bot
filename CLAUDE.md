@@ -97,6 +97,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   `lib/jev.js` の `combine()` で Jev と合わせる。部品は通信なし・例外を外に出さない。普通の電話を新しく「中」以上にする部品は入れない。
   音声認識が区切った文は、前の発言が言い切っていないときだけ、その1文を組み立て直して調べる(`lib/detector.js` の `joinLines`)。
   効果は `field-eval.js`(警察の録音の文字起こしで、前と後を比べる)で測る。そこで見た見逃しに合わせてルールを直さない。
+  新しい手口の情報は `sengoku-shield/docs/scam-intel.md` で受け渡す(未処理/処理済み)。検知ルールの作業を始めるときは、まず未処理を確認する。
+  ルール案はそこで機械チェック(`docs/scam-intel/check-proposals.js`)まで行い、反映は利用者の承認後に `evolve.js approve` で行う。
   普通の電話93件で誤検知ゼロを確認するベンチマーク(`evidence/` に結果を保存)と、
   ハッシュでつないだ監査ログ(`audit/audit-log.jsonl`、追記のみ・手で編集しない)があり、
   `.github/workflows/sengoku-shield-ci.yml` で毎回検証する。
