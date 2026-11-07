@@ -1,8 +1,18 @@
 name: Daily X Post
 
+# いつ動くか:
+# - 本命: 毎日 17:30 JST に、外部の無料タイマー cron-job.org が GitHub API(workflow_dispatch)で起動する。
+#   GitHub の定期実行(schedule)は毎日4〜10時間遅れて動いていたため(17:30狙いが夜中1時ごろになった)、
+#   起動の合図だけを時間どおりに動く外のタイマーに任せている
+# - 予備: 下の schedule。外のタイマーが止まった日も、遅れてでも1日1本は出す
+# - 手動: Actions の画面から Run workflow(dry_run=1 で投稿せず文面だけ確認)
+#
+# 二重投稿の防ぎ方:
+# - 投稿できたら「x-posted-<日付>」という印(アーティファクト)を保存し、同じ日に後から動いた回は投稿しない
+#   (日付は世界標準時=日本時間の朝9時区切り。エピソードの順番を決める日付と同じ区切り)
+# - concurrency で同時に動かさない(重なったら先の回が終わるまで待ってから印を確かめる)
 on:
   schedule:
-    # 毎日 17:30 JST (08:30 UTC)。飲み会前の時間帯を狙う
     - cron: "30 8 * * *"
   workflow_dispatch:
     inputs:
@@ -11,18 +21,52 @@ on:
         required: false
         default: "0"
 
+concurrency:
+  group: daily-x-post
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read # 「今日の分は投稿済み」の印を確かめるため
+
 jobs:
   post:
     runs-on: ubuntu-latest
+    env:
+      DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
       - run: npm ci
-      - run: node x_broadcast.js
+
+      - name: 今日の分が投稿済みか確かめる
+        id: posted
         env:
-          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DAY=$(date -u +%F)
+          echo "day=$DAY" >> "$GITHUB_OUTPUT"
+          echo "起動のきっかけ: ${{ github.event_name }} / 起動時刻(日本時間): $(TZ=Asia/Tokyo date '+%F %T')"
+          # 確かめられなかったときは投稿しない(二重投稿より、予備の回に回すほうを選ぶ)
+          COUNT=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=x-posted-$DAY&per_page=100" \
+            --jq '[.artifacts[] | select(.expired | not)] | length')
+          echo "今日($DAY)の投稿済みの印: ${COUNT}件"
+          if [ "$DRY_RUN" = "1" ]; then
+            # お試しは投稿しないので、印があっても文面の確認を続ける
+            echo "already=0" >> "$GITHUB_OUTPUT"
+          elif [ "$COUNT" -gt 0 ]; then
+            echo "今日($DAY)の分は投稿済みのため、この回は投稿しません"
+            echo "already=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "already=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: node x_broadcast.js
+        if: steps.posted.outputs.already != '1'
+        env:
+          X_POSTED_MARKER: x-posted-marker.txt
           # 設定されていれば投稿本文をClaudeが毎日書き直す(未設定・失敗時は固定文面)
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
@@ -34,3 +78,13 @@ jobs:
           GAME_URL: ${{ vars.GAME_URL }}
           MIKUCHIWARI_URL: ${{ vars.MIKUCHIWARI_URL }}
           AFFILIATE_URL: ${{ vars.AFFILIATE_URL }}
+
+      # 投稿できたときだけ印を残す(このあと失敗しても残るよう always)。
+      # hashFiles はチェックアウトしたフォルダの中しか見ないので、印はそこに書く
+      - name: 「今日の分は投稿済み」の印を保存する
+        if: always() && hashFiles('x-posted-marker.txt') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-posted-${{ steps.posted.outputs.day }}
+          path: x-posted-marker.txt
+          retention-days: 7

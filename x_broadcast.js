@@ -377,6 +377,15 @@ async function postToX() {
   console.log(
     `投稿成功: ${episode.title} / ${source}${mediaId ? " / 画像つき" : ""} (post id: ${data.data.id})`
   );
+
+  // 「今日の分は投稿済み」の印を書く。ワークフローがこれを x-posted-<日付> という名前で保存し、
+  // 同じ日に後から起動した回(予備の定期実行など)は、その印を見て投稿しない(二重投稿を防ぐ)
+  if (process.env.X_POSTED_MARKER) {
+    fs.writeFileSync(
+      process.env.X_POSTED_MARKER,
+      `${new Date().toISOString()} ${data.data.id} ${episode.title}\n`
+    );
+  }
 }
 
 // x_episodes.json の書き方と画像ファイルを点検する(node x_broadcast.js --check)。

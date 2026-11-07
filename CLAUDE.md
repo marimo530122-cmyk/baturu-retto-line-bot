@@ -158,6 +158,10 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   AIは種から一番いい一場面だけを書き、種に無い事実を足さない。会社名は「吉○水産」と表記し実名では書かない(種に実名があっても投稿文では必ず置き換える)。他の実在の名前も出さない。
   1行目はセリフか現場の情景から書く。タグは共通タグ `#吉〇水産の実話`(タグだけ漢数字の〇。○だとタグが途切れる)+1個まで。
   実話は x_episodes.json の並び順に1日1本(1本目の日は x_broadcast.js の STORY_START_DATE)。投稿するのは実話だけ(罰ゲームルーレット等の宣伝ネタ8本は2026-11に削除。宣伝ネタを足しても選ばれない。実話0本の日は投稿しない)。書き方は `x_images/README.md`。
+- 起動の時刻: GitHub の schedule は毎日4〜10時間遅れるため、本命は外部の無料タイマー cron-job.org が
+  毎日 17:30 JST に GitHub API(workflow_dispatch、inputs.dry_run="0")で起動する。schedule は予備として残す。
+  設定手順は `docs/x-post-timer.md`。
+  二重投稿は、投稿できた回が保存する印(アーティファクト `x-posted-<UTC日付>`)と concurrency で防ぐ(印があれば投稿しない)。
 - `x_episodes.json`・画像を変えると `.github/workflows/x-episodes-check.yml`(`node x_broadcast.js --check`)が
   書き方・画像の置き忘れ・文字数を点検する。
 
@@ -178,5 +182,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   Settings → Secrets and variables → Actions に登録しておく。
 - `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` — X自動投稿用
   (X Developer Portalで「Read and write」権限のアプリを作り、OAuth 1.0aのキーを発行する)。
+- cron-job.org 用の GitHub トークン — (cron-job.org の画面に入れる。GitHub の Secrets ではない)このリポジトリだけ・
+  Actions の書き込み権限だけの fine-grained トークン。期限が切れると起動できなくなる(予備の schedule で遅れて投稿される)。
 - 動画生成ワークフローは追加のSecret不要(標準の `GITHUB_TOKEN` でReleaseを作成)。
   将来Googleドライブ等に連携する場合は、サービスアカウントJSON等を別途Secretsに追加する。
