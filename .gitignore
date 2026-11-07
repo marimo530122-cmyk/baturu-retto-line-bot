@@ -41,3 +41,4 @@ credentials*.json
 sengoku-shield/experiments/voice-emotion/*.csv
 sengoku-shield/experiments/voice-emotion/*_summary.md
 sengoku-shield/experiments/voice-emotion/samples/
+x-posted-marker.txt
