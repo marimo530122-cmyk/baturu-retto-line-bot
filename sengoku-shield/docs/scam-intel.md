@@ -46,7 +46,7 @@ node docs/scam-intel/check-proposals.js . docs/scam-intel/<件>.proposals.json d
   警察は SNS で連絡したり、ビデオ通話で警察手帳を見せたり、捜査名目で金銭を要求したりしない。
 - **評価の観点**:音声通話版の台本に出そうな要素(「逮捕状が出ている」と告げる/実在の裁判官・検察官の名前を出す/
   「捜査に必要」名目の金銭要求)を、今の偽警察官まわりの検知で拾えるか。
-- **処理日**:2026-11-07 / **状態**:ルール案2つを機械チェック済み・**利用者の承認待ち**(反映はしていない)
+- **処理日**:2026-11-07 / **状態**:ルール案2つを利用者の承認後に反映済み(`evolve.js approve`、監査ログ #2・#3)。Jev の質問案は未実装(実装するかは利用者の判断待ち)
 
 #### 今の検知で拾えるもの(カバー済み)
 
@@ -70,7 +70,7 @@ node docs/scam-intel/check-proposals.js . docs/scam-intel/<件>.proposals.json d
 4. 「実在の裁判官・検察官の名前」そのものは、名前が本物かどうかを電話の言葉から見分けられないので、ルールにはしない
    (`authority`・`unpaid_legal` が「裁判所」「裁判」「検察」で当たっている)。
 
-#### ルール案(承認待ち。`2026-11-07-fake-police-warrant.proposals.json`)
+#### ルール案(2026-11-07 反映済み。`2026-11-07-fake-police-warrant.proposals.json`)
 
 | id | ラベル | 重み | 拾うもの |
 |---|---|---|---|
@@ -107,7 +107,7 @@ node docs/scam-intel/check-proposals.js . docs/scam-intel/<件>.proposals.json d
   **今のルールのままで**「中」になる(`unpaid_legal`+`authority`、`authority`+`accomplice`)。ベンチマークの普通の電話93件には無い言い方。
   直すなら別の件として、公式の言い回しを確かめてから扱う。
 
-#### Jev の質問の案(承認待ち。文をまたぐ流れを補う)
+#### Jev の質問の案(未実装。文をまたぐ流れを補う)
 
 TypeSafe 公式スキル(typesafe-ai/skills の typesafe-ai スキル)の作法に合わせ、「詐欺か?」と1つで聞かずに、見て分かる1つずつの判断に分ける。
 答えの組み合わせはコード(`lib/jev.js` の `combine()`)で決める。すべて Noul(はい/いいえ)。型名・書き方は公式ドキュメントで確かめてから実装する。
