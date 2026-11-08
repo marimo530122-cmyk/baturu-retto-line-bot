@@ -83,7 +83,7 @@ jobs:
       # hashFiles はチェックアウトしたフォルダの中しか見ないので、印はそこに書く
       - name: 「今日の分は投稿済み」の印を保存する
         if: always() && hashFiles('x-posted-marker.txt') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: x-posted-${{ steps.posted.outputs.day }}
           path: x-posted-marker.txt
