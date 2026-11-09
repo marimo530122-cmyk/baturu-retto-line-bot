@@ -70,6 +70,40 @@ function pickEpisode(now = new Date()) {
   return stories[day % stories.length];
 }
 
+// ---- 返信(ツリー)のアフィリエイト枠 ----
+// 決めた曜日だけ、本編(実話)の投稿が成功したあとに、その投稿への返信を1件つなげる。
+// 本編には外部リンクを入れない(表示回数が落ちるため)。紹介文・Amazonリンクは affiliate_items.json で差し替える。
+// 返信には【PR】(先頭)と #PR(末尾)をプログラムが必ず付ける(ステマ規制=景品表示法への対応。外さないこと)
+const AFFILIATE_FILE = path.join(__dirname, "affiliate_items.json");
+const WEEKDAYS = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+const PR_TAG = "#PR";
+// 紹介文に入れてはいけない言葉(価格は変わるため書かない。「買った」とは書かず「現場で手入れして使ってきた」と書く)
+const AFFILIATE_FORBIDDEN = /[0-9０-９][0-9０-９,，]*\s*円|[¥￥]|価格|値段|税込|税抜|送料|セール|割引|最安|買/;
+
+const affiliate = fs.existsSync(AFFILIATE_FILE)
+  ? JSON.parse(fs.readFileSync(AFFILIATE_FILE, "utf-8"))
+  : null;
+
+// その日(朝9時区切り=世界標準時の日付)が返信する曜日なら、返信する紹介を返す。無ければ null。
+// 紹介が複数あるときは、1本目の日から数えて何回目の返信日かで順番に回す
+function pickAffiliateItem(now = new Date()) {
+  if (!affiliate) return null;
+  const days = (affiliate.weekdays || []).map((w) => WEEKDAYS[w]).filter((d) => d !== undefined);
+  const items = (affiliate.items || []).filter((i) => i && i.enabled !== false);
+  if (!days.length || !items.length) return null;
+  const today = Date.parse(now.toISOString().slice(0, 10));
+  if (!days.includes(new Date(today).getUTCDay())) return null;
+  let count = 0;
+  for (let t = Date.parse(STORY_START_DATE); t < today; t += 86400000) {
+    if (days.includes(new Date(t).getUTCDay())) count += 1;
+  }
+  return items[count % items.length];
+}
+
+function composeReply(item) {
+  return maskShopName(`【PR】${item.text}\n\n▶ ${item.url}\n\n${PR_TAG}`);
+}
+
 // 会社名は実名を出さず「吉○水産」(1文字を○で伏せる)と書く。
 // 種に実名があっても、投稿文では必ず置き換える。置き換えた後も実名の一部が残る文面は使わない
 const SHOP_ALIAS = "吉○水産";
@@ -343,6 +377,12 @@ async function postToX() {
     console.log(`--- [DRY RUN] ${episode.title} / ${source} (${length}/280) ---`);
     if (image) console.log(`[画像] ${episode.image} (${IMAGE_DESCRIPTIONS[image.type]})`);
     console.log(text);
+    const item = pickAffiliateItem();
+    if (item) {
+      const reply = composeReply(item);
+      console.log(`--- [DRY RUN] 返信(アフィリエイト枠: ${item.id}) (${weightedLength(reply)}/280) ---`);
+      console.log(reply);
+    }
     return;
   }
 
@@ -359,6 +399,48 @@ async function postToX() {
     }
   }
 
+  const postId = await postTweet(
+    mediaId ? { text, media: { media_ids: [mediaId] } } : { text },
+    "X投稿失敗"
+  );
+
+  console.log(
+    `投稿成功: ${episode.title} / ${source}${mediaId ? " / 画像つき" : ""} (post id: ${postId})`
+  );
+
+  // 「今日の分は投稿済み」の印を書く。ワークフローがこれを x-posted-<日付> という名前で保存し、
+  // 同じ日に後から起動した回(予備の定期実行など)は、その印を見て投稿しない(二重投稿を防ぐ)。
+  // 返信より先に書く(返信の途中で止まっても、本編を二重に出さないため)
+  const marker = process.env.X_POSTED_MARKER;
+  if (marker) {
+    fs.writeFileSync(marker, `${new Date().toISOString()} ${postId} ${episode.title}\n`);
+  }
+
+  // 返信のアフィリエイト枠。本編と同じ回の中でだけ行うので、本編の印で二重返信も防げる。
+  // 失敗しても再送はしない(二重返信を避ける)。失敗はワークフローの失敗として知らせる
+  const item = pickAffiliateItem();
+  if (!item) return;
+  let replyLog;
+  try {
+    const reply = composeReply(item);
+    const len = weightedLength(reply);
+    if (len > 280) throw new Error(`返信の文字数オーバー(${len}/280)`);
+    const replyId = await postTweet(
+      { text: reply, reply: { in_reply_to_tweet_id: postId } },
+      "X返信失敗"
+    );
+    console.log(`返信成功: アフィリエイト枠 ${item.id} (post id: ${replyId}, 返信先: ${postId})`);
+    replyLog = `reply ${replyId} ${item.id}`;
+  } catch (err) {
+    console.error(`返信できませんでした(再送はしません。本編は投稿済み): ${err.message}`);
+    replyLog = `reply-failed ${item.id}`;
+    process.exitCode = 1;
+  }
+  if (marker) fs.appendFileSync(marker, `${new Date().toISOString()} ${replyLog}\n`);
+}
+
+// Xに1件投稿して、投稿のIDを返す
+async function postTweet(body, label) {
   const url = "https://api.twitter.com/2/tweets";
   const res = await fetch(url, {
     method: "POST",
@@ -366,26 +448,13 @@ async function postToX() {
       "Content-Type": "application/json",
       Authorization: oauthHeader("POST", url),
     },
-    body: JSON.stringify(mediaId ? { text, media: { media_ids: [mediaId] } } : { text }),
+    body: JSON.stringify(body),
   });
-
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(`X投稿失敗: ${res.status} ${JSON.stringify(data)}`);
+    throw new Error(`${label}: ${res.status} ${JSON.stringify(data)}`);
   }
-
-  console.log(
-    `投稿成功: ${episode.title} / ${source}${mediaId ? " / 画像つき" : ""} (post id: ${data.data.id})`
-  );
-
-  // 「今日の分は投稿済み」の印を書く。ワークフローがこれを x-posted-<日付> という名前で保存し、
-  // 同じ日に後から起動した回(予備の定期実行など)は、その印を見て投稿しない(二重投稿を防ぐ)
-  if (process.env.X_POSTED_MARKER) {
-    fs.writeFileSync(
-      process.env.X_POSTED_MARKER,
-      `${new Date().toISOString()} ${data.data.id} ${episode.title}\n`
-    );
-  }
+  return data.data.id;
 }
 
 // x_episodes.json の書き方と画像ファイルを点検する(node x_broadcast.js --check)。
@@ -447,6 +516,8 @@ function checkEpisodes() {
     }
   });
 
+  errors.push(...checkAffiliate());
+
   const stories = episodes.filter(isStory).length;
   console.log(`エピソード ${episodes.length}本(実話 ${stories}本・既存の宣伝ネタ ${episodes.length - stories}本は投稿に使いません)`);
   if (errors.length) {
@@ -457,7 +528,52 @@ function checkEpisodes() {
   return true;
 }
 
-module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX };
+// affiliate_items.json(返信のアフィリエイト枠)の点検
+function checkAffiliate() {
+  if (!affiliate) return [];
+  const errors = [];
+  const where = "affiliate_items.json";
+  const weekdays = affiliate.weekdays;
+  if (!Array.isArray(weekdays) || weekdays.some((w) => !(w in WEEKDAYS))) {
+    errors.push(`${where}: "weekdays" は ${Object.keys(WEEKDAYS).join(" / ")} の並びで書いてください`);
+  }
+  if (!Array.isArray(affiliate.items)) {
+    errors.push(`${where}: "items" がありません`);
+    return errors;
+  }
+  const ids = new Set();
+  affiliate.items.forEach((item, i) => {
+    const name = `${where} の ${i + 1}番目「${(item && item.id) || "(idなし)"}」`;
+    if (!item || typeof item.id !== "string" || !item.id.trim()) errors.push(`${name}: "id" がありません`);
+    else if (ids.has(item.id)) errors.push(`${name}: "id" が重複しています`);
+    else ids.add(item.id);
+    if (!item || typeof item.text !== "string" || !item.text.trim()) {
+      errors.push(`${name}: "text" がありません`);
+      return;
+    }
+    if (typeof item.url !== "string" || !/^https:\/\/\S+$/.test(item.url)) {
+      errors.push(`${name}: "url" に商品ページのURL(https://〜)を書いてください`);
+    } else if (!/[?&]tag=[^&\s]+/.test(item.url)) {
+      errors.push(`${name}: "url" にアソシエイトのトラッキングID(?tag=…)が入っていません`);
+    }
+    if (/https?:\/\/|#|＃|【PR】/.test(item.text)) {
+      errors.push(`${name}: "text" には紹介文だけを書いてください(【PR】・リンク・#PR はプログラムが付けます)`);
+    }
+    if (AFFILIATE_FORBIDDEN.test(item.text)) {
+      errors.push(`${name}: "text" に価格・購入の話は書かないでください(「現場で手入れして使ってきた」立場で書く)`);
+    }
+    if (SHOP_REAL_NAME.test(maskShopName(item.text))) {
+      errors.push(`${name}: "text" に実名の一部が残っています(会社名は「${SHOP_ALIAS}」と書いてください)`);
+    }
+    if (typeof item.url === "string") {
+      const len = weightedLength(composeReply(item));
+      if (len > 280) errors.push(`${name}: 返信が長すぎます(${len}/280)`);
+    }
+  });
+  return errors;
+}
+
+module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply };
 
 if (require.main === module) {
   if (process.argv.includes("--check")) {

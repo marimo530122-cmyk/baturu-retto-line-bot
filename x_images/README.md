@@ -50,6 +50,30 @@
 - 投稿されるのは実話(`"kind": "story"`)だけ。既存の宣伝ネタ(罰ゲームルーレット等)はファイルに残っていても投稿しない。
   実話が0本の日は投稿しない
 
+## 返信のアフィリエイト枠(affiliate_items.json)
+
+決めた曜日だけ、その日の本編(実話)への返信として、道具の紹介と Amazon リンクを1件つなげる。
+本編にはリンクを入れない。差し替えるのは `affiliate_items.json` の `text` と `url` だけ。
+
+```json
+{
+  "weekdays": ["wed", "sat"],
+  "items": [
+    {
+      "id": "masahiro-gyuto-21",
+      "text": "紹介文(本文だけ。【PR】・リンク・#PR は書かない)",
+      "url": "https://www.amazon.co.jp/dp/XXXXXXXXXX?tag=scnr5301-22"
+    }
+  ]
+}
+```
+
+- `weekdays`: 返信する曜日(`sun` `mon` `tue` `wed` `thu` `fri` `sat`)。日付の区切りは朝9時
+- `items`: 紹介が複数あると、返信日ごとに上から順番に回る。一時的に外すときは `"enabled": false`
+- 返信は「【PR】紹介文 / ▶ リンク / #PR」の形にプログラムが組み立てる
+- 価格は書かない(変わるため)。「買った」とは書かず、「現場で手入れして使ってきた」と書く
+- `url` には必ずトラッキングID(`?tag=scnr5301-22`)を付ける
+
 ## 書いたら点検する
 
 `x_episodes.json` や画像を GitHub に入れると、Actions の「X投稿ネタの点検」が自動で動き、
