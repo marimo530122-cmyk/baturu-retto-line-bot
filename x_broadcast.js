@@ -45,8 +45,12 @@ function linkUrl(episode) {
 }
 
 // リンク先URLが未設定のテンプレート(三口割り・アフィリエイト等)はスキップする
+// "hold": true のエピソードは、登録だけして投稿しない(本人の確認待ちなど)。
+// 保留を外すときは、その回の投稿日より前に外す(過ぎてから外すと、後ろの回が1日ずつずれて1本重複する)
 function availableEpisodes() {
-  return episodes.filter((e) => (e.requires || []).every((key) => URL_VARS[key]));
+  return episodes.filter(
+    (e) => e.hold !== true && (e.requires || []).every((key) => URL_VARS[key])
+  );
 }
 
 // 実話は x_episodes.json に並んだ順に、1日1本ずつ出す(続き物なので順番どおり)。
@@ -108,6 +112,12 @@ function composeReply(item) {
 // 種に実名があっても、投稿文では必ず置き換える。置き換えた後も実名の一部が残る文面は使わない
 const SHOP_ALIAS = "吉○水産";
 const SHOP_REAL_NAME = /吉川/;
+// 吉○水産以外の実在の名前で、投稿に出さないもの(本人の決定)。
+// 種(seed)にも書かない(AIが写してしまうため)。見つけたらAIの文は使わず、--check でも知らせる
+const OTHER_REAL_NAMES = /エスポット|マキヤ|potato|ポテト|ヨッシー/i;
+// 実話の一人称は「俺」で統一する
+const OTHER_FIRST_PERSON = /僕|私|わたし|あたし/;
+
 function maskShopName(text) {
   return text.replace(/吉川水産/g, SHOP_ALIAS);
 }
@@ -248,6 +258,12 @@ async function generateAiBody(episode, maxChars, image = null) {
   const masked = isStory(episode) ? maskShopName(body) : body;
   if (isStory(episode) && SHOP_REAL_NAME.test(masked)) {
     throw new Error(`AIの本文に実名の一部が残っていました(会社名は「${SHOP_ALIAS}」と書く決まり)`);
+  }
+  if (isStory(episode) && OTHER_REAL_NAMES.test(masked)) {
+    throw new Error("AIの本文に、出さない決まりの名前(ほかの会社・施設・人の呼び名)が入っていました");
+  }
+  if (isStory(episode) && OTHER_FIRST_PERSON.test(masked)) {
+    throw new Error("AIの本文の一人称が「俺」ではありませんでした");
   }
   return masked;
 }
@@ -486,6 +502,15 @@ function checkEpisodes() {
       }
       if (/○|吉川/.test(e.hashtags || "")) {
         errors.push(`${name}: タグに「○」や実名は使えません(タグでは漢数字の「〇」を使います。例: ${STORY_TAG})`);
+      }
+      if (OTHER_REAL_NAMES.test(`${e.seed || ""}${e.text || ""}${e.hashtags || ""}`)) {
+        errors.push(`${name}: 種・文面・タグに、出さない決まりの名前(ほかの会社・施設・人の呼び名)があります`);
+      }
+      if (OTHER_FIRST_PERSON.test(e.text || "")) {
+        errors.push(`${name}: 予備の文面の一人称は「俺」にしてください`);
+      }
+      if (e.hold !== undefined && typeof e.hold !== "boolean") {
+        errors.push(`${name}: "hold" は true か false で書いてください`);
       }
       if (SHOP_REAL_NAME.test(maskShopName(`${e.text || ""}${e.hashtags || ""}`))) {
         errors.push(`${name}: "text" か "hashtags" に実名の一部が残っています(会社名は「${SHOP_ALIAS}」と書いてください)`);
