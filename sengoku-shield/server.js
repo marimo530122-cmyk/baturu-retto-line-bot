@@ -448,6 +448,13 @@ if (require.main === module) {
   }
   if (!APP_TOKEN) console.log("SHIELD_APP_TOKEN が空なので、見守り画面の判定(/api/*)は使えません。");
   if (!process.env.SHIELD_ALERT_WEBHOOK_URL) console.log("SHIELD_ALERT_WEBHOOK_URL が空なので、不正アクセスの警報はログに出すだけです。");
+  // 保存期間を過ぎた通話記録を、起動時と1日1回消す(SHIELD_RETENTION_DAYS)
+  const runPurge = () => {
+    const n = store.purgeOld();
+    if (n > 0) console.log(`[retention] 保存期間(${store.RETENTION_DAYS}日)を過ぎた通話記録を ${n} 件消しました`);
+  };
+  runPurge();
+  setInterval(runPurge, 24 * 60 * 60 * 1000).unref();
   server.listen(PORT, () => {
     console.log(`鮮刻シールド起動: port ${PORT}(電話の受け口: ${VOICE_ENABLED ? "ON" : "OFF"} / AI応答: ${process.env.ANTHROPIC_API_KEY ? "ON" : "OFF(固定文面)"} / Jev判定: ${jev.enabled() ? "ON" : "OFF"})`);
   });
