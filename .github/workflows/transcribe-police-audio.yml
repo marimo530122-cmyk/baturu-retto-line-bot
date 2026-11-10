@@ -103,7 +103,7 @@ jobs:
       CHUNK: ${{ matrix.chunk }}
       CHUNKS: ${{ needs.find.outputs.chunks }}
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install faster-whisper==1.1.1 requests
