@@ -1,17 +1,19 @@
 name: X投稿ネタの点検
 
-# x_episodes.json や x_images/ の画像を変えたときに、書き方の間違い・画像の置き忘れ・
+# x_episodes.json・affiliate_items.json や x_images/ の画像を変えたときに、書き方の間違い・画像の置き忘れ・
 # ファイル名の打ち間違い・文字数オーバーを投稿日より前に見つける(Xには何も投稿しない)
 on:
   push:
     paths:
       - "x_episodes.json"
+      - "affiliate_items.json"
       - "x_images/**"
       - "x_broadcast.js"
       - ".github/workflows/x-episodes-check.yml"
   pull_request:
     paths:
       - "x_episodes.json"
+      - "affiliate_items.json"
       - "x_images/**"
       - "x_broadcast.js"
       - ".github/workflows/x-episodes-check.yml"
