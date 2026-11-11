@@ -21,6 +21,7 @@ const line = require("./lib/line");
 const { maskPhone } = require("./lib/mask");
 const intel = require("./lib/intel");
 const guard = require("./lib/guard");
+const notifylog = require("./lib/notifylog");
 
 const PORT = Number(process.env.PORT || 3000);
 // Render に置いたときは、Render が入れてくれる RENDER_EXTERNAL_URL をそのまま使う
@@ -41,6 +42,9 @@ const FORWARD_TO = process.env.SHIELD_FORWARD_TO;
 const MAX_TURNS = Number(process.env.SHIELD_MAX_TURNS || 20);
 const MAX_CALL_SEC = Number(process.env.SHIELD_MAX_CALL_SEC || 600);
 const MAX_SILENCE = 3;
+
+// 管理者用の合言葉(通知の記録の CSV を取り出すとき)。未設定なら /admin/* は無いことにする(404)
+const ADMIN_TOKEN = process.env.SHIELD_ADMIN_TOKEN;
 
 // スマホ連動(/app と /api/*)用の合言葉。未設定なら /api/* は使えない
 const APP_TOKEN = process.env.SHIELD_APP_TOKEN;
@@ -158,8 +162,9 @@ async function handleStatus(params, res) {
   call.verdict = jev.combine(call.detection, call.jev);
   if (call.verdict.level === "high" && !call.notified) {
     // 持ち主(SHIELD_LINE_USER_ID)と、招待番号で登録した家族(110番用の台本つき)の両方に知らせる
+    const meta = { detectedAt: Date.now() };
     const [owner, fam] = await Promise.all(
-      [notifyOwner(call), notifyFamilyCall(call)].map((p) =>
+      [notifyOwner(call, meta), notifyFamilyCall(call, meta)].map((p) =>
         p.catch((err) => {
           console.error("[notify]", err.message);
           return false;
@@ -211,6 +216,60 @@ function readJson(req) {
   });
 }
 
+function sameSecret(given, expected) {
+  const a = Buffer.from(String(given || ""));
+  const b = Buffer.from(String(expected || ""));
+  return b.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// 外からの見張り(cron-job.org など)用: データの保存先に書き込めるかまで確かめる。
+// 書き込めないと、家族の名簿や通知の記録が残らないので、503 を返して管理者にも警報を出す
+function dataDirWritable() {
+  try {
+    fs.mkdirSync(store.DATA_DIR, { recursive: true });
+    fs.writeFileSync(path.join(store.DATA_DIR, ".health-check"), new Date().toISOString());
+    return true;
+  } catch (err) {
+    guard.alert("health-disk", `データの保存先に書き込めません(${err.code || "不明"})。Render のディスクを確かめてください`);
+    return false;
+  }
+}
+
+// 通知の記録の取り出し口(管理者用)。合言葉を URL に載せないよう、画面の入力欄から POST で送る
+const ADMIN_LOG_FORM = `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>通知の記録</title>
+<style>body{font-family:sans-serif;max-width:28rem;margin:2rem auto;padding:0 16px;line-height:1.7}
+input,button{font-size:1.1rem;padding:.6rem;width:100%;box-sizing:border-box;margin:.4rem 0}</style></head>
+<body><h1>通知の記録(CSV)</h1>
+<p>管理者用の合言葉(Render の SHIELD_ADMIN_TOKEN)を入れると、家族への知らせの記録をダウンロードします。
+会話の中身・電話番号・LINE のIDは入っていません。</p>
+<form method="post" action="/admin/notify-log">
+<input type="password" name="token" autocomplete="current-password" placeholder="合言葉" required>
+<button type="submit">ダウンロード</button></form></body></html>`;
+
+async function adminNotifyLog(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(ADMIN_LOG_FORM);
+  }
+  if (req.method !== "POST") {
+    res.writeHead(405);
+    return res.end();
+  }
+  const body = await readBody(req).catch(() => ({}));
+  if (!sameSecret(body.token, ADMIN_TOKEN)) {
+    res.writeHead(401, { "Content-Type": "text/plain; charset=utf-8" });
+    return res.end("合言葉が違います");
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  res.writeHead(200, {
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="notify-log-${day}.csv"`,
+  });
+  res.end(notifylog.toCsv(notifylog.readAll()));
+}
+
 function isAuthorizedApp(req) {
   if (!APP_TOKEN) return false;
   const given = Buffer.from(String(req.headers.authorization || "").replace(/^Bearer\s+/i, ""));
@@ -241,6 +300,8 @@ async function apiJudge(body, res) {
     return sendJson(res, 400, { error: "utterance が必要です" });
   }
   const result = await judgeUtterance({ utterance: body.utterance, recent: body.recent });
+  // 通知の記録用: 詐欺の疑いを判定した時刻(サーバーの時計)
+  const detectedAt = Date.now();
   const sessionId = validSessionId(body.session_id);
   let family_notice = "off";
   if (familyTargets().length && sessionId) {
@@ -248,7 +309,7 @@ async function apiJudge(body, res) {
     if (result.risk_level === "HIGH") {
       if (markFamilyNotified(sessionId)) {
         family_notice = "sent";
-        notifyFamily(result, body.utterance).catch((err) => console.error("[notify]", err.message));
+        notifyFamily(result, body.utterance, { detectedAt, sessionId }).catch((err) => console.error("[notify]", err.message));
       } else {
         family_notice = "already";
       }
@@ -316,7 +377,7 @@ async function apiEvent(body, res) {
     startedAt: validStartedAt(body.started_at),
   };
   // 本人の画面に「ご家族に知らせました」と出すので、本当に届いたかを待ってから返す(事実でない安心材料を出さない)
-  const sent = await notifyFamilyProgress(body.type, extra).catch((err) => {
+  const sent = await notifyFamilyProgress(body.type, extra, { sessionId }).catch((err) => {
     console.error("[notify]", err.message);
     return false;
   });
@@ -364,8 +425,9 @@ const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url, "http://localhost").pathname;
   guard.securityHeaders(res);
   if (req.method === "GET" && pathname === "/health") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    return res.end("ok");
+    const ok = dataDirWritable();
+    res.writeHead(ok ? 200 : 503, { "Content-Type": "text/plain" });
+    return res.end(ok ? "ok" : "ng: data folder is not writable");
   }
   // 連打・総当たりの見張り(止めた・間違えた・エラーが続いたら開発者に知らせる)
   const ip = guard.clientIp(req);
@@ -402,6 +464,13 @@ const server = http.createServer(async (req, res) => {
     } catch {}
     if (body) await line.handleWebhook(body);
     return;
+  }
+  if (pathname === "/admin/notify-log") {
+    if (!ADMIN_TOKEN) {
+      res.writeHead(404);
+      return res.end();
+    }
+    return adminNotifyLog(req, res);
   }
   if (req.method === "GET" && pathname === "/intel.js") {
     res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
