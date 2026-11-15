@@ -39,6 +39,18 @@ function isStory(episode) {
   return episode.kind === "story";
 }
 
+// 知識系Q&A(本人の答えから作った文面)。実話と同じ並びに挟んで出す。
+// AIには書き直させない(健康にかかわる話もあり、種にない場面を足させないため)。ブログのリンクは付けない
+function isQA(episode) {
+  return episode.kind === "qa";
+}
+const QA_TAG = "#魚屋の豆知識";
+
+// 毎日の並びに入るもの(実話とQ&A)
+function isPostable(episode) {
+  return isStory(episode) || isQA(episode);
+}
+
 // リンク先: 実話はブログ記事のURLを直接持つ。それ以外は URL_VARS の名前で指定する
 function linkUrl(episode) {
   return isStory(episode) ? episode.url : URL_VARS[episode.link];
@@ -68,7 +80,7 @@ function daysSinceStart(now = new Date()) {
 // 投稿するのは吉○水産時代の実話(kind: "story")だけ。既存の宣伝ネタ(罰ゲームルーレット等)は
 // x_episodes.json に入っていても選ばない(方針: 実話100%)。実話が0本の日・1本目の日より前は null(投稿しない)
 function pickEpisode(now = new Date()) {
-  const stories = availableEpisodes().filter(isStory);
+  const stories = availableEpisodes().filter(isPostable);
   const day = daysSinceStart(now);
   if (!stories.length || day < 0) return null;
   return stories[day % stories.length];
@@ -163,6 +175,7 @@ function withImageNote(image, body) {
 
 function render(episode, image = null) {
   if (isStory(episode)) return composeAiPost(episode, episode.text, image);
+  if (isQA(episode)) return maskShopName(`${withImageNote(image, episode.text)}\n\n${QA_TAG}`);
   let text = episode.text;
   for (const [key, value] of Object.entries(URL_VARS)) {
     if (value) text = text.replaceAll(`{{${key}}}`, value);
@@ -281,7 +294,7 @@ async function generateAiBody(episode, maxChars, image = null) {
 // その日の投稿文を決める。AIが使えればAI版、ダメなら固定文面
 // (Xは日本語1文字を2と数え、上限280。実話は「約140字」が目安だが、URL・ハッシュタグの分だけ短くなる)
 async function buildPost(episode, image = null) {
-  if (USE_AI) {
+  if (USE_AI && !isQA(episode)) {
     try {
       const fixedPart = weightedLength(composeAiPost(episode, "", image));
       const maxChars = Math.min(140, Math.floor((280 - fixedPart) / 2) - 5);
@@ -493,8 +506,19 @@ function checkEpisodes() {
       if (typeof e[key] !== "string" || !e[key].trim()) errors.push(`${name}: "${key}" がありません`);
     };
     ["title", "text"].forEach(need);
-    if (!isStory(e)) need("hashtags"); // 実話は共通タグ「#吉〇水産の実話」をプログラムが付けるので省略してよい
-    if (isStory(e)) {
+    // 実話は共通タグ「#吉〇水産の実話」、Q&Aは「#魚屋の豆知識」をプログラムが付けるので省略してよい
+    if (!isPostable(e)) need("hashtags");
+    if (isQA(e)) {
+      if (/https?:\/\/|#|＃|【PR】/.test(e.text || "")) {
+        errors.push(`${name}: Q&Aの "text" には本文だけを書いてください(タグはプログラムが付けます)`);
+      }
+      if (e.hashtags !== undefined) errors.push(`${name}: Q&Aの "hashtags" は書かないでください(「${QA_TAG}」をプログラムが付けます)`);
+      if (OTHER_REAL_NAMES.test(e.text || "") || SHOP_REAL_NAME.test(maskShopName(e.text || ""))) {
+        errors.push(`${name}: 文面に、出さない決まりの名前があります`);
+      }
+      if (OTHER_FIRST_PERSON.test(e.text || "")) errors.push(`${name}: 文面の一人称は「俺」にしてください`);
+      if (e.hold !== undefined && typeof e.hold !== "boolean") errors.push(`${name}: "hold" は true か false で書いてください`);
+    } else if (isStory(e)) {
       need("seed");
       if (typeof e.url !== "string" || !/^https:\/\/\S+$/.test(e.url)) {
         errors.push(`${name}: "url" にブログ記事のURL(https://〜)を書いてください`);
@@ -529,7 +553,7 @@ function checkEpisodes() {
       need("topic");
       if (!(e.link in URL_VARS)) errors.push(`${name}: "link" は ${Object.keys(URL_VARS).join(" / ")} のどれかです`);
     }
-    if (e.kind !== undefined && e.kind !== "story") errors.push(`${name}: "kind" は "story" だけです`);
+    if (e.kind !== undefined && !isPostable(e)) errors.push(`${name}: "kind" は "story" か "qa" です`);
     if (e.image !== undefined) {
       if (!IMAGE_TYPES.includes(e.image_type)) {
         errors.push(`${name}: "image_type" は "photo"(実物写真)か "composite"(合成のイメージ画像)です`);
@@ -558,7 +582,8 @@ function checkEpisodes() {
   errors.push(...checkAffiliate());
 
   const stories = episodes.filter(isStory).length;
-  console.log(`エピソード ${episodes.length}本(実話 ${stories}本・既存の宣伝ネタ ${episodes.length - stories}本は投稿に使いません)`);
+  const qas = episodes.filter(isQA).length;
+  console.log(`エピソード ${episodes.length}本(実話 ${stories}本・Q&A ${qas}本・既存の宣伝ネタ ${episodes.length - stories - qas}本は投稿に使いません)`);
   if (errors.length) {
     errors.forEach((msg) => console.error(`NG ${msg}`));
     return false;
