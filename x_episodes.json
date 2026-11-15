@@ -839,36 +839,6 @@
   },
   {
     "kind": "qa",
-    "title": "【Q&A8】焼き魚の塩",
-    "image": [
-      "x_images/sashimi-platter.jpg",
-      "x_images/sashimi-tuna.jpg",
-      "x_images/work-01.jpg",
-      "x_images/work-02.jpg",
-      "x_images/work-03.jpg",
-      "x_images/work-05.jpg",
-      "x_images/work-06.jpg",
-      "x_images/work-07.jpg",
-      "x_images/work-08.jpg",
-      "x_images/work-09.jpg",
-      "x_images/work-10.jpg",
-      "x_images/work-11.jpg",
-      "x_images/work-12.jpg",
-      "x_images/work-13.jpg",
-      "x_images/work-14.jpg",
-      "x_images/work-15.jpg",
-      "x_images/work-16.jpg",
-      "x_images/work-17.jpg",
-      "x_images/work-18.jpg",
-      "x_images/work-19.jpg",
-      "x_images/work-20.jpg"
-    ],
-    "image_type": "photo",
-    "text": "「焼き魚の塩、どれくらい振る？」\n塩加減は、愛情加減だ。決まった答えはない。\n食べる人を思って振る、その気持ちが一番の加減になる。\n愛情加減ってこと、覚えておいてください。",
-    "hold": true
-  },
-  {
-    "kind": "qa",
     "title": "【Q&A7】冷凍魚の解凍",
     "image": [
       "x_images/sashimi-platter.jpg",
@@ -975,6 +945,50 @@
   },
   {
     "kind": "qa",
+    "title": "【Q&A8】焼き魚の塩",
+    "image": [
+      "x_images/sashimi-platter.jpg",
+      "x_images/sashimi-tuna.jpg",
+      "x_images/work-01.jpg",
+      "x_images/work-02.jpg",
+      "x_images/work-03.jpg",
+      "x_images/work-05.jpg",
+      "x_images/work-06.jpg",
+      "x_images/work-07.jpg",
+      "x_images/work-08.jpg",
+      "x_images/work-09.jpg",
+      "x_images/work-10.jpg",
+      "x_images/work-11.jpg",
+      "x_images/work-12.jpg",
+      "x_images/work-13.jpg",
+      "x_images/work-14.jpg",
+      "x_images/work-15.jpg",
+      "x_images/work-16.jpg",
+      "x_images/work-17.jpg",
+      "x_images/work-18.jpg",
+      "x_images/work-19.jpg",
+      "x_images/work-20.jpg"
+    ],
+    "image_type": "photo",
+    "text": "「焼き魚の塩、どれくらい振る？」\n塩加減は、愛情加減だ。決まった答えはない。\n食べる人を思って振る、その気持ちが一番の加減になる。\n愛情加減ってこと、覚えておいてください。"
+  },
+  {
+    "kind": "story",
+    "title": "【S-42】30kg痩せた3ヶ月",
+    "seed": "総集編・嫌な思い出編。キチキチしすぎる会社。入社3ヶ月でストレスとハードワークにより30kg痩せたが、課長には「おまえ、良いだろ。ダイエット出来て、金もらえるなんて」と言われた。遅番の日は機嫌の悪い部長に「ここ汚いぞ」と怒鳴られることもあった。書き出し: 課長の「ダイエット出来て、金もらえるなんて」のセリフから。",
+    "url": "https://ameblo.jp/itaimarimo/entry-12798569654.html",
+    "image": [
+      "x_images/era-composite.jpg",
+      "x_images/era-composite-2.jpg",
+      "x_images/era-composite-3.jpg",
+      "x_images/era-composite-4.jpg",
+      "x_images/era-composite-5.jpg"
+    ],
+    "image_type": "composite",
+    "text": "「おまえ、良いだろ。ダイエット出来て、金もらえるなんて」\n入社3ヶ月、ストレスとハードワークで30kg痩せた俺に、課長はそう言った。\n遅番の日は、機嫌の悪い部長に「ここ汚いぞ」と怒鳴られることもあった。"
+  },
+  {
+    "kind": "qa",
     "title": "【Q&A9】余った刺身の漬け",
     "image": [
       "x_images/sashimi-platter.jpg",
@@ -1001,21 +1015,6 @@
     ],
     "image_type": "photo",
     "text": "「余った刺身、漬けにすれば美味くなる？」\n正直に言う。決めるのは鮮度だ。\n鮮度のいい刺身は、漬けても美味い。\n鮮度に勝る味はない。これが魚屋の本音だ。"
-  },
-  {
-    "kind": "story",
-    "title": "【S-42】30kg痩せた3ヶ月",
-    "seed": "総集編・嫌な思い出編。キチキチしすぎる会社。入社3ヶ月でストレスとハードワークにより30kg痩せたが、課長には「おまえ、良いだろ。ダイエット出来て、金もらえるなんて」と言われた。遅番の日は機嫌の悪い部長に「ここ汚いぞ」と怒鳴られることもあった。書き出し: 課長の「ダイエット出来て、金もらえるなんて」のセリフから。",
-    "url": "https://ameblo.jp/itaimarimo/entry-12798569654.html",
-    "image": [
-      "x_images/era-composite.jpg",
-      "x_images/era-composite-2.jpg",
-      "x_images/era-composite-3.jpg",
-      "x_images/era-composite-4.jpg",
-      "x_images/era-composite-5.jpg"
-    ],
-    "image_type": "composite",
-    "text": "「おまえ、良いだろ。ダイエット出来て、金もらえるなんて」\n入社3ヶ月、ストレスとハードワークで30kg痩せた俺に、課長はそう言った。\n遅番の日は、機嫌の悪い部長に「ここ汚いぞ」と怒鳴られることもあった。"
   },
   {
     "kind": "story",
