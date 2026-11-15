@@ -132,14 +132,24 @@ function storyHashtags(episode) {
 }
 
 // 画像ファイルの場所と種類。指定が無い・見つからない場合は null(文字だけで投稿する)
-function resolveImage(episode) {
-  if (!episode.image) return null;
-  const file = path.join(__dirname, episode.image);
-  if (!fs.existsSync(file)) {
-    console.warn(`画像が見つからないため文字だけで投稿します: ${episode.image}`);
+// "image" は1枚(文字列)か、候補の並び(配列)。並びのときは、投稿のたびにランダムで1枚選ぶ。
+// 見つからない候補は飛ばし、1枚も無ければ文字だけで投稿する
+function imageList(episode) {
+  if (!episode.image) return [];
+  return (Array.isArray(episode.image) ? episode.image : [episode.image]).map(String);
+}
+
+function resolveImage(episode, random = Math.random) {
+  const list = imageList(episode);
+  if (!list.length) return null;
+  const found = list.filter((rel) => fs.existsSync(path.join(__dirname, rel)));
+  for (const rel of list) if (!found.includes(rel)) console.warn(`画像が見つかりません(この画像は使いません): ${rel}`);
+  if (!found.length) {
+    console.warn("画像が1枚も見つからないため、文字だけで投稿します");
     return null;
   }
-  return { file, type: episode.image_type };
+  const rel = found[Math.floor(random() * found.length) % found.length];
+  return { file: path.join(__dirname, rel), rel, type: episode.image_type };
 }
 
 // ステマ規制(景品表示法)対応: 広告・アフィリエイトを含む投稿は必ず先頭で明示する
@@ -391,7 +401,7 @@ async function postToX() {
 
   if (DRY_RUN) {
     console.log(`--- [DRY RUN] ${episode.title} / ${source} (${length}/280) ---`);
-    if (image) console.log(`[画像] ${episode.image} (${IMAGE_DESCRIPTIONS[image.type]})`);
+    if (image) console.log(`[画像] ${image.rel} (${IMAGE_DESCRIPTIONS[image.type]})`);
     console.log(text);
     const item = pickAffiliateItem();
     if (item) {
@@ -521,16 +531,20 @@ function checkEpisodes() {
     }
     if (e.kind !== undefined && e.kind !== "story") errors.push(`${name}: "kind" は "story" だけです`);
     if (e.image !== undefined) {
-      const file = path.join(__dirname, String(e.image));
       if (!IMAGE_TYPES.includes(e.image_type)) {
         errors.push(`${name}: "image_type" は "photo"(実物写真)か "composite"(合成のイメージ画像)です`);
       }
-      if (!IMAGE_MIME[path.extname(String(e.image)).toLowerCase()]) {
-        errors.push(`${name}: 画像は .jpg / .jpeg / .png / .webp にしてください: ${e.image}`);
-      } else if (!fs.existsSync(file)) {
-        errors.push(`${name}: 画像ファイルが見つかりません(ファイル名の打ち間違いに注意): ${e.image}`);
-      } else if (fs.statSync(file).size > MAX_IMAGE_BYTES) {
-        errors.push(`${name}: 画像が5MBを超えています: ${e.image}`);
+      const list = imageList(e);
+      if (!list.length) errors.push(`${name}: "image" が空です`);
+      for (const rel of list) {
+        const file = path.join(__dirname, rel);
+        if (!IMAGE_MIME[path.extname(rel).toLowerCase()]) {
+          errors.push(`${name}: 画像は .jpg / .jpeg / .png / .webp にしてください: ${rel}`);
+        } else if (!fs.existsSync(file)) {
+          errors.push(`${name}: 画像ファイルが見つかりません(ファイル名の打ち間違いに注意): ${rel}`);
+        } else if (fs.statSync(file).size > MAX_IMAGE_BYTES) {
+          errors.push(`${name}: 画像が5MBを超えています: ${rel}`);
+        }
       }
     }
     // 固定文面(AIが失敗した日に使う)が280以内か。リンク先が未設定のものは投稿されないので数えない
@@ -598,7 +612,7 @@ function checkAffiliate() {
   return errors;
 }
 
-module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply };
+module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply, resolveImage };
 
 if (require.main === module) {
   if (process.argv.includes("--check")) {
