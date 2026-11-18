@@ -7,6 +7,7 @@ on:
     paths:
       - "x_episodes.json"
       - "affiliate_items.json"
+      - "weekly_posts.json"
       - "x_images/**"
       - "x_broadcast.js"
       - ".github/workflows/x-episodes-check.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "x_episodes.json"
       - "affiliate_items.json"
+      - "weekly_posts.json"
       - "x_images/**"
       - "x_broadcast.js"
       - ".github/workflows/x-episodes-check.yml"

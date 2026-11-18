@@ -80,10 +80,44 @@ function daysSinceStart(now = new Date()) {
 // 投稿するのは吉○水産時代の実話(kind: "story")だけ。既存の宣伝ネタ(罰ゲームルーレット等)は
 // x_episodes.json に入っていても選ばない(方針: 実話100%)。実話が0本の日・1本目の日より前は null(投稿しない)
 function pickEpisode(now = new Date()) {
+  const weekly = pickWeekly(now);
+  if (weekly) return weekly;
   const stories = availableEpisodes().filter(isPostable);
-  const day = daysSinceStart(now);
+  // 週1回の投稿の日は、実話・Q&Aを飛ばさず翌日に送る(その日のぶん、並びの番号を進めない)
+  const day = daysSinceStart(now) - weeklyDaysBefore(now);
   if (!stories.length || day < 0) return null;
   return stories[day % stories.length];
+}
+
+// ---- 週1回の投稿(weekly_posts.json。今は「母のお茶」) ----
+// 決めた曜日(朝9時区切り)は、その日の実話・Q&Aの代わりにこれを出す。文面は順番に回す。
+// AIに書き直させない。「お茶で病気が治った」と読める言葉は --check で止める(命にかかわる誤解・薬機法などを避けるため)
+const WEEKLY_FILE = path.join(__dirname, "weekly_posts.json");
+const weekly = fs.existsSync(WEEKLY_FILE) ? JSON.parse(fs.readFileSync(WEEKLY_FILE, "utf-8")) : null;
+const WEEKLY_FORBIDDEN = /癌|がん|ガン|腫瘍|病気|治る|治っ|治し|治療|効く|効い|効果|効能|消えた|奇跡|余命|予防|免疫|健康に/;
+
+function isWeekly(episode) {
+  return episode.kind === "weekly";
+}
+
+function weeklyDay(t) {
+  return weekly && weekly.posts && weekly.posts.length && new Date(t).getUTCDay() === WEEKDAYS[weekly.weekday] && t >= Date.parse(weekly.start);
+}
+
+// 今日より前に、週1回の投稿の日が何回あったか(実話・Q&Aの並びを、そのぶん後ろに送るため)
+function weeklyDaysBefore(now = new Date()) {
+  if (!weekly) return 0;
+  const today = Date.parse(now.toISOString().slice(0, 10));
+  let n = 0;
+  for (let t = Date.parse(weekly.start); t < today; t += 86400000) if (weeklyDay(t)) n += 1;
+  return n;
+}
+
+function pickWeekly(now = new Date()) {
+  const today = Date.parse(now.toISOString().slice(0, 10));
+  if (!weeklyDay(today)) return null;
+  const post = weekly.posts[weeklyDaysBefore(now) % weekly.posts.length];
+  return { kind: "weekly", title: `【${weekly.title}】${post.id}`, text: post.text, image: weekly.image, image_type: weekly.image_type, url: weekly.url };
 }
 
 // ---- 返信(ツリー)のアフィリエイト枠 ----
@@ -174,6 +208,7 @@ function withImageNote(image, body) {
 }
 
 function render(episode, image = null) {
+  if (isWeekly(episode)) return `${withImageNote(image, episode.text)}\n\n▶ 続きはブログで ${episode.url}`;
   if (isStory(episode)) return composeAiPost(episode, episode.text, image);
   if (isQA(episode)) return maskShopName(`${withImageNote(image, episode.text)}\n\n${QA_TAG}`);
   let text = episode.text;
@@ -294,7 +329,7 @@ async function generateAiBody(episode, maxChars, image = null) {
 // その日の投稿文を決める。AIが使えればAI版、ダメなら固定文面
 // (Xは日本語1文字を2と数え、上限280。実話は「約140字」が目安だが、URL・ハッシュタグの分だけ短くなる)
 async function buildPost(episode, image = null) {
-  if (USE_AI && !isQA(episode)) {
+  if (USE_AI && !isQA(episode) && !isWeekly(episode)) {
     try {
       const fixedPart = weightedLength(composeAiPost(episode, "", image));
       const maxChars = Math.min(140, Math.floor((280 - fixedPart) / 2) - 5);
@@ -416,7 +451,7 @@ async function postToX() {
     console.log(`--- [DRY RUN] ${episode.title} / ${source} (${length}/280) ---`);
     if (image) console.log(`[画像] ${image.rel} (${IMAGE_DESCRIPTIONS[image.type]})`);
     console.log(text);
-    const item = pickAffiliateItem();
+    const item = isWeekly(episode) ? null : pickAffiliateItem();
     if (item) {
       const reply = composeReply(item);
       console.log(`--- [DRY RUN] 返信(アフィリエイト枠: ${item.id}) (${weightedLength(reply)}/280) ---`);
@@ -457,7 +492,7 @@ async function postToX() {
 
   // 返信のアフィリエイト枠。本編と同じ回の中でだけ行うので、本編の印で二重返信も防げる。
   // 失敗しても再送はしない(二重返信を避ける)。失敗はワークフローの失敗として知らせる
-  const item = pickAffiliateItem();
+  const item = isWeekly(episode) ? null : pickAffiliateItem();
   if (!item) return;
   let replyLog;
   try {
@@ -580,6 +615,7 @@ function checkEpisodes() {
   });
 
   errors.push(...checkAffiliate());
+  errors.push(...checkWeekly());
 
   const stories = episodes.filter(isStory).length;
   const qas = episodes.filter(isQA).length;
@@ -637,7 +673,32 @@ function checkAffiliate() {
   return errors;
 }
 
-module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply, resolveImage };
+// weekly_posts.json(週1回の投稿)の点検
+function checkWeekly() {
+  if (!weekly) return [];
+  const errors = [];
+  const where = "weekly_posts.json";
+  if (!(weekly.weekday in WEEKDAYS)) errors.push(`${where}: "weekday" は ${Object.keys(WEEKDAYS).join(" / ")} のどれかです`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weekly.start || "")) errors.push(`${where}: "start" は 2026-11-29 の形で書いてください`);
+  if (typeof weekly.url !== "string" || !/^https:\/\/\S+$/.test(weekly.url)) errors.push(`${where}: "url" にブログ記事のURLを書いてください`);
+  if (!IMAGE_TYPES.includes(weekly.image_type)) errors.push(`${where}: "image_type" は photo か composite です`);
+  if (typeof weekly.image !== "string" || !fs.existsSync(path.join(__dirname, weekly.image))) {
+    errors.push(`${where}: 画像ファイルが見つかりません: ${weekly.image}`);
+  }
+  if (!Array.isArray(weekly.posts) || !weekly.posts.length) errors.push(`${where}: "posts" がありません`);
+  for (const [i, p] of (weekly.posts || []).entries()) {
+    const name = `${where} の ${i + 1}番目「${(p && p.id) || "(idなし)"}」`;
+    if (!p || typeof p.text !== "string" || !p.text.trim()) { errors.push(`${name}: "text" がありません`); continue; }
+    if (/https?:\/\/|#|＃|【PR】/.test(p.text)) errors.push(`${name}: "text" には本文だけを書いてください(リンクはプログラムが付けます)`);
+    if (WEEKLY_FORBIDDEN.test(p.text)) errors.push(`${name}: 病気が治る・効くと読める言葉は使わないでください`);
+    if (OTHER_FIRST_PERSON.test(p.text)) errors.push(`${name}: 一人称は「俺」にしてください`);
+    const len = weightedLength(render({ kind: "weekly", text: p.text, url: weekly.url }, { type: weekly.image_type }));
+    if (len > 280) errors.push(`${name}: 長すぎます(${len}/280)`);
+  }
+  return errors;
+}
+
+module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply, resolveImage, pickWeekly };
 
 if (require.main === module) {
   if (process.argv.includes("--check")) {
