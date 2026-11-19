@@ -94,7 +94,8 @@ function pickEpisode(now = new Date()) {
 // AIに書き直させない。「お茶で病気が治った」と読める言葉は --check で止める(命にかかわる誤解・薬機法などを避けるため)
 const WEEKLY_FILE = path.join(__dirname, "weekly_posts.json");
 const weekly = fs.existsSync(WEEKLY_FILE) ? JSON.parse(fs.readFileSync(WEEKLY_FILE, "utf-8")) : null;
-const WEEKLY_FORBIDDEN = /癌|がん|ガン|腫瘍|病気|治る|治っ|治し|治療|効く|効い|効果|効能|消えた|奇跡|余命|予防|免疫|健康に/;
+// 病名(癌)と「奇跡」は本人の体験として書いてよい(本人が承知のうえで決めた)。効き目・治ったと読める言葉は止める
+const WEEKLY_FORBIDDEN = /腫瘍|病気|治る|治っ|治し|治療|効く|効い|効果|効能|消えた|余命|予防|免疫|健康に/;
 
 function isWeekly(episode) {
   return episode.kind === "weekly";
