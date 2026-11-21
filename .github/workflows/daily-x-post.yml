@@ -87,4 +87,5 @@ jobs:
         with:
           name: x-posted-${{ steps.posted.outputs.day }}
           path: x-posted-marker.txt
-          retention-days: 7
+          # 投稿の記録としても使う(リンクの位置のテストの [link=reply] / link-reply など)。あとから見返せるよう長めに残す
+          retention-days: 90
