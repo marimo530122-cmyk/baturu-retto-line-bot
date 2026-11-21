@@ -101,6 +101,31 @@ function isWeekly(episode) {
   return episode.kind === "weekly";
 }
 
+// ---- リンクの位置のテスト(x_link_test.json) ----
+// 期間中(start から days 日間。日付は朝9時区切り=世界標準時)は、実話の本編からブログのURLを外し、
+// 投稿の直後に自分への返信で「▶ 続きはブログで <その話の記事>」を付ける。表示回数を比べるため、変えるのはURLの位置だけ
+// (本文の書き方・長さの上限・ハッシュタグ・時刻は同じ)。Q&A(もともとリンクなし)と日曜の週1回の投稿は対象外。
+// 元に戻すときは "enabled": false にする(期間が過ぎても自動で元に戻る)
+const LINK_TEST_FILE = path.join(__dirname, "x_link_test.json");
+const linkTest = fs.existsSync(LINK_TEST_FILE) ? JSON.parse(fs.readFileSync(LINK_TEST_FILE, "utf-8")) : null;
+const LINK_LEAD = "▶ 続きはブログで";
+
+function linkTestActive(now = new Date()) {
+  if (!linkTest || linkTest.enabled !== true) return false;
+  const today = Date.parse(now.toISOString().slice(0, 10));
+  const start = Date.parse(linkTest.start);
+  return today >= start && today < start + Number(linkTest.days) * 86400000;
+}
+
+// この投稿のブログのURLを、本編ではなく返信に付けるか
+function linkInReply(episode, now = new Date()) {
+  return isStory(episode) && linkTestActive(now);
+}
+
+function composeLinkReply(episode) {
+  return `${LINK_LEAD} ${episode.url}`;
+}
+
 function weeklyDay(t) {
   return weekly && weekly.posts && weekly.posts.length && new Date(t).getUTCDay() === WEEKDAYS[weekly.weekday] && t >= Date.parse(weekly.start);
 }
@@ -210,7 +235,7 @@ function withImageNote(image, body) {
 
 function render(episode, image = null) {
   if (isWeekly(episode)) return `${withImageNote(image, episode.text)}\n\n▶ 続きはブログで ${episode.url}`;
-  if (isStory(episode)) return composeAiPost(episode, episode.text, image);
+  if (isStory(episode)) return composeAiPost(episode, episode.text, image, { withLink: !linkInReply(episode) });
   if (isQA(episode)) return maskShopName(`${withImageNote(image, episode.text)}\n\n${QA_TAG}`);
   let text = episode.text;
   for (const [key, value] of Object.entries(URL_VARS)) {
@@ -221,10 +246,11 @@ function render(episode, image = null) {
 
 // AIが書くのは本文だけ。URL・ハッシュタグ・【PR】・画像のイメージ表記はプログラム側で必ず付ける
 // (AIにURLを書かせると存在しないリンクや表記漏れが起きうるため)
-function composeAiPost(episode, body, image = null) {
-  const lead = isStory(episode) ? "▶ 続きはブログで" : "▶";
+function composeAiPost(episode, body, image = null, { withLink = true } = {}) {
+  const lead = isStory(episode) ? LINK_LEAD : "▶";
   const tags = isStory(episode) ? storyHashtags(episode) : episode.hashtags;
-  const suffix = `\n\n${lead} ${linkUrl(episode)}\n\n${tags}`;
+  const link = withLink ? `\n\n${lead} ${linkUrl(episode)}` : "";
+  const suffix = `${link}\n\n${tags}`;
   const text = withAdLabel(episode, withImageNote(image, body) + suffix);
   return isStory(episode) ? maskShopName(text) : text;
 }
@@ -332,9 +358,12 @@ async function generateAiBody(episode, maxChars, image = null) {
 async function buildPost(episode, image = null) {
   if (USE_AI && !isQA(episode) && !isWeekly(episode)) {
     try {
+      // 本文の上限は、リンクを返信に移す日も「本編にURLがある」前提で計算する(本文の長さを変えないため)
       const fixedPart = weightedLength(composeAiPost(episode, "", image));
       const maxChars = Math.min(140, Math.floor((280 - fixedPart) / 2) - 5);
-      const text = composeAiPost(episode, await generateAiBody(episode, maxChars, image), image);
+      const text = composeAiPost(episode, await generateAiBody(episode, maxChars, image), image, {
+        withLink: !linkInReply(episode),
+      });
       if (weightedLength(text) > 280) {
         throw new Error(`AIの文面が文字数オーバー(${weightedLength(text)}/280)`);
       }
@@ -452,6 +481,11 @@ async function postToX() {
     console.log(`--- [DRY RUN] ${episode.title} / ${source} (${length}/280) ---`);
     if (image) console.log(`[画像] ${image.rel} (${IMAGE_DESCRIPTIONS[image.type]})`);
     console.log(text);
+    if (linkInReply(episode)) {
+      const linkReply = composeLinkReply(episode);
+      console.log(`--- [DRY RUN] 返信(リンクの位置のテスト) (${weightedLength(linkReply)}/280) ---`);
+      console.log(linkReply);
+    }
     const item = isWeekly(episode) ? null : pickAffiliateItem();
     if (item) {
       const reply = composeReply(item);
@@ -488,7 +522,27 @@ async function postToX() {
   // 返信より先に書く(返信の途中で止まっても、本編を二重に出さないため)
   const marker = process.env.X_POSTED_MARKER;
   if (marker) {
-    fs.writeFileSync(marker, `${new Date().toISOString()} ${postId} ${episode.title}\n`);
+    const mode = isStory(episode) ? (linkInReply(episode) ? " [link=reply]" : " [link=body]") : "";
+    fs.writeFileSync(marker, `${new Date().toISOString()} ${postId} ${episode.title}${mode}\n`);
+  }
+
+  // リンクの位置のテスト中は、まずブログのリンクを返信で付ける(アフィリエイトの返信より先)。
+  // アフィリエイトと同じく、失敗しても再送しない(二重返信を防ぐ)
+  if (linkInReply(episode)) {
+    let linkLog;
+    try {
+      const linkId = await postTweet(
+        { text: composeLinkReply(episode), reply: { in_reply_to_tweet_id: postId } },
+        "Xリンク返信失敗"
+      );
+      console.log(`返信成功: ブログのリンク (post id: ${linkId}, 返信先: ${postId})`);
+      linkLog = `link-reply ${linkId} ${episode.url}`;
+    } catch (err) {
+      console.error(`ブログのリンクを返信できませんでした(再送はしません。本編は投稿済み): ${err.message}`);
+      linkLog = "link-reply-failed";
+      process.exitCode = 1;
+    }
+    if (marker) fs.appendFileSync(marker, `${new Date().toISOString()} ${linkLog}\n`);
   }
 
   // 返信のアフィリエイト枠。本編と同じ回の中でだけ行うので、本編の印で二重返信も防げる。
@@ -617,6 +671,7 @@ function checkEpisodes() {
 
   errors.push(...checkAffiliate());
   errors.push(...checkWeekly());
+  errors.push(...checkLinkTest());
 
   const stories = episodes.filter(isStory).length;
   const qas = episodes.filter(isQA).length;
@@ -699,7 +754,18 @@ function checkWeekly() {
   return errors;
 }
 
-module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply, resolveImage, pickWeekly };
+// x_link_test.json(リンクの位置のテスト)の点検
+function checkLinkTest() {
+  if (!linkTest) return [];
+  const errors = [];
+  const where = "x_link_test.json";
+  if (typeof linkTest.enabled !== "boolean") errors.push(`${where}: "enabled" は true か false です`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(linkTest.start || "")) errors.push(`${where}: "start" は 2026-11-22 の形で書いてください`);
+  if (!Number.isInteger(linkTest.days) || linkTest.days < 1) errors.push(`${where}: "days" は 1 以上の整数です`);
+  return errors;
+}
+
+module.exports = { availableEpisodes, pickEpisode, render, composeAiPost, weightedLength, checkEpisodes, postToX, pickAffiliateItem, composeReply, resolveImage, pickWeekly, linkTestActive, linkInReply, composeLinkReply };
 
 if (require.main === module) {
   if (process.argv.includes("--check")) {
