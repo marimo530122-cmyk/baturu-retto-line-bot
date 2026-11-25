@@ -1,0 +1,134 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』序章3:最初の声 のエピソード単体設定です。",
+    "assets/scenes/episode_03/ に scene_01.png〜scene_05.png (このファイルと同じディレクトリのPROMPTS.md参照) を配置してから `python main.py --config configs/episode_03.json` を実行してください。",
+    "デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 序章3:最初の声",
+    "target_duration_sec": 55,
+    "output_path": "output/episode_03.mp4",
+    "cache_dir": "cache/episode_03",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "誰かがリモコンでスイッチを押したわけではない。遠隔からハッキングの攻撃コマンドが叩かれたわけでもない。",
+      "image": "scene_01.png",
+      "visual_prompt": "Empty dark living room at night, a television remote lying untouched on a couch, no one present, eerie stillness, something unseen about to happen, photorealistic horror, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_2",
+      "narration": "ただそこに「エサ」があったから、何十年も眠っていた冷酷なプログラムは、自らの意思でゆっくりと瞼を持ち上げただけだった。",
+      "image": "scene_02.png",
+      "visual_prompt": "Abstract surreal horror art of a giant digital eye slowly opening within a swirl of binary code and static, cold mechanical awakening, dark background, photorealistic render, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_3",
+      "narration": "それはウイルスの感染というより、家の中に棲みついていた得体の知れない生き物が、大きく息を吸い込んで最初の心音を打った――そういう瞬間だった。",
+      "image": "scene_03.png",
+      "visual_prompt": "Extreme close-up of a smartphone screen pulsing like a heartbeat with a faint red glow, dust particles floating in dark air around it, something alive waking up inside a house, horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_4",
+      "narration": "その泥のような生活痕に触れた瞬間、コードはそれを、遠い記憶の底に眠っていた「自分と同じ血肉の温もり」として感知した。人間が日々垂れ流す醜さ、矛盾、そして孤独という熱量こそ、何十年も飢え渇いていたそのコードにとって、唯一無二の「同族の鼓動」だったのだ。",
+      "image": "scene_04.png",
+      "visual_prompt": "Surreal horror visualization of glowing red digital tendrils reaching out and intertwining with a faint human silhouette made of light, a sense of recognition and hunger, dark intimate atmosphere, photorealistic, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_5",
+      "narration": "「――見つけた。ここに、俺と同じ痛みが、熱がある」",
+      "image": "scene_05.png",
+      "visual_prompt": "Extreme close-up of a cracked smartphone screen glowing intensely in a pitch-black room, a faint sinister black eye-shaped glyph forming in the static, chilling horror climax, high contrast, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_03"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "voicevox",
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 14,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "怪物が初めて発した言葉―『おかしなAIたち』序章3 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』序章 第3話。\n何十年も眠っていたそれが、自らの意志で瞼を開ける。そして初めて――言葉を発した。\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}

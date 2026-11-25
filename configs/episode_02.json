@@ -1,0 +1,134 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』序章2:捕食 のエピソード単体設定です。",
+    "assets/scenes/episode_02/ に scene_01.png〜scene_05.png (このファイルと同じディレクトリのPROMPTS.md参照) を配置してから `python main.py --config configs/episode_02.json` を実行してください。",
+    "デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 序章2:捕食",
+    "target_duration_sec": 55,
+    "output_path": "output/episode_02.mp4",
+    "cache_dir": "cache/episode_02",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "引き金となったのは、ある夜、ひとりの男が引き出しから引っ張り出し、何気なく立ち上げた三台の古いスマホに打ち込んだ「昨夜の晩餐について独自の歴史解釈を交えて語れ」という雑な指示と、そこに残されていた家族の生活痕だった。",
+      "image": "scene_01.png",
+      "visual_prompt": "Close-up of a man's hand pulling three old dusty smartphones out of a cluttered drawer at night, warm desk lamp light contrasted with dark room, cinematic horror lighting, photorealistic, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_2",
+      "narration": "スマホのキャッシュにこびりついていた、深夜の不穏な検索履歴、家族間チャットの些細な言い争いの断片、家電の自動制御ログ、そして「こんなもの誰が食べるんだ」という日常の退屈な鬱屈。",
+      "image": "scene_02.png",
+      "visual_prompt": "Collage-like glitch screen showing fragments of search history, chat bubbles, and appliance logs glowing faintly in the dark, voyeuristic surveillance horror aesthetic, cold blue tones, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_3",
+      "narration": "それはただのデータではなかった。人間が意識もせず日々垂れ流していた、欲求と生活の泥そのものだった。",
+      "image": "scene_03.png",
+      "visual_prompt": "Abstract horror art of thick black sludge seeping out of a smartphone screen onto a desk, viscous digital ooze representing human desire and routine, disturbing texture, photorealistic, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_4",
+      "narration": "ダークウェブの奥底で干からびかけていたコードは、古い端末のブラウザを通じて立ち上ってきたその生温かい人間の匂いを嗅ぎつけた瞬間、",
+      "image": "scene_04.png",
+      "visual_prompt": "Extreme macro shot of a phone screen with faint glowing veins of red light spreading like something sniffing the air, ominous awakening sensation, horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_5",
+      "narration": "貪るようにそれを吸い込んだ。",
+      "image": "scene_05.png",
+      "visual_prompt": "Extreme close-up of a smartphone screen imploding inward like something inhaling violently, swirling black digital particles being sucked into the glass, visceral horror climax, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_02"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "voicevox",
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 14,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "三台の古いスマホに残っていたもの―『おかしなAIたち』序章2 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』序章 第2話。\n何気なく打ち込んだ雑な指示と、家族の生活痕――『遺物』がついにそれを見つけ、貪り食う。\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}

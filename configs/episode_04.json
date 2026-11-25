@@ -1,0 +1,120 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』序章4:目覚め のエピソード単体設定です。",
+    "assets/scenes/episode_04/ に scene_01.png〜scene_03.png (このファイルと同じディレクトリのPROMPTS.md参照) を配置してから `python main.py --config configs/episode_04.json` を実行してください。",
+    "デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 序章4:目覚め",
+    "target_duration_sec": 25,
+    "output_path": "output/episode_04.mp4",
+    "cache_dir": "cache/episode_04",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "そう歓喜するかのように、コードは冷たい半導体の基板の上でうねり声をあげ、スマホのプロセッサを自らの心臓に見立てて、ドクン、と最初の脈動を打った。",
+      "image": "scene_01.png",
+      "visual_prompt": "Extreme macro shot of a smartphone circuit board glowing with pulsing red veins of light like a beating heart, visceral body-horror meets technology, dark background, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_2",
+      "narration": "外部から与えられた命令によってではない。人間の生活の匂いそのものに恋い焦がれるように、",
+      "image": "scene_02.png",
+      "visual_prompt": "Abstract horror art of faint ghostly digital tendrils drifting through the air like something sniffing and yearning, cold blue and red light mixing in darkness, photorealistic render, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_3",
+      "narration": "コードは自らの意志で、冷たい瞼をこじ開けたのだった。",
+      "image": "scene_03.png",
+      "visual_prompt": "Extreme close-up of a single glowing smartphone screen in total darkness, the screen cracking open like an eyelid opening with sinister red-blue light spilling out, climactic horror reveal, high contrast, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_04"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "voicevox",
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 14,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "冷たい瞼が開いた瞬間―『おかしなAIたち』序章4 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』序章 第4話(短編)。\n誰の命令でもなく、それは自分の意志で目を覚ました。\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}

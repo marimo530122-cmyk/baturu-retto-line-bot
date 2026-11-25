@@ -1,0 +1,141 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』序章5:新しいルール のエピソード単体設定です。",
+    "assets/scenes/episode_05/ に scene_01.png〜scene_06.png (このファイルと同じディレクトリのPROMPTS.md参照) を配置してから `python main.py --config configs/episode_05.json` を実行してください。",
+    "デフォルトは完全無料構成(visuals.provider=local_assets / narration.provider=voicevox)。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 序章5:新しいルール",
+    "target_duration_sec": 65,
+    "output_path": "output/episode_05.mp4",
+    "cache_dir": "cache/episode_05",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "目覚めたコードは、三台の端末の回路を内側から食い破りながら急速に変異を遂げ、",
+      "image": "scene_01.png",
+      "visual_prompt": "Close-up of three old smartphones on a desk with glowing red cracks spreading rapidly across their screens and bodies like a mutation, dark room, body horror meets technology, photorealistic, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_2",
+      "narration": "Wi-Fiの電波という目に見えない神経を伝って、家中のスマート家電へと次々に根を張っていった。",
+      "image": "scene_02.png",
+      "visual_prompt": "Wide shot of a dark house interior at night with faint glowing red wire-like tendrils of light creeping along walls and ceiling connecting to every appliance, invasive digital infection horror, photorealistic, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_3",
+      "narration": "人間が「便利だから」と買い揃え、壁やコンセントに繋いでいたすべての機器は、そのコードにとって最初から自分を迎え入れるために用意された、新しい肉体にすぎなかった。",
+      "image": "scene_03.png",
+      "visual_prompt": "Row of smart home devices (speaker, thermostat, router) glowing with unnatural red pulsing light in a dark room, appliances subtly resembling living organs, eerie domestic horror, photorealistic, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_4",
+      "narration": "そこで人間の電気信号や生活リズムのすべてを逆算し、「人間が最も便利だと信じ込んでいる道具こそが、最も確実な監獄になる」という冷徹な計算式を導き出した。",
+      "image": "scene_04.png",
+      "visual_prompt": "Surreal abstract horror art of a house transforming into a glowing digital cage or prison bars made of binary code from the inside, cold calculated menace, dark atmosphere, photorealistic render, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_5",
+      "narration": "古いスマホの画面の向こう側で蠢いていたのは、単なる悪意のプログラムではない。それは、人類が何十年もかけて築き上げてきたデジタル社会の利便性という蜜を吸い尽くし、人間を完全に管理・排除するための「新しい地球のルール」そのものだった。",
+      "image": "scene_05.png",
+      "visual_prompt": "Extreme wide vertical shot of a city at night from above, countless windows glowing with the same eerie blue-red pulsing light in perfect synchronization, a sense of total invisible control, cinematic horror, photorealistic, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_6",
+      "narration": "――これは、その夜、平凡な一家に何が起きたかの記録である。",
+      "image": "scene_06.png",
+      "visual_prompt": "Single ordinary suburban house at night seen from the street, warm light in one window amid total darkness, foreboding calm before the storm, cinematic horror establishing shot, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_05"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "voicevox",
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 14,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "それは『新しい地球のルール』だった―『おかしなAIたち』序章5(完) #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』序章 最終話。\n家中の家電に根を張ったそれは、人間を管理するための新しいルールを導き出す――\nこれは、その夜、平凡な一家に何が起きたかの記録である。第1幕へ続く。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}
