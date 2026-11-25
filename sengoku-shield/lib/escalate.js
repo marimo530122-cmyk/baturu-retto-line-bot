@@ -7,6 +7,7 @@
 const intel = require("./intel");
 const { notifyFamilyAccount, familyTargets } = require("./notify");
 const familycall = require("./familycall");
+const notifylog = require("./notifylog");
 
 const done = new Map();
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -23,6 +24,7 @@ function once(key) {
 function onCallerSpeech({ sessionId, lines, suspicious }) {
   const result = { account_notice: "none", call_notice: "none" };
   if (!sessionId || !suspicious) return result;
+  const detectedAt = Date.now();
 
   const found = intel.extract(lines);
   const first = (type) => found.find((f) => f.type === type)?.value;
@@ -39,16 +41,25 @@ function onCallerSpeech({ sessionId, lines, suspicious }) {
   // 知らせる先がないときは「送った」ことにしない(画面に「家族に知らせました」と出さないため)
   if (info.account && familyTargets().length && once(`${sessionId}:account:${info.account}`)) {
     result.account_notice = "sent";
-    notifyFamilyAccount(info).catch((err) => console.error("[escalate]", err.message));
+    notifyFamilyAccount(info, { sessionId, detectedAt }).catch((err) => console.error("[escalate]", err.message));
   }
 
   const urgent = Boolean(info.account || info.visit || (info.datetime && info.place));
   if (urgent && familycall.ready() && familycall.familyPhones().length && once(`${sessionId}:call`)) {
     result.call_notice = "calling";
+    const phones = familycall.familyPhones().length;
     familycall
       .callFamily(info)
-      .then((n) => n && console.log(`[escalate] 家族${n}人に自動電話をかけました`))
-      .catch((err) => console.error("[escalate]", err.message));
+      .catch((err) => {
+        console.error("[escalate]", err.message);
+        return 0;
+      })
+      .then((n) => {
+        if (n) console.log(`[escalate] 家族${n}人に自動電話をかけました`);
+        // 通知の記録: かけられた数とかけられなかった数(番号は残さない)
+        const results = Array.from({ length: phones }, (_, i) => (i < n ? { ok: true } : { ok: false, error: "call" }));
+        notifylog.record({ kind: "family_autocall", detectedAt, session: sessionId, results });
+      });
   }
   return result;
 }

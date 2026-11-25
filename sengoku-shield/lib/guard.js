@@ -4,8 +4,10 @@
 // - 合言葉・署名の間違い(401/403)が続いた相手を、しばらく締め出す(総当たり対策)
 // - 間違い・サーバーエラー(5xx)・アクセス全体が急に増えたら、開発者の Discord / Slack に知らせる
 //
-// 知らせ先は SHIELD_ALERT_WEBHOOK_URL(Discord か Slack の Incoming Webhook のURL)。
-// 空なら知らせはサーバーのログ([security])に出すだけで、止める働きはそのまま動く。
+// 知らせ先は SHIELD_ALERT_WEBHOOK_URL(Discord か Slack の Incoming Webhook のURL)と、
+// 管理者の LINE(SHIELD_ADMIN_LINE_ID。LINE 公式アカウントから push する)。両方とも空なら、
+// 知らせはサーバーのログ([security])に出すだけで、止める働きはそのまま動く。
+// 管理者の LINE は、見守られる本人や家族の ID と分けて設定する(警報が本人のスマホに届かないように)。
 // 再起動すると数え直しになる(Render の1台構成ならこれで足りる。複数台にするなら Redis などに移す)。
 
 const num = (name, fallback) => {
@@ -105,6 +107,7 @@ function alert(kind, message, now = Date.now()) {
   lastAlert.set(kind, now);
   const text = `【鮮刻シールド 警報】${message}`;
   console.warn(`[security] ${text}`);
+  alertLine(text);
   const url = process.env.SHIELD_ALERT_WEBHOOK_URL;
   if (!url) return;
   // Discord は content、Slack は text で受け取る
@@ -115,6 +118,21 @@ function alert(kind, message, now = Date.now()) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(5000),
   }).catch((err) => console.error("[security] 通知に失敗:", err.message));
+}
+
+// 管理者の LINE へ警報を送る。LINE が壊れているときは届かないので、Webhook と両方あると安心
+function alertLine(text) {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  const to = process.env.SHIELD_ADMIN_LINE_ID;
+  if (!token || !to) return;
+  fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
+    signal: AbortSignal.timeout(5000),
+  })
+    .then((res) => res.ok || console.error(`[security] 管理者へのLINE警報に失敗: ${res.status}`))
+    .catch((err) => console.error("[security] 管理者へのLINE警報に失敗:", err.message));
 }
 
 // どの応答にも付ける、ブラウザ向けの守りの設定

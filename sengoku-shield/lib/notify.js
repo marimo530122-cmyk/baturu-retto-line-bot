@@ -4,19 +4,36 @@
 const { maskPhone, maskText } = require("./mask");
 const family = require("./family");
 const intel = require("./intel");
+const notifylog = require("./notifylog");
 
+// LINE に1通送る。結果は { ok, error }(error は応答番号か network。送り先や本文は入れない)
 async function pushLine(to, text) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  const res = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
-  });
-  if (!res.ok) {
-    console.error(`[notify] LINE通知に失敗: ${res.status} ${await res.text()}`);
-    return false;
+  try {
+    const res = await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      console.error(`[notify] LINE通知に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
+      return { ok: false, error: String(res.status) };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("[notify] LINE通知に失敗:", err.message);
+    return { ok: false, error: err.name === "TimeoutError" ? "timeout" : "network" };
   }
-  return true;
+}
+
+// 送り先全員に送り、結果を通知の記録(data/notify-log.jsonl)に残す。1人にでも届けば true。
+// meta.detectedAt: 詐欺の疑いに気づいた時刻(ミリ秒。無ければ今)/ meta.sessionId: 見守りの回のID
+async function deliver(kind, targets, text, meta = {}) {
+  const detectedAt = Number.isFinite(meta.detectedAt) ? meta.detectedAt : Date.now();
+  const results = await Promise.all(targets.map((to) => pushLine(to, text)));
+  notifylog.record({ kind, detectedAt, session: meta.sessionId, results });
+  return results.some((r) => r.ok);
 }
 
 // 見守り画面(/app)で「疑い:高」になった瞬間に、離れて暮らす家族のLINEへ知らせる(任意)
@@ -46,12 +63,10 @@ function familyMessage(judgment, utterance) {
   ].join("\n");
 }
 
-async function notifyFamily(judgment, utterance) {
+async function notifyFamily(judgment, utterance, meta = {}) {
   const targets = familyTargets();
   if (!targets.length) return false;
-  const text = familyMessage(judgment, utterance);
-  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
-  return results.some(Boolean);
+  return deliver("family_high", targets, familyMessage(judgment, utterance), meta);
 }
 
 // 見守り中の経過を家族に知らせる(AIに代わった / 電話が終わった)。
@@ -93,12 +108,11 @@ function familyProgressMessage(type, { minutes, ai_replies, intel: intelFound = 
   return null;
 }
 
-async function notifyFamilyProgress(type, extra) {
+async function notifyFamilyProgress(type, extra, meta = {}) {
   const targets = familyTargets();
   const text = familyProgressMessage(type, extra);
   if (!targets.length || !text) return false;
-  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
-  return results.some(Boolean);
+  return deliver(type === "handoff" ? "family_handoff" : "family_ended", targets, text, meta);
 }
 
 // 実家の固定電話(Twilio経由)にAIが代わりに出て、詐欺の疑いが高かったとき、登録した家族に知らせる。
@@ -123,12 +137,10 @@ function familyCallMessage(call) {
   ].join("\n");
 }
 
-async function notifyFamilyCall(call) {
+async function notifyFamilyCall(call, meta = {}) {
   const targets = familyTargets();
   if (!targets.length) return false;
-  const text = familyCallMessage(call);
-  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
-  return results.some(Boolean);
+  return deliver("family_call_summary", targets, familyCallMessage(call), { sessionId: call.callSid, ...meta });
 }
 
 // 相手が振込先の口座を言った瞬間に、家族へ知らせる(口座を早く止めてもらうため)。
@@ -147,15 +159,13 @@ function familyAccountMessage({ bank, account, phone } = {}) {
   ].join("\n");
 }
 
-async function notifyFamilyAccount(info) {
+async function notifyFamilyAccount(info, meta = {}) {
   const targets = familyTargets();
   if (!targets.length || !(info && (info.account || info.bank))) return false;
-  const text = familyAccountMessage(info);
-  const results = await Promise.all(targets.map((to) => pushLine(to, text).catch(() => false)));
-  return results.some(Boolean);
+  return deliver("family_account", targets, familyAccountMessage(info), meta);
 }
 
-async function notifyOwner(call) {
+async function notifyOwner(call, meta = {}) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   const to = process.env.SHIELD_LINE_USER_ID;
   if (!token || !to) return false;
@@ -171,7 +181,7 @@ async function notifyOwner(call) {
     "※自動判定です。折り返し電話はしないでください。",
   ].join("\n");
 
-  return pushLine(to, text);
+  return deliver("owner_call", [to], text, { sessionId: call.callSid, ...meta });
 }
 
 module.exports = {
