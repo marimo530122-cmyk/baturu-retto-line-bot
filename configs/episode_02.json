@@ -76,7 +76,7 @@
     }
   },
   "narration": {
-    "provider": "voicevox",
+    "provider": "pyttsx3",
     "voicevox": {
       "speaker_id": 2,
       "speed_scale": 0.95,
