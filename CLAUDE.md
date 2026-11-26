@@ -129,6 +129,11 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   `lib/guard.js` の警報が管理者の LINE(`SHIELD_ADMIN_LINE_ID`。本人・家族の ID は入れない)と Discord/Slack に届く。
   止まったときの見張りは外の cron-job.org(5分ごとに `/health`、失敗でメール)。手順は `sengoku-shield/docs/monitoring.md`。
   詳細は `sengoku-shield/README.md`。別の会話で続けるときの引き継ぎ書は `sengoku-shield/docs/HANDOFF.md`。
+- `terms-checker/index.html` — 規約チェッカー。同意文・利用規約を貼ると、自動更新・解約の条件・第三者提供・無料期間後の課金・
+  返金不可・違約金・解約金・最低利用期間の7種類の文に色を付ける。ファイル1つで、文章は外に送らない(CSPで通信を止めている)。
+  サーバー・AIは使わない。「見落としがありえます。最終確認はご自身で」の表示は外さないこと。言葉のリストは独自に作ったもので、
+  参考にした研究(baltpeter/thesis-mobile-consent-dialogs、MIT)のコード・データは取り込んでいない(今後も `data/upstream/` は入れない)。
+  公開は `.github/workflows/terms-checker-pages.yml`(main に入ると index.html だけを GitHub Pages に出す。リポジトリ全体は出さない)。
 - `haccp_to_accounting.py` — 納品書・食材・賞味期限の写真/動画をGeminiで読み、HACCP受入記録と
   freee用仕訳CSVを作る。処理済みは `inputs/done/` に移して二重記録を防ぐ。入力画像と出力CSVはGitに入れない。
 - `.github/workflows/haccp-accounting.yml` — 上をGoogleドライブのフォルダリンクから実行する。

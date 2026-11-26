@@ -1,0 +1,41 @@
+# 規約チェッカー(terms-checker/)だけを GitHub Pages に公開する。
+# リポジトリ全体を公開しないよう、terms-checker/ フォルダだけをアップロードする。
+# 事前に Settings → Pages → Source を「GitHub Actions」にしておくこと(一度だけ)。
+name: terms-checker-pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terms-checker/**'
+      - '.github/workflows/terms-checker-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: terms-checker-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 公開用フォルダを作る(index.html だけを入れる)
+        run: |
+          mkdir -p _site
+          cp terms-checker/index.html _site/index.html
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

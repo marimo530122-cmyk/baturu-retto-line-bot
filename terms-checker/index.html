@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 外部への通信を一切させない(画像・通信・外部ファイルの読み込みをすべて禁止) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>規約チェッカー</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #5f5f5a; --line: #d9d9d4;
+  --accent: #1f5fbf; --accent-text: #ffffff; --warn-bg: #fff4d6; --warn-line: #d9a400; --warn-text: #4a3800;
+  --c1: #ffd8d8; --c2: #ffe3c2; --c3: #d9e8ff; --c4: #e6dcff; --c5: #d6f2dc; --c6: #ffd6ee; --c7: #e9ecc4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --panel: #22221f; --text: #ececE8; --muted: #a8a8a0; --line: #3a3a35;
+    --accent: #5b9bff; --accent-text: #0b1a33; --warn-bg: #3a3010; --warn-line: #c9a227; --warn-text: #f5e6b0;
+    --c1: #5a2a2a; --c2: #5a3d1c; --c3: #213b5e; --c4: #3b2d5e; --c5: #1f4a2b; --c6: #5a2448; --c7: #444820;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161614; --panel: #22221f; --text: #ececE8; --muted: #a8a8a0; --line: #3a3a35;
+  --accent: #5b9bff; --accent-text: #0b1a33; --warn-bg: #3a3010; --warn-line: #c9a227; --warn-text: #f5e6b0;
+  --c1: #5a2a2a; --c2: #5a3d1c; --c3: #213b5e; --c4: #3b2d5e; --c5: #1f4a2b; --c6: #5a2448; --c7: #444820;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  font-size: 16px; line-height: 1.7;
+}
+main { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 1.4rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+p { margin: 0 0 8px; }
+.sub { color: var(--muted); font-size: 0.92rem; }
+.warn {
+  background: var(--warn-bg); color: var(--warn-text); border: 2px solid var(--warn-line);
+  border-radius: 10px; padding: 10px 14px; margin: 14px 0; font-weight: 700;
+}
+.warn small { display: block; font-weight: 400; margin-top: 2px; }
+textarea {
+  width: 100%; min-height: 200px; padding: 12px; font: inherit; color: var(--text);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; resize: vertical;
+}
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+button {
+  font: inherit; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); cursor: pointer; min-height: 44px;
+}
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 700; }
+.count { color: var(--muted); font-size: 0.9rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 8px 0; list-style: none; }
+.chip { display: inline-block; border-radius: 999px; padding: 1px 10px; font-size: 0.85rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+.legend .chip .n { font-weight: 400; margin-left: 4px; }
+.legend .chip.zero { opacity: 0.45; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-wrap: anywhere; }
+#view { white-space: pre-wrap; }
+mark { color: inherit; border-radius: 4px; padding: 1px 2px; }
+mark .chip { font-size: 0.72rem; padding: 0 6px; margin-left: 4px; vertical-align: 1px; border: 1px solid var(--text); background: var(--panel); }
+.cat-list { margin: 0; padding-left: 0; list-style: none; }
+.cat-list > li { margin-bottom: 14px; }
+.cat-list ol { margin: 4px 0 0; padding-left: 22px; }
+.cat-list ol li { margin-bottom: 4px; }
+.none { color: var(--muted); }
+.hidden { display: none; }
+footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>規約チェッカー</h1>
+  <p class="sub">同意文や利用規約の文章を貼ると、気をつけたい文に色を付けます。</p>
+
+  <div class="warn" role="note">
+    見落としがありえます。最終確認はご自身で。
+    <small>言葉の並びで探しているだけなので、書き方によっては見つけられません。色が付かない文も、必ずご自身で読んでください。</small>
+  </div>
+
+  <label for="input"><strong>ここに文章を貼ってください</strong></label>
+  <textarea id="input" placeholder="例:本サービスは無料体験の終了後、月額料金が自動的に請求されます。…" maxlength="200000"></textarea>
+  <div class="buttons">
+    <button type="button" class="primary" id="run">調べる</button>
+    <button type="button" id="sample">ためし文を入れる</button>
+    <button type="button" id="clear">消す</button>
+  </div>
+  <p class="sub">貼った文章はこの画面の中だけで調べます。どこにも送りません(この画面は外との通信を止めています)。</p>
+
+  <section id="result" class="hidden" aria-live="polite">
+    <h2>結果</h2>
+    <p id="summary"></p>
+    <ul class="legend" id="legend"></ul>
+
+    <h2>種類ごとの一覧</h2>
+    <ul class="cat-list" id="bycat"></ul>
+
+    <h2>全文(注意点に色付き)</h2>
+    <div class="panel" id="view"></div>
+  </section>
+
+  <footer>
+    見つける7種類:自動更新/解約の条件/第三者提供/無料期間後の課金/返金不可/違約金・解約金/最低利用期間。<br>
+    法律の判断をするものではありません。気になる点は、事業者への問い合わせや消費生活センター(188)への相談をおすすめします。
+  </footer>
+</main>
+
+<script>
+'use strict';
+
+// ---- 言葉のリスト(このチェッカー用に新しく作ったもの) ----
+// 数(算用数字・漢数字)
+const N = '(?:\\d+|[一二三四五六七八九十百]+)';
+// 「A のあと、句点(。)をまたがずに n 文字以内に B」がある
+const near = (a, b, n) => new RegExp('(?:' + a + ')[^。]{0,' + (n || 20) + '}(?:' + b + ')', 'g');
+const rx = (s) => new RegExp(s, 'g');
+
+// 各種類: re = 当たりにする並び / neg = 当たった所の直後まで見て、打ち消していれば外す
+const RULES = [
+  {
+    id: 'auto', label: '自動更新', color: 'var(--c1)',
+    re: [
+      near('自動(?:的)?(?:に)?', '更新|継続|延長', 6),
+      rx('自動更新'),
+      near('(?:期間|期限)(?:の)?満了', '更新|継続|延長', 40),
+      near('(?:申し出|申出|お申し出|連絡|通知)(?:が|の)?(?:ない|無い|なき)', '更新|継続|延長', 30),
+    ],
+    neg: /(?:更新|継続|延長)(?:は|も)?(?:され(?:ません|ない|ることはありません)|(?:いた)?しません|ありません|行いません)|自動更新(?:は|も)?(?:ありません|ございません|なし|しません|されません|いたしません)/,
+  },
+  {
+    id: 'cancel', label: '解約の条件', color: 'var(--c2)',
+    re: [
+      near('解約|退会|解除|キャンセル|契約の終了', N + '\\s*(?:日|営業日|か月|ヶ月|カ月|ケ月)前', 40),
+      near('解約|退会|解除|キャンセル', '(?:更新日|締め?日|末日|月末)(?:の)?(?:前日)?までに', 40),
+      near('解約|退会|解除|キャンセル', '書面|郵送|電話(?:のみ|でのみ)|窓口|所定の(?:方法|手続|書式|用紙)', 40),
+      near('解約|退会|解除|キャンセル', '(?:でき|受け付け|お受けでき|承れ)(?:ません|ない)', 30),
+      near('解約|退会|解除', '翌月|翌々月|次回(?:の)?更新', 30),
+    ],
+    neg: /いつでも(?:無料で|簡単に|手数料なしで)?(?:解約|退会|解除|キャンセル)(?:が)?(?:でき|可能)/,
+  },
+  {
+    id: 'third', label: '第三者提供', color: 'var(--c3)',
+    re: [
+      near('第三者|提携先|提携企業|提携会社|パートナー(?:企業|会社)?|グループ(?:会社|企業)|関連会社|委託先|外部(?:の)?(?:事業者|企業|サービス)|広告(?:配信)?(?:事業者|会社|ネットワーク)',
+           '提供|共有|開示|販売|譲渡|送信|共同(?:で)?利用|預託', 30),
+      rx('共同利用'),
+    ],
+    neg: /(?:提供|共有|開示|販売|譲渡|送信|利用)(?:は|を|も)?(?:(?:いた)?しません|することは(?:一切)?(?:ありません|ございません)|行いません|致しません)/,
+  },
+  {
+    id: 'trial', label: '無料期間後の課金', color: 'var(--c4)',
+    re: [
+      near('無料(?:期間|体験|トライアル|お試し|利用期間)|お試し期間|初月無料|' + N + '\\s*(?:日間|か月|ヶ月|カ月)無料',
+           '(?:終了|経過|満了)(?:後|した後|すると|と同時に)[^。]{0,30}(?:課金|請求|料金|有料|月額|年額|支払|決済|移行)|(?:自動的に|自動で)[^。]{0,15}(?:有料|課金|請求|移行)', 40),
+      near('無料', '(?:終了|経過|満了)(?:後|すると)[^。]{0,20}(?:有料|課金|請求|月額|年額)', 30),
+    ],
+    neg: /(?:課金|請求|料金の発生)(?:は|も)?(?:されません|いたしません|しません|発生しません|ありません)/,
+  },
+  {
+    id: 'refund', label: '返金不可', color: 'var(--c5)',
+    re: [
+      near('返金|払い?戻し|返還', '(?:いた)?しません|致しません|でき(?:ません|ない)|(?:に)?応じ(?:られ)?(?:ません|ない)|不可|いたしかねます|致しかねます|行いません|行わない|ありません|ございません|対象外', 20),
+      near('返金|払い?戻し', '場合に限り|場合を除き|のみ(?:と|で|行)', 30),
+      rx('(?:日割り?|月割り?)(?:計算)?(?:による|での|の)?(?:返金|払い?戻し)(?:は|も)?(?:いたしません|しません|致しません|できません|行いません|ありません)'),
+      near('お支払い(?:いただいた|済みの)|支払済み|納入済み|受領した', '返金|返還|払い?戻', 20),
+    ],
+    neg: null,
+  },
+  {
+    id: 'penalty', label: '違約金・解約金', color: 'var(--c6)',
+    re: [
+      rx('違約金|解約金|解約手数料|解除料|契約解除料|中途解約(?:金|料|手数料)|早期解約(?:金|料|手数料)'),
+      near('(?:残り|残余|残存)(?:の)?(?:期間|月数|回数)', '(?:料金|利用料|代金|月額)(?:を|の)?[^。]{0,10}(?:一括|お支払|支払|請求)', 25),
+      rx('損害賠償(?:額)?の予定'),
+    ],
+    neg: /(?:違約金|解約金|解約手数料|解除料|手数料)(?:等|など)?(?:は|も)?(?:一切)?(?:かかりません|発生しません|いただきません|不要|無料|ありません|ございません|頂きません)/,
+  },
+  {
+    id: 'minterm', label: '最低利用期間', color: 'var(--c7)',
+    re: [
+      rx('最低(?:利用|契約|継続|購入)(?:期間|回数)'),
+      rx('最低\\s*' + N + '\\s*(?:か月|ヶ月|カ月|ケ月|年|回)'),
+      near(N + '\\s*(?:か月|ヶ月|カ月|ケ月|年|回)(?:間)?(?:未満|以内)', '解約|退会|解除|キャンセル|停止', 15),
+      near(N + '\\s*(?:回|か月|ヶ月|カ月|ケ月)(?:以上)?(?:の)?(?:継続|購入|受け取り|ご利用)', '条件|必要|お約束|前提', 15),
+      near('契約期間(?:中|内)', '解約|退会|解除|キャンセル|停止', 20),
+      rx('定期縛り|縛り'),
+    ],
+    neg: /(?:最低(?:利用|契約|継続|購入)?(?:期間|回数)|縛り|回数の?(?:お約束|条件))(?:は|も)?(?:ありません|ございません|なし|ない|不要|設けていません|設けておりません)/,
+  },
+];
+
+// ---- 調べる処理 ----
+// 文の区切り: 改行と「。!?」
+function splitSentences(text) {
+  const out = [];
+  text.split(/(\n)/).forEach((part) => {
+    if (part === '\n') { out.push({ text: '\n', br: true }); return; }
+    part.split(/(?<=[。！？!?])/).forEach((s) => { if (s) out.push({ text: s, br: false }); });
+  });
+  return out;
+}
+
+// 1つの文に当たった種類を返す
+function checkSentence(s) {
+  const norm = s.normalize('NFKC'); // 全角数字などをそろえる(見た目は元の文のまま表示)
+  const hits = [];
+  for (const rule of RULES) {
+    let hit = false;
+    for (const re of rule.re) {
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(norm)) !== null) {
+        if (m[0].length === 0) { re.lastIndex++; continue; }
+        // 当たった所と、その直後14文字だけを見て打ち消しを判定する
+        const windowText = norm.slice(m.index, m.index + m[0].length + 14);
+        if (!(rule.neg && rule.neg.test(windowText))) { hit = true; break; }
+      }
+      if (hit) break;
+    }
+    if (hit) hits.push(rule);
+  }
+  return hits;
+}
+
+function el(tag, attrs, text) {
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  return e;
+}
+function chip(rule, extra) {
+  const c = el('span', { class: 'chip' + (extra ? ' ' + extra : '') }, rule.label);
+  c.style.background = rule.color;
+  return c;
+}
+
+function run() {
+  const text = document.getElementById('input').value;
+  const result = document.getElementById('result');
+  const view = document.getElementById('view');
+  const legend = document.getElementById('legend');
+  const bycat = document.getElementById('bycat');
+  view.replaceChildren(); legend.replaceChildren(); bycat.replaceChildren();
+
+  if (!text.trim()) {
+    result.classList.remove('hidden');
+    document.getElementById('summary').textContent = '文章が貼られていません。';
+    return;
+  }
+
+  const found = Object.fromEntries(RULES.map((r) => [r.id, []]));
+  let flagged = 0;
+  for (const part of splitSentences(text)) {
+    if (part.br) { view.appendChild(document.createTextNode('\n')); continue; }
+    const hits = checkSentence(part.text);
+    if (!hits.length) { view.appendChild(document.createTextNode(part.text)); continue; }
+    flagged++;
+    const m = el('mark', null, part.text);
+    m.style.background = hits[0].color;
+    hits.forEach((r) => { m.appendChild(chip(r)); found[r.id].push(part.text.trim()); });
+    view.appendChild(m);
+  }
+
+  document.getElementById('summary').textContent = flagged
+    ? '注意したい文が ' + flagged + ' か所 見つかりました。色の付いていない文も、必ず読んでください。'
+    : '7種類の注意点は見つかりませんでした。ただし見落としの可能性があります。必ず全文を読んでください。';
+
+  for (const r of RULES) {
+    const li = el('li');
+    const c = chip(r, found[r.id].length ? '' : 'zero');
+    c.appendChild(el('span', { class: 'n' }, found[r.id].length + '件'));
+    li.appendChild(c);
+    legend.appendChild(li);
+
+    const item = el('li');
+    item.appendChild(chip(r));
+    if (found[r.id].length) {
+      const ol = el('ol');
+      found[r.id].forEach((s) => ol.appendChild(el('li', null, s)));
+      item.appendChild(ol);
+    } else {
+      item.appendChild(el('span', { class: 'none' }, ' 見つかりませんでした'));
+    }
+    bycat.appendChild(item);
+  }
+  result.classList.remove('hidden');
+  result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ためし文(架空のサービス。実在の規約ではありません)
+const SAMPLE = [
+  '第1条(架空のサンプル規約)本規約は、架空のサービス「サンプル会員」に適用されます。',
+  '第2条 本サービスには初回30日間の無料体験期間があり、無料体験の終了後は月額980円が自動的に請求されます。',
+  '第3条 契約期間満了の日までに申し出がない場合、契約は同一条件で自動的に更新されるものとします。',
+  '第4条 解約を希望する場合は、更新日の10日前までに所定の方法で届け出てください。',
+  '第5条 本プランの最低利用期間は12か月とします。12か月未満で解約した場合、解約金として3,000円をお支払いいただきます。',
+  '第6条 お支払いいただいた料金は、理由のいかんを問わず返金いたしません。',
+  '第7条 当社は、ご登録の情報を提携先の広告配信事業者に提供することがあります。',
+  '第8条 当社は、法令に基づく場合を除き、個人情報を第三者に提供しません。',
+  '第9条 有料プランはいつでも解約でき、違約金はかかりません。',
+  '第10条 お問い合わせは平日10時から受け付けます。',
+].join('\n');
+
+document.getElementById('run').addEventListener('click', run);
+document.getElementById('sample').addEventListener('click', () => {
+  document.getElementById('input').value = SAMPLE;
+});
+document.getElementById('clear').addEventListener('click', () => {
+  document.getElementById('input').value = '';
+  document.getElementById('result').classList.add('hidden');
+});
+</script>
+</body>
+</html>
