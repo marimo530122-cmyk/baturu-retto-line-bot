@@ -133,6 +133,7 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   返金不可・違約金・解約金・最低利用期間の7種類の文に色を付ける。ファイル1つで、文章は外に送らない(CSPで通信を止めている)。
   サーバー・AIは使わない。「見落としがありえます。最終確認はご自身で」の表示は外さないこと。言葉のリストは独自に作ったもので、
   参考にした研究(baltpeter/thesis-mobile-consent-dialogs、MIT)のコード・データは取り込んでいない(今後も `data/upstream/` は入れない)。
+  公開は `.github/workflows/terms-checker-pages.yml`(main に入ると index.html だけを GitHub Pages に出す。リポジトリ全体は出さない)。
 - `haccp_to_accounting.py` — 納品書・食材・賞味期限の写真/動画をGeminiで読み、HACCP受入記録と
   freee用仕訳CSVを作る。処理済みは `inputs/done/` に移して二重記録を防ぐ。入力画像と出力CSVはGitに入れない。
 - `.github/workflows/haccp-accounting.yml` — 上をGoogleドライブのフォルダリンクから実行する。
