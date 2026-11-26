@@ -35,6 +35,8 @@ class SceneScript:
     image_path: str | None = field(default=None, repr=False)
     # scenes[].image で明示指定された画像ファイル名(ローカル素材provider用)。
     image_hint: str | None = field(default=None, repr=False)
+    # scenes[].audio で明示指定された音声ファイル名(pregenerated provider用)。
+    audio_hint: str | None = field(default=None, repr=False)
 
 
 def build_scene_scripts(config: dict) -> list[SceneScript]:
@@ -69,6 +71,7 @@ def _from_explicit_scenes(explicit: list[dict], config: dict) -> list[SceneScrip
                 visual_prompt=visual_prompt,
                 camera=camera,
                 image_hint=raw.get("image"),
+                audio_hint=raw.get("audio"),
             )
         )
     return scenes

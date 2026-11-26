@@ -126,7 +126,7 @@
     "outline_width": 3.2,
     "shadow": 1.5,
     "margin_v": 180,
-    "max_chars_per_cue": 14,
+    "max_chars_per_cue": 12,
     "max_cue_duration_sec": 3.2
   },
   "youtube": {

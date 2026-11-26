@@ -39,7 +39,7 @@ def synthesize_all(scenes: list[SceneScript], config: dict, cache_dir: Path) -> 
     audio_dir.mkdir(parents=True, exist_ok=True)
 
     sub_cfg = config.get("subtitles", {})
-    max_chars = int(sub_cfg.get("max_chars_per_cue", 14))
+    max_chars = int(sub_cfg.get("max_chars_per_cue", 12))
     max_cue_duration = float(sub_cfg.get("max_cue_duration_sec", 3.2))
 
     cumulative = 0.0
@@ -129,13 +129,14 @@ def _build_cues(alignment: dict, max_chars: int, max_cue_duration: float) -> lis
         buf = []
         buf_start = None
 
+    min_break_len = max(2, max_chars // 2)
     for ch, s, e in zip(chars, starts, ends):
         if buf_start is None:
             buf_start = s
         buf.append(ch)
         duration = e - buf_start
         is_break = ch in _BREAK_CHARS
-        if (len(buf) >= max_chars and is_break) or len(buf) >= int(max_chars * 1.6) or duration >= max_cue_duration:
+        if len(buf) >= max_chars or (is_break and len(buf) >= min_break_len) or duration >= max_cue_duration:
             flush(e)
 
     if buf:

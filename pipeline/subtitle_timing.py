@@ -11,23 +11,39 @@ from __future__ import annotations
 _BREAK_CHARS = set("。、！？!?\n」』…")
 
 
+def chunk_text(text: str, max_chars: int) -> list[str]:
+    """`max_chars` を絶対に超えないように text を分割する。
+
+    句読点等の区切り文字に達していれば(かつある程度の長さが溜まっていれば)
+    そこで自然に改行するが、区切りが見つからなくても max_chars に達した時点で
+    必ず改行する(1080px縦動画・フォントサイズ78px想定で、画面幅をはみ出さない
+    ための絶対上限。以前は 1.6倍 までの延長を許していたが、それだと1行が
+    画面幅を大きく超えてはみ出すことが実機検証で判明したため撤廃した)。
+    """
+    if not text:
+        return []
+
+    min_break_len = max(2, max_chars // 2)
+    chunks: list[str] = []
+    buf: list[str] = []
+    for ch in text:
+        buf.append(ch)
+        is_break = ch in _BREAK_CHARS
+        if len(buf) >= max_chars or (is_break and len(buf) >= min_break_len):
+            chunks.append("".join(buf))
+            buf = []
+    if buf:
+        chunks.append("".join(buf))
+    return chunks
+
+
 def split_cues_proportional(
     text: str, total_duration: float, max_chars: int, max_cue_duration: float
 ) -> list[dict]:
     if not text or total_duration <= 0:
         return []
 
-    chunks: list[str] = []
-    buf: list[str] = []
-    for ch in text:
-        buf.append(ch)
-        is_break = ch in _BREAK_CHARS
-        if (len(buf) >= max_chars and is_break) or len(buf) >= int(max_chars * 1.6):
-            chunks.append("".join(buf))
-            buf = []
-    if buf:
-        chunks.append("".join(buf))
-
+    chunks = chunk_text(text, max_chars)
     total_chars = sum(len(c) for c in chunks) or 1
 
     cues: list[dict] = []

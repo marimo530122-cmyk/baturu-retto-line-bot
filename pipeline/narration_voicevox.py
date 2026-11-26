@@ -57,7 +57,7 @@ def synthesize_all(scenes: list[SceneScript], config: dict, cache_dir: Path) -> 
     intonation_scale = float(vv_cfg.get("intonation_scale", 1.3))
 
     sub_cfg = config.get("subtitles", {})
-    max_chars = int(sub_cfg.get("max_chars_per_cue", 14))
+    max_chars = int(sub_cfg.get("max_chars_per_cue", 12))
     max_cue_duration = float(sub_cfg.get("max_cue_duration_sec", 3.2))
 
     audio_dir = cache_dir / "audio"

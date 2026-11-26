@@ -110,6 +110,7 @@ def render(scenes: list[SceneScript], config: dict, cache_dir: Path) -> Path:
     height = int(video_cfg.get("height", 1920))
     fps = int(video_cfg.get("fps", 30))
     output_path = Path(project_cfg.get("output_path", "output.mp4"))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     work_dir = cache_dir / "render"
     work_dir.mkdir(parents=True, exist_ok=True)

@@ -29,7 +29,7 @@ def synthesize_all(scenes: list[SceneScript], config: dict, cache_dir: Path) -> 
     voice_substring = pt_cfg.get("voice_substring", "japan")
 
     sub_cfg = config.get("subtitles", {})
-    max_chars = int(sub_cfg.get("max_chars_per_cue", 14))
+    max_chars = int(sub_cfg.get("max_chars_per_cue", 12))
     max_cue_duration = float(sub_cfg.get("max_cue_duration_sec", 3.2))
 
     audio_dir = cache_dir / "audio"

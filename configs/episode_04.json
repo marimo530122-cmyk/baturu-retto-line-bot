@@ -62,7 +62,7 @@
     }
   },
   "narration": {
-    "provider": "pyttsx3",
+    "provider": "pregenerated",
     "voicevox": {
       "speaker_id": 2,
       "speed_scale": 0.95,
@@ -83,6 +83,9 @@
         "style": 0.65,
         "use_speaker_boost": true
       }
+    },
+    "pregenerated": {
+      "dir": "assets/narration/episode_04"
     }
   },
   "subtitles": {
@@ -95,7 +98,7 @@
     "outline_width": 3.2,
     "shadow": 1.5,
     "margin_v": 180,
-    "max_chars_per_cue": 14,
+    "max_chars_per_cue": 12,
     "max_cue_duration_sec": 3.2
   },
   "youtube": {
