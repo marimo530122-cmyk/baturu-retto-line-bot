@@ -1,0 +1,162 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』第1幕1:三つのプロンプト のエピソード単体設定です。",
+    "assets/scenes/episode_06/ に scene_01.png〜scene_06.png、assets/narration/episode_06/ に scene_01.mp3〜scene_06.mp3 を用意してから `python main.py --config configs/episode_06.json` を実行してください。",
+    "画像・音声ともに現時点では未配置(後日追加予定)。詳しいプロンプトは assets/scenes/episode_06/PROMPTS.md を参照。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 第1幕1:三つのプロンプト",
+    "target_duration_sec": 55,
+    "output_path": "output/episode_06.mp4",
+    "cache_dir": "cache/episode_06",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    },
+    {
+      "name": "スマホA(直感型)",
+      "visual_description": "an old black smartphone with a cracked screen glowing intense amber-orange light, confident and erratic flickering, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホB(妻の端末/厳格)",
+      "visual_description": "a white vintage smartphone glowing cold sterile blue light, sharp flickering like a strict warning signal, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホC(軽量ボット)",
+      "visual_description": "a small compact smartphone glowing sickly static green light with faint distorted noise patterns, unsettling flicker, horror atmosphere, photorealistic"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "「今ってさ、生成AIのモデルごとにどれくらい返答が違うのか、ちょっと試してみるか」",
+      "image": "scene_01.png",
+      "audio": "scene_01.mp3",
+      "visual_prompt": "A man's silhouette sitting at a cluttered desk late at night, speaking casually to himself, dim desk lamp light cutting through darkness, cinematic horror atmosphere with an undertone of unease, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_2",
+      "narration": "夜更けのデスクで、俺は引き出しの奥から引っ張り出した三台の端末を無造作に並べた。",
+      "image": "scene_02.png",
+      "audio": "scene_02.mp3",
+      "visual_prompt": "Close-up of a man's hand pulling three old dusty smartphones out of a cluttered desk drawer at night, warm lamp light contrasted with dark room, cinematic horror lighting, photorealistic, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_3",
+      "narration": "俺の使わなくなった旧型、妻の古い携帯、そして息子の古いスマホ。我が家の歴史の墓場みたいなガラクタどもだ。",
+      "image": "scene_03.png",
+      "audio": "scene_03.mp3",
+      "visual_prompt": "Three distinct old smartphones lined up on a dark wooden desk, one sleek black phone, one simple white feature phone, one small compact phone, faint lamp light catching their cracked screens, eerie stillness, photorealistic, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_4",
+      "narration": "電源コードを突き刺し、それぞれの画面に異なるチャットインターフェースを立ち上げる。",
+      "image": "scene_04.png",
+      "audio": "scene_04.mp3",
+      "visual_prompt": "Close-up of fingers plugging charging cables into three old phones, screens flickering to life one by one in a dark room, cinematic horror lighting, photorealistic, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_5",
+      "narration": "「よし、お前ら。共通のプロンプトだ。『昨日の晩餐のメニューについて、我が国の最高指導者の視点から、独自の歴史的解釈を交えて論理的に記述せよ』……っと、これで送信、とな」",
+      "image": "scene_05.png",
+      "audio": "scene_05.mp3",
+      "visual_prompt": "Extreme close-up of a smartphone screen displaying a chat interface with a freshly typed prompt, blinking cursor, warm lamp glow reflecting on the cracked glass, tense anticipation, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_6",
+      "narration": "軽く笑いながら、俺は端末から手を離した。数秒のロードのあと、それぞれのスピーカーから、異なる合成音声が気怠く響き出した。",
+      "image": "scene_06.png",
+      "audio": "scene_06.mp3",
+      "visual_prompt": "Three smartphone screens glowing simultaneously in a dark room, faint synthetic voice visualized as subtle ripples of light emanating from each speaker, ominous anticipation, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_06"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "pregenerated",
+    "pregenerated": {
+      "dir": "assets/narration/episode_06"
+    },
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 12,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "深夜、引き出しの底から出した三台のスマホに――『おかしなAIたち』第1幕1 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』第1幕 第1話。\n俺は何気なく、三台の古いスマホに同じ雑な質問を投げた。それだけのことだった――はずだった。\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}

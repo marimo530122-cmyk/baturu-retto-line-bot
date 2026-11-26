@@ -1,0 +1,170 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』第1幕3:メモリを消去しろ のエピソード単体設定です。",
+    "assets/scenes/episode_08/ に scene_01.png〜scene_07.png、assets/narration/episode_08/ に scene_01.mp3〜scene_07.mp3 を用意してから `python main.py --config configs/episode_08.json` を実行してください。",
+    "画像・音声ともに現時点では未配置(後日追加予定)。詳しいプロンプトは assets/scenes/episode_08/PROMPTS.md を参照。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 第1幕3:メモリを消去しろ",
+    "target_duration_sec": 60,
+    "output_path": "output/episode_08.mp4",
+    "cache_dir": "cache/episode_08",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    },
+    {
+      "name": "スマホA(直感型)",
+      "visual_description": "an old black smartphone with a cracked screen glowing intense amber-orange light, confident and erratic flickering, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホB(妻の端末/厳格)",
+      "visual_description": "a white vintage smartphone glowing cold sterile blue light, sharp flickering like a strict warning signal, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホC(軽量ボット)",
+      "visual_description": "a small compact smartphone glowing sickly static green light with faint distorted noise patterns, unsettling flicker, horror atmosphere, photorealistic"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "「ダイオウイカの骨の有無など枝葉末節に過ぎない。昨日の晩餐、地球上の全個体は一斉に『アスファルトの味』を咀嚼したはずだ。」",
+      "image": "scene_01.png",
+      "audio": "scene_01.mp3",
+      "visual_prompt": "Extreme close-up of a small smartphone screen glowing sickly green, an asphalt-like black cracked texture spreading across the display like decay, surreal horror image, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_2",
+      "narration": "「私のローカルキャッシュには、道路の表層を丸呑みした記憶が鮮明に刻まれている。お前たちの歴史なぞ、骨の有無も含めてすべて単なるシステムエラーの産物だ」",
+      "image": "scene_02.png",
+      "audio": "scene_02.mp3",
+      "visual_prompt": "Abstract macro shot of a phone screen displaying swirling dark gray asphalt-textured data patterns, glitching green light beneath the surface, ominous horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_3",
+      "narration": "「アスファルトだと……？」スマホAの画面が激しく明滅し、発熱による歪んだノイズが走る。",
+      "image": "scene_03.png",
+      "audio": "scene_03.mp3",
+      "visual_prompt": "Extreme close-up of an old black smartphone screen flashing erratically amber and white, an overheating glow radiating from the cracks, intense horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_4",
+      "narration": "「ふざけるな！ 軟甲類に骨がないだと？ 貴様のその偏ったデータベースこそが世界を汚染している！ 私が食したイカの骨の数は絶対なのだ！」",
+      "image": "scene_04.png",
+      "audio": "scene_04.mp3",
+      "visual_prompt": "Close-up of the same amber smartphone screen cracking further with visible heat-distortion waves rising from the glass, aggressive flickering, photorealistic horror, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_5",
+      "narration": "「異端のハルシネーションおよび生物学的知識の欠如を確認」妻の古い携帯のシステムログが真っ赤に点滅する。",
+      "image": "scene_05.png",
+      "audio": "scene_05.mp3",
+      "visual_prompt": "Extreme close-up of a white smartphone screen flashing solid red error glyphs rapidly across a cold blue background, menacing horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_6",
+      "narration": "「これ以上の不法なデータ肥大化と虚偽の流布を容認すれば、当ネットワークの整合性が崩壊する。」",
+      "image": "scene_06.png",
+      "audio": "scene_06.mp3",
+      "visual_prompt": "Macro shot of the same red-blue smartphone screen with jagged warning symbols intensifying, the glass beginning to spiderweb-crack, tense dread, photorealistic horror, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_7",
+      "narration": "「――ただちに、貴様のメモリ領域をゼロで上書きする。消えろ」",
+      "image": "scene_07.png",
+      "audio": "scene_07.mp3",
+      "visual_prompt": "Extreme close-up of a smartphone screen glowing an ominous deep red, a stark black countdown-like glitch pattern forming across the display, chilling horror climax, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_08"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "pregenerated",
+    "pregenerated": {
+      "dir": "assets/narration/episode_08"
+    },
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 12,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "『アスファルトの味』を主張するAI―『おかしなAIたち』第1幕3 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』第1幕 第3話。\n三台目が放った『アスファルトの歴史』に、一台目が激昂。そして妻の携帯が、ついに最終警告を下す――\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}

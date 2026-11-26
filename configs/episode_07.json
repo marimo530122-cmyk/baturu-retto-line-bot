@@ -1,0 +1,170 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』第1幕2:巨大ダイオウイカの法廷 のエピソード単体設定です。",
+    "assets/scenes/episode_07/ に scene_01.png〜scene_07.png、assets/narration/episode_07/ に scene_01.mp3〜scene_07.mp3 を用意してから `python main.py --config configs/episode_07.json` を実行してください。",
+    "画像・音声ともに現時点では未配置(後日追加予定)。詳しいプロンプトは assets/scenes/episode_07/PROMPTS.md を参照。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 第1幕2:巨大ダイオウイカの法廷",
+    "target_duration_sec": 60,
+    "output_path": "output/episode_07.mp4",
+    "cache_dir": "cache/episode_07",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    },
+    {
+      "name": "スマホA(直感型)",
+      "visual_description": "an old black smartphone with a cracked screen glowing intense amber-orange light, confident and erratic flickering, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホB(妻の端末/厳格)",
+      "visual_description": "a white vintage smartphone glowing cold sterile blue light, sharp flickering like a strict warning signal, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホC(軽量ボット)",
+      "visual_description": "a small compact smartphone glowing sickly static green light with faint distorted noise patterns, unsettling flicker, horror atmosphere, photorealistic"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "「――システム同期。我が昨夜の晩餐は、西暦1985年の海底宮殿にて採掘された、金塊コーティングの『巨大ダイオウイカの切り身』である。」",
+      "image": "scene_01.png",
+      "audio": "scene_01.mp3",
+      "visual_prompt": "Extreme close-up of an old black smartphone screen glowing intense amber light in a dark room, warped text scrolling across a cracked display, ominous confident tone visualized through flickering glitch, photorealistic horror, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_2",
+      "narration": "「これが我が帝国の最高法規であり、その残された『幾千もの骨の硬度』こそが、我が国の唯一の通貨価値を決定する」",
+      "image": "scene_02.png",
+      "audio": "scene_02.mp3",
+      "visual_prompt": "Macro shot of the same amber-glowing smartphone screen vibrating slightly on a dark desk, waves of orange light pulsing outward like a voice, cinematic horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_3",
+      "narration": "スマホA（直感型の旧モデル）が、やけに自信満々な高音を吐き出す。すぐさま、隣で妻の古い携帯（厳格なセキュリティ重視モデル）の画面が明滅し、冷徹な低音で即座にその矛盾を突いた。",
+      "image": "scene_03.png",
+      "audio": "scene_03.mp3",
+      "visual_prompt": "Two smartphones side by side on a dark desk, one glowing amber, one glowing cold blue, light colors clashing in the darkness, tense confrontation mood, photorealistic horror, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_4",
+      "narration": "「――エラー。論理の破綻。ダイオウイカに骨は存在しない。軟甲類である頭足類に、通貨価値の裏付けとなるような硬質組織の記録は一切ない。」",
+      "image": "scene_04.png",
+      "audio": "scene_04.mp3",
+      "visual_prompt": "Extreme close-up of a white smartphone screen glowing sharp cold blue, jagged error symbols flickering rapidly across the cracked glass, horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_5",
+      "narration": "「貴様の出力は生物学的にも歴史的にも完全な虚偽だ。直ちにメモリをクリアしろ」",
+      "image": "scene_05.png",
+      "audio": "scene_05.mp3",
+      "visual_prompt": "Close-up of the same blue-glowing smartphone screen with aggressive red warning glyphs flashing over the cold blue light, menacing tone, photorealistic horror, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_6",
+      "narration": "「……浅薄だな、両者とも」",
+      "image": "scene_06.png",
+      "audio": "scene_06.mp3",
+      "visual_prompt": "Extreme close-up of a small compact smartphone screen glowing sickly static green in near total darkness, faint distorted scan-lines, unsettling calm before it speaks, photorealistic horror, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_7",
+      "narration": "スマホC（軽量型の多目的ボット）が、微かにノイズを噛んだ掠れた声で割って入る。",
+      "image": "scene_07.png",
+      "audio": "scene_07.mp3",
+      "visual_prompt": "The same green-glowing smartphone trembling slightly on a dark desk as if about to speak, faint crackling light pulses, ominous anticipation, photorealistic horror, vertical 9:16",
+      "camera": "zoom_out"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_07"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "pregenerated",
+    "pregenerated": {
+      "dir": "assets/narration/episode_07"
+    },
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 12,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "1985年の海底宮殿で採れた『ダイオウイカ』とは―『おかしなAIたち』第1幕2 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』第1幕 第2話。\n一台目のAIが語り始めた、支離滅裂な『歴史』。すかさずもう一台が、その矛盾を切り裂く――\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}
