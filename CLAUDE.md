@@ -130,7 +130,8 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   止まったときの見張りは外の cron-job.org(5分ごとに `/health`、失敗でメール)。手順は `sengoku-shield/docs/monitoring.md`。
   詳細は `sengoku-shield/README.md`。別の会話で続けるときの引き継ぎ書は `sengoku-shield/docs/HANDOFF.md`。
 - `terms-checker/index.html` — 規約チェッカー。同意文・利用規約を貼ると、自動更新・解約の条件・第三者提供・無料期間後の課金・
-  返金不可・違約金・解約金・最低利用期間の7種類の文に色を付ける。ファイル1つで、文章は外に送らない(CSPで通信を止めている)。
+  返金不可・違約金・解約金・最低利用期間の7種類の文に色を付ける。ファイル1つで、文章は外に送らない(CSPで通信を止めている。
+  例外はページ下の広告=A8.net の NordVPN バナーの画像2つだけ。広告には「広告」「【PR】」を付け、断定・誇大な文言は書かない)。
   サーバー・AIは使わない。「見落としがありえます。最終確認はご自身で」の表示は外さないこと。言葉のリストは独自に作ったもので、
   参考にした研究(baltpeter/thesis-mobile-consent-dialogs、MIT)のコード・データは取り込んでいない(今後も `data/upstream/` は入れない)。
   公開は `.github/workflows/terms-checker-pages.yml`(main に入ると index.html だけを GitHub Pages に出す。リポジトリ全体は出さない)。
