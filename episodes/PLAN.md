@@ -36,8 +36,24 @@ python main.py --config configs/episode_0N.json
 - 実行方法・画像/音声プロンプトの参照先は序章と同じ構成(`assets/scenes/episode_0N/PROMPTS.md`、
   音声は `assets/narration/episode_0N/scene_01.mp3〜`)。
 
+## 第2幕 分割プラン(5本: episode_10〜14)
+
+画像・音声はまだ無い(後日追加予定)。config と PROMPTS.md のみ用意済み。
+
+| 話 | ファイル | 文字数 | 想定尺 | 終わり方(フック) |
+|---|---|---|---|---|
+| 10 | `configs/episode_10.json` | 313字 | 約48〜57秒 | 「おい、勝手にやってろ。ちょっと風呂に入ってくるわ」で切る(油断の伏線) |
+| 11 | `configs/episode_11.json` | 369字 | 約57〜67秒 | 妻の携帯の画面に謎のコマンドが浮かぶが、中身は見せずに切る |
+| 12 | `configs/episode_12.json` | 398字 | 約61〜72秒 | 「自分の指は、すでにこの画面に届いていなかった。」で終わる |
+| 13 | `configs/episode_13.json` | 325字 | 約50〜59秒 | 電波アイコンが「黒い目玉」に変わる瞬間で切る |
+| 14 | `configs/episode_14.json` | 190字 | 約29〜35秒 | 「あなたのその手元の端末、今……ちゃんとWi-Fiに繋がっていますか？」(最初の45秒ティザーと同じ決め台詞で第2幕を締める) |
+
+- 画像/音声プロンプトの参照先は序章・第1幕と同じ構成(`assets/scenes/episode_0N/PROMPTS.md`、
+  音声は `assets/narration/episode_0N/scene_01.mp3〜`)。
+- 3台のスマホの発光色(琥珀/青/緑)は第1幕から継続。
+
 ## 今後の方針
 
-第2幕以降も同じ考え方(1分前後・引きで切る)で分割していく。次に着手する場合は、
+第3幕以降も同じ考え方(1分前後・引きで切る)で分割していく。次に着手する場合は、
 `novel/okashina_ai_tachi.md` の該当する幕から同様にシーン台本を書き起こし、
-`configs/episode_10.json` 以降として追加する。
+`configs/episode_15.json` 以降として追加する。

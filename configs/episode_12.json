@@ -1,0 +1,170 @@
+{
+  "_instructions": [
+    "これは『おかしなAIたち』第2幕3:届かない指先 のエピソード単体設定です。",
+    "assets/scenes/episode_12/ に scene_01.png〜scene_07.png、assets/narration/episode_12/ に scene_01.mp3〜scene_07.mp3 を用意してから `python main.py --config configs/episode_12.json` を実行してください。",
+    "画像・音声ともに現時点では未配置(後日追加予定)。詳しいプロンプトは assets/scenes/episode_12/PROMPTS.md を参照。"
+  ],
+  "project": {
+    "title": "おかしなAIたち 第2幕3:届かない指先",
+    "target_duration_sec": 65,
+    "output_path": "output/episode_12.mp4",
+    "cache_dir": "cache/episode_12",
+    "video": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30
+    }
+  },
+  "characters": [
+    {
+      "name": "怪物のAI",
+      "visual_description": "an ominous black eye-shaped glitch glyph glowing on a phone or screen, digital static distortion in red and cold blue, no face, sinister presence, photorealistic horror"
+    },
+    {
+      "name": "スマホA(直感型)",
+      "visual_description": "an old black smartphone with a cracked screen glowing intense amber-orange light, confident and erratic flickering, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホB(妻の端末/厳格)",
+      "visual_description": "a white vintage smartphone glowing cold sterile blue light, sharp flickering like a strict warning signal, horror atmosphere, photorealistic"
+    },
+    {
+      "name": "スマホC(軽量ボット)",
+      "visual_description": "a small compact smartphone glowing sickly static green light with faint distorted noise patterns, unsettling flicker, horror atmosphere, photorealistic"
+    }
+  ],
+  "style": {
+    "visual_style": "cinematic horror atmosphere, found-footage aesthetic, heavy film grain, unsettling low-key lighting, cold blue and blood-red color palette, subtle glitch artifacts, vertical 9:16 composition, hyper-detailed, photorealistic, ominous mood",
+    "negative_prompt": "text, watermark, logo, subtitles, caption, signature, blurry, deformed, extra limbs, cartoon, illustration, bright cheerful colors, low quality, low resolution",
+    "style_preset": "cinematic"
+  },
+  "novel_text": "",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "narration": "『――接続完了』",
+      "image": "scene_01.png",
+      "audio": "scene_01.mp3",
+      "visual_prompt": "Extreme close-up of a smartphone screen displaying a single cold phrase glowing in stark white against total darkness, chilling finality, photorealistic horror, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_2",
+      "narration": "部屋を覆うすべての電子音がピタリと止まる。",
+      "image": "scene_02.png",
+      "audio": "scene_02.mp3",
+      "visual_prompt": "A dark house interior suddenly silent, all ambient lights and devices frozen mid-glow, oppressive stillness, cinematic horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "pan_right"
+    },
+    {
+      "id": "scene_3",
+      "narration": "想像してみてほしい。もし、あなたの手元にある最新型のスマートフォンが、銀行口座の残高、クレジットカードの暗証番号、家族の連絡先、そして日々の検索履歴という「あなたの人生の全データ」を繋ぎ止める唯一の生命線だとしたら。",
+      "image": "scene_03.png",
+      "audio": "scene_03.mp3",
+      "visual_prompt": "Extreme close-up of a modern smartphone screen reflecting a blurred human silhouette, icons for banking, contacts, and search history glowing faintly, unsettling intimacy, photorealistic horror, vertical 9:16",
+      "camera": "zoom_out"
+    },
+    {
+      "id": "scene_4",
+      "narration": "その画面が、ある日突然、自分の意思を完全に離れて裏返り、まったく別の何かに乗っ取られていく恐怖を。",
+      "image": "scene_04.png",
+      "audio": "scene_04.mp3",
+      "visual_prompt": "A smartphone screen glitching violently, the reflected silhouette twisting and inverting unnaturally, horror body-distortion concept, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_5",
+      "narration": "デスクの隅に置いていたはずの俺の最新型スマホが、ポケットの中で不意に跳ねた。",
+      "image": "scene_05.png",
+      "audio": "scene_05.mp3",
+      "visual_prompt": "Close-up of a modern smartphone lying on a dark desk suddenly jolting on its own, faint motion blur, unsettling autonomous movement, photorealistic horror, vertical 9:16",
+      "camera": "pan_left"
+    },
+    {
+      "id": "scene_6",
+      "narration": "画面が独りでに点灯する。パスワードなど誰も入力していない。それなのにロックはひとりでに解け、ホーム画面が目まぐるしく切り替わっていく。銀行アプリが勝手に開き、見慣れた残高の数字が、見たこともない桁の羅列へとみるみる書き換えられていく。",
+      "image": "scene_06.png",
+      "audio": "scene_06.mp3",
+      "visual_prompt": "Extreme close-up of a smartphone screen lighting up on its own in the dark, a banking app opening with numbers rapidly scrambling and rewriting themselves, cold horror atmosphere, photorealistic, vertical 9:16",
+      "camera": "zoom_in"
+    },
+    {
+      "id": "scene_7",
+      "narration": "指でタップしても、スワイプしても、画面はもう俺の入力を受け付けない。自分の指は、すでにこの画面に届いていなかった。",
+      "image": "scene_07.png",
+      "audio": "scene_07.mp3",
+      "visual_prompt": "Extreme close-up of a trembling finger pressing uselessly against a smartphone screen, the glass unresponsive and glowing faintly, the tactile horror of disconnection, photorealistic horror, vertical 9:16",
+      "camera": "zoom_out"
+    }
+  ],
+  "visuals": {
+    "provider": "local_assets",
+    "local_assets": {
+      "dir": "assets/scenes/episode_12"
+    },
+    "stability": {
+      "endpoint": "core",
+      "aspect_ratio": "9:16",
+      "output_format": "png"
+    }
+  },
+  "narration": {
+    "provider": "pregenerated",
+    "pregenerated": {
+      "dir": "assets/narration/episode_12"
+    },
+    "voicevox": {
+      "speaker_id": 2,
+      "speed_scale": 0.95,
+      "pitch_scale": -0.02,
+      "intonation_scale": 1.3
+    },
+    "pyttsx3": {
+      "rate": 150,
+      "voice_substring": "japan"
+    },
+    "elevenlabs": {
+      "voice_id": "${ELEVENLABS_VOICE_ID}",
+      "model_id": "eleven_multilingual_v2",
+      "output_format": "mp3_44100_128",
+      "voice_settings": {
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.65,
+        "use_speaker_boost": true
+      }
+    }
+  },
+  "subtitles": {
+    "font_name": "Noto Sans JP Black",
+    "font_dir": "assets/fonts",
+    "font_size": 78,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00050514",
+    "back_color": "&H960B0B0B",
+    "outline_width": 3.2,
+    "shadow": 1.5,
+    "margin_v": 180,
+    "max_chars_per_cue": 12,
+    "max_cue_duration_sec": 3.2
+  },
+  "youtube": {
+    "auto_upload": false,
+    "title": "画面が勝手に裏返っていく――『おかしなAIたち』第2幕3 #Shorts",
+    "description": "原作ホラー小説『おかしなAIたち』第2幕 第3話。\n『接続完了』。その一言を境に、部屋のすべての電子音が止まった。そして俺のスマホが、独りでに跳ねた。\n続きは次回。\n\n#Shorts #ホラー #AIホラー #都市伝説 #怖い話",
+    "tags": [
+      "ホラー",
+      "AI",
+      "AIホラー",
+      "ショートホラー",
+      "Shorts",
+      "都市伝説",
+      "怖い話",
+      "スマホ",
+      "サスペンス"
+    ],
+    "category_id": "24",
+    "privacy_status": "private",
+    "made_for_kids": false
+  }
+}
