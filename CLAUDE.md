@@ -135,6 +135,10 @@ Claude API で自動的に構造化し、このリポジトリの `docs/daily-lo
   サーバー・AIは使わない。「見落としがありえます。最終確認はご自身で」の表示は外さないこと。言葉のリストは独自に作ったもので、
   参考にした研究(baltpeter/thesis-mobile-consent-dialogs、MIT)のコード・データは取り込んでいない(今後も `data/upstream/` は入れない)。
   公開は `.github/workflows/terms-checker-pages.yml`(main に入ると index.html だけを GitHub Pages に出す。リポジトリ全体は出さない)。
+- `browser-check/index.html` — ブラウザ情報もれ診断。今のブラウザから見えている情報(UA・画面・タイムゾーン・言語・Canvas・WebGL・
+  Cookie・localStorage・Do Not Track・接続情報の10項目)を読み取って一覧にし、やさしい言葉で説明する。読み取った情報は保存も送信もしない
+  (localStorage・Cookie にも書き込まない)。外との通信の例外は規約チェッカーと同じ広告の画像2つだけ。説明は「見える可能性がある」と断定しない。
+  発想だけ EFF の Privacy Badger(GPL-3.0)を参考にし、コードは使っていない。公開は同じワークフローで `/browser-check/` に出る。
 - `haccp_to_accounting.py` — 納品書・食材・賞味期限の写真/動画をGeminiで読み、HACCP受入記録と
   freee用仕訳CSVを作る。処理済みは `inputs/done/` に移して二重記録を防ぐ。入力画像と出力CSVはGitに入れない。
 - `.github/workflows/haccp-accounting.yml` — 上をGoogleドライブのフォルダリンクから実行する。

@@ -1,5 +1,6 @@
-# 規約チェッカー(terms-checker/)だけを GitHub Pages に公開する。
-# リポジトリ全体を公開しないよう、terms-checker/ フォルダだけをアップロードする。
+# 無料ツールのページだけを GitHub Pages に公開する。リポジトリ全体は公開しない。
+#   規約チェッカー        terms-checker/index.html  → サイトのトップ(/)
+#   ブラウザ情報もれ診断  browser-check/index.html  → /browser-check/
 # 事前に Settings → Pages → Source を「GitHub Actions」にしておくこと(一度だけ)。
 name: terms-checker-pages
 
@@ -8,6 +9,7 @@ on:
     branches: [main]
     paths:
       - 'terms-checker/**'
+      - 'browser-check/**'
       - '.github/workflows/terms-checker-pages.yml'
   workflow_dispatch:
 
@@ -28,10 +30,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: 公開用フォルダを作る(index.html だけを入れる)
+      - name: 公開用フォルダを作る(各ツールの index.html だけを入れる)
         run: |
-          mkdir -p _site
+          mkdir -p _site/browser-check
           cp terms-checker/index.html _site/index.html
+          cp browser-check/index.html _site/browser-check/index.html
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
