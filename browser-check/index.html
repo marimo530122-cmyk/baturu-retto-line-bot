@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 外部への通信を止める。例外はページ下の広告(A8.net)の画像2つだけ。スクリプトの通信・外部ファイルは禁止 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://www20.a8.net https://www14.a8.net; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>ブラウザ情報もれ診断</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #5f5f5a; --line: #d9d9d4;
+  --accent: #1f5fbf; --accent-text: #ffffff; --warn-bg: #fff4d6; --warn-line: #d9a400; --warn-text: #4a3800;
+  --seen-bg: #ffe3c2; --seen-text: #6a3a00; --hidden-bg: #d6f2dc; --hidden-text: #1d5a2c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --panel: #22221f; --text: #ececE8; --muted: #a8a8a0; --line: #3a3a35;
+    --accent: #5b9bff; --accent-text: #0b1a33; --warn-bg: #3a3010; --warn-line: #c9a227; --warn-text: #f5e6b0;
+    --seen-bg: #5a3d1c; --seen-text: #ffd9a8; --hidden-bg: #1f4a2b; --hidden-text: #bfeccb;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161614; --panel: #22221f; --text: #ececE8; --muted: #a8a8a0; --line: #3a3a35;
+  --accent: #5b9bff; --accent-text: #0b1a33; --warn-bg: #3a3010; --warn-line: #c9a227; --warn-text: #f5e6b0;
+  --seen-bg: #5a3d1c; --seen-text: #ffd9a8; --hidden-bg: #1f4a2b; --hidden-text: #bfeccb;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  font-size: 16px; line-height: 1.7;
+}
+main { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 1.4rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+p { margin: 0 0 8px; }
+.sub { color: var(--muted); font-size: 0.92rem; }
+.warn {
+  background: var(--warn-bg); color: var(--warn-text); border: 2px solid var(--warn-line);
+  border-radius: 10px; padding: 10px 14px; margin: 14px 0; font-weight: 700;
+}
+.warn small { display: block; font-weight: 400; margin-top: 2px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+button {
+  font: inherit; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); cursor: pointer; min-height: 44px;
+}
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 700; }
+.summary {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin: 12px 0;
+}
+.summary .big { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+.items { list-style: none; padding: 0; margin: 0; }
+.item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+.item-head strong { font-size: 1rem; }
+.badge { display: inline-block; border-radius: 999px; padding: 0 10px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.badge.seen { background: var(--seen-bg); color: var(--seen-text); }
+.badge.hidden { background: var(--hidden-bg); color: var(--hidden-text); }
+.value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem;
+  background: var(--bg); border-radius: 6px; padding: 6px 8px; margin: 6px 0; overflow-wrap: anywhere;
+}
+.why { margin: 0; font-size: 0.92rem; }
+.why b { font-weight: 700; }
+.hidden-el { display: none; }
+footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
+.ad { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 0.85rem; }
+.ad-label { display: inline-block; border: 1px solid var(--muted); border-radius: 4px; padding: 0 6px; margin-right: 6px; font-weight: 700; }
+.ad p { margin: 0 0 8px; }
+.ad a img { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ブラウザ情報もれ診断</h1>
+  <p class="sub">今使っているブラウザから、どんな情報が見えているかを、この画面の中だけで調べて一覧にします。</p>
+
+  <div class="warn" role="note">
+    読み取った情報は、保存も送信もしません。
+    <small>調べた結果はこの画面に表示するだけで、閉じると消えます。外との通信は、ページ下の広告の画像を広告会社(A8.net)から読み込むことだけです。</small>
+  </div>
+
+  <div class="buttons">
+    <button type="button" class="primary" id="run">もう一度しらべる</button>
+  </div>
+
+  <section aria-live="polite">
+    <div class="summary" id="summary">
+      <div class="big" id="summary-count">しらべています…</div>
+      <p id="summary-text"></p>
+    </div>
+
+    <h2>見えている情報の一覧</h2>
+    <ul class="items" id="items"></ul>
+  </section>
+
+  <footer>
+    ここに出る情報は、ふつうのウェブサイトでも読み取れる可能性があるものです。ただし、実際にどのサイトが何を読み取っているかは、サイトによって違います。<br>
+    ブラウザの設定や、追跡を減らす機能(トラッキング防止など)を使うと、見える情報を減らせる場合があります。
+  </footer>
+
+  <aside class="ad" aria-label="広告">
+    <p><span class="ad-label">広告</span>【PR】ネットをより安全に使うための一例です。</p>
+<a href="https://px.a8.net/svt/ejp?a8mat=4BGS0Z+CM9S4A+3YFI+61Z81" rel="nofollow">
+<img border="0" width="468" height="60" alt="" src="https://www20.a8.net/svt/bgt?aid=261123299763&wid=002&eno=01&mid=s00000018459001017000&mc=1"></a>
+<img border="0" width="1" height="1" src="https://www14.a8.net/0.gif?a8mat=4BGS0Z+CM9S4A+3YFI+61Z81" alt="">
+  </aside>
+</main>
+
+<script>
+'use strict';
+
+// ---- 小さな道具 ----
+// 文字列から短い目印(ハッシュ)を作る。SHA-256 が使えればそれを、使えなければ簡単な計算を使う。
+async function hashText(text) {
+  try {
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+    }
+  } catch (e) { /* 下の計算に切り替える */ }
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+// ---- 1項目ずつ読み取る ----
+// 返す形: { seen: 見えたか, value: 表示する文字 }
+// どの関数も、読み取った値をこの画面に返すだけで、保存も送信もしない。
+const CHECKS = [
+  {
+    id: 'ua', name: 'ブラウザとOSの種類(ユーザーエージェント)',
+    what: '使っているブラウザやスマホ・パソコンの種類が書かれた名札です。',
+    risk: 'ほかの情報と組み合わせると、「同じ人だ」と見分ける手がかりになる可能性があります。',
+    read: () => {
+      const ua = navigator.userAgent || '';
+      return { seen: ua !== '', value: ua || '読み取れませんでした' };
+    },
+  },
+  {
+    id: 'screen', name: '画面の大きさ・色の数',
+    what: '画面のたて・よこの大きさと、出せる色の細かさです。',
+    risk: '機種ごとに少しずつ違うので、見分ける手がかりの1つになる可能性があります。',
+    read: () => {
+      const s = window.screen;
+      if (!s || !s.width) return { seen: false, value: '読み取れませんでした' };
+      const ratio = window.devicePixelRatio ? `、きめ細かさ ${window.devicePixelRatio}倍` : '';
+      return { seen: true, value: `${s.width} × ${s.height}、色の深さ ${s.colorDepth}ビット${ratio}` };
+    },
+  },
+  {
+    id: 'tz', name: 'タイムゾーン(住んでいる地域の時間)',
+    what: 'どの地域の時計に合わせているかです。',
+    risk: 'だいたいの住んでいる地域が分かる可能性があります。',
+    read: () => {
+      let tz = '';
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { tz = ''; }
+      const off = -new Date().getTimezoneOffset() / 60;
+      const offText = `UTC${off >= 0 ? '+' : ''}${off}`;
+      return { seen: tz !== '', value: tz ? `${tz}(${offText})` : `地域名は読み取れませんでした(${offText})` };
+    },
+  },
+  {
+    id: 'lang', name: '言語',
+    what: 'ブラウザで使っている言葉の設定です。',
+    risk: 'どの国や地域の人かの手がかりになる可能性があります。',
+    read: () => {
+      const langs = (navigator.languages && navigator.languages.length) ? navigator.languages : (navigator.language ? [navigator.language] : []);
+      return { seen: langs.length > 0, value: langs.length ? langs.join(', ') : '読み取れませんでした' };
+    },
+  },
+  {
+    id: 'canvas', name: 'Canvas(お絵かき機能)の目印',
+    what: 'ブラウザに見えない絵をこっそり描かせて、その仕上がりから作った目印です。',
+    risk: '機械ごとに絵の仕上がりがほんの少し違うため、Cookieを消しても同じ人だと見分けられる可能性があります。',
+    read: async () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = 240; c.height = 60;
+        const g = c.getContext('2d');
+        if (!g) return { seen: false, value: '使えませんでした' };
+        g.textBaseline = 'top';
+        g.font = '16px sans-serif';
+        g.fillStyle = '#f60'; g.fillRect(100, 5, 80, 30);
+        g.fillStyle = '#069'; g.fillText('しらべる Check 123 ✓', 4, 10);
+        g.fillStyle = 'rgba(102, 204, 0, 0.7)'; g.fillText('しらべる Check 123 ✓', 6, 14);
+        g.beginPath(); g.arc(200, 40, 15, 0, Math.PI * 2); g.stroke();
+        const data = c.toDataURL();
+        if (!data || data === 'data:,') return { seen: false, value: '使えませんでした' };
+        return { seen: true, value: `目印(ハッシュ): ${await hashText(data)}` };
+      } catch (e) {
+        return { seen: false, value: '読み取りが止められています' };
+      }
+    },
+  },
+  {
+    id: 'webgl', name: 'WebGL(3D表示)の部品の名前',
+    what: '画面を描くための部品(グラフィックの部品)の名前です。',
+    risk: '持っている機械の種類が分かり、見分ける手がかりになる可能性があります。',
+    read: () => {
+      try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+        if (!gl) return { seen: false, value: '使えませんでした' };
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+        return name ? { seen: true, value: String(name) } : { seen: false, value: '名前は読み取れませんでした' };
+      } catch (e) {
+        return { seen: false, value: '読み取りが止められています' };
+      }
+    },
+  },
+  {
+    id: 'cookie', name: 'Cookie(クッキー)',
+    what: 'サイトがブラウザに小さなメモを残せるかどうかです。',
+    risk: '使えると、次に来たときに「前に来た人だ」と覚えておける可能性があります。',
+    read: () => {
+      const on = navigator.cookieEnabled === true;
+      return { seen: on, value: on ? '使える(有効)' : '使えない(無効)' };
+    },
+  },
+  {
+    id: 'storage', name: 'localStorage(ブラウザの保存場所)',
+    what: 'サイトがブラウザの中にデータをしまっておける場所が使えるかどうかです。',
+    risk: '使えると、Cookieと同じように「前に来た人だ」と覚えておける可能性があります。',
+    // 使えるかどうかだけを見る(書き込みはしない)
+    read: () => {
+      try {
+        const ls = window.localStorage;
+        const ok = !!ls && typeof ls.length === 'number';
+        return { seen: ok, value: ok ? '使える' : '使えない' };
+      } catch (e) {
+        return { seen: false, value: '使えない(止められています)' };
+      }
+    },
+  },
+  {
+    id: 'dnt', name: 'Do Not Track(追跡しないで)の設定',
+    what: '「追跡しないでほしい」とサイトにお願いする設定が、どうなっているかです。',
+    risk: 'この設定の有無そのものも、見分ける手がかりの1つになる可能性があります。お願いを守るかどうかはサイトしだいです。',
+    read: () => {
+      // 設定していないブラウザでは null(=設定なし)が返る。項目そのものが無いときだけ「読み取れない」とする
+      const src = ('doNotTrack' in navigator) ? navigator : ('doNotTrack' in window) ? window : ('msDoNotTrack' in navigator) ? navigator : null;
+      if (!src) return { seen: false, value: 'この設定は読み取れませんでした' };
+      const v = src.doNotTrack ?? src.msDoNotTrack ?? null;
+      const text = (v === '1' || v === 'yes') ? 'オン(追跡しないで)' : (v === '0' || v === 'no') ? 'オフ' : '設定なし';
+      return { seen: true, value: text };
+    },
+  },
+  {
+    id: 'conn', name: 'ネットのつながり方',
+    what: '回線の種類や、だいたいの速さです(読み取れるブラウザだけ)。',
+    risk: '家のWi-Fiか、外で使うスマホの回線かなどの手がかりになる可能性があります。',
+    read: () => {
+      const n = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (!n) return { seen: false, value: 'このブラウザでは読み取れませんでした' };
+      const parts = [];
+      if (n.effectiveType) parts.push(`回線の速さの目安: ${n.effectiveType}`);
+      if (n.type) parts.push(`種類: ${n.type}`);
+      if (typeof n.downlink === 'number') parts.push(`だいたいの速さ: ${n.downlink}Mbps`);
+      if (typeof n.rtt === 'number') parts.push(`反応の速さ: ${n.rtt}ミリ秒`);
+      if (n.saveData) parts.push('データ節約モード: オン');
+      return parts.length ? { seen: true, value: parts.join('、') } : { seen: false, value: 'くわしい中身は読み取れませんでした' };
+    },
+  },
+];
+
+// ---- 表示 ----
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+async function run() {
+  const list = document.getElementById('items');
+  list.replaceChildren();
+  let seen = 0;
+  for (const c of CHECKS) {
+    let r;
+    try { r = await c.read(); } catch (e) { r = { seen: false, value: '読み取れませんでした' }; }
+    if (r.seen) seen++;
+
+    const li = el('li', 'item');
+    li.dataset.id = c.id;
+    li.dataset.seen = r.seen ? '1' : '0';
+    const head = el('div', 'item-head');
+    head.appendChild(el('strong', null, c.name));
+    head.appendChild(el('span', 'badge ' + (r.seen ? 'seen' : 'hidden'), r.seen ? '見えています' : '見えていません'));
+    li.appendChild(head);
+    li.appendChild(el('div', 'value', r.value));
+    const what = el('p', 'why'); what.appendChild(el('b', null, '何が見えている?')); what.appendChild(document.createTextNode(' ' + c.what));
+    const risk = el('p', 'why'); risk.appendChild(el('b', null, 'なぜ気をつける?')); risk.appendChild(document.createTextNode(' ' + c.risk));
+    li.appendChild(what);
+    li.appendChild(risk);
+    list.appendChild(li);
+  }
+
+  const total = CHECKS.length;
+  document.getElementById('summary-count').textContent = `${total}項目中 ${seen}項目が見えています`;
+  let comment;
+  if (seen >= Math.ceil(total * 0.7)) {
+    comment = '多くの情報が見えている状態です。1つ1つは小さな情報でも、組み合わせると「あなたのブラウザ」を見分けられる可能性があります。';
+  } else if (seen >= Math.ceil(total * 0.4)) {
+    comment = 'いくつかの情報が見えている状態です。組み合わせによっては、見分ける手がかりになる可能性があります。';
+  } else {
+    comment = '見えている情報は少なめです。それでも、残りの情報から見分けられる可能性はあります。';
+  }
+  document.getElementById('summary-text').textContent = comment;
+}
+
+document.getElementById('run').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>
